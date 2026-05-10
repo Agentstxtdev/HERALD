@@ -1,0 +1,35 @@
+{
+  "name": "@agentify/core",
+  "version": "0.1.0",
+  "description": "Pure generators for robots.txt, llms.txt, and agents.txt — no runtime dependencies",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "lint": "biome lint ./src",
+    "publint": "publint"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  },
+  "keywords": ["llms-txt", "robots-txt", "agent-map", "agents-txt", "llm", "ai-crawler"],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agentstxt/agents.txt"
+  }
+}
