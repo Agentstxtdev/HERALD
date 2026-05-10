@@ -60,7 +60,7 @@ async function resolveContent(config: AgenticConfig, driver?: ContentDriver): Pr
  *   ## Optional              ← optional-content section (exact name)
  */
 export async function generateLlmsTxt(config: AgenticConfig, driver?: ContentDriver): Promise<string> {
-  const { site, payments } = config
+  const { site } = config
   const lines: string[] = []
   const blank = () => lines.push('')
 
@@ -71,24 +71,6 @@ export async function generateLlmsTxt(config: AgenticConfig, driver?: ContentDri
   // ── Blockquote summary (optional but strongly recommended) ─────────────────
   if (site.description) {
     lines.push(`> ${site.description}`)
-    blank()
-  }
-
-  // ── Prose body — payment info (if payments enabled) ────────────────────────
-  if (payments?.enabled && payments.x402) {
-    const { treasury, pricing } = payments.x402
-    const chain = treasury.evmChains?.[0] ?? 'eip155:8453'
-    const amount = pricing?.amount ?? '0.001'
-    const token = pricing?.token ?? 'USDC'
-    const address = treasury.evmAddress ?? treasury.solanaAddress ?? ''
-    const baseUrl = site.url.replace(/\/$/, '')
-
-    lines.push(
-      `This site supports agentic access via the [x402 payment protocol](https://x402.org). ` +
-      `Agents may access protected content for ${amount} ${token} per request on ${chain}.`,
-    )
-    if (address) lines.push(`Treasury: \`${address}\``)
-    lines.push(`Discovery: ${baseUrl}/agents.txt`)
     blank()
   }
 

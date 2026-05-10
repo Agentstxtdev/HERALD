@@ -163,7 +163,12 @@ packages/cli/src/
 3. `generateRobotsTxt` / `generateLlmsTxt` / `generateAgentsTxt` / `generateAgentsJson` / `generateSitemapXml` (per the file's emission policy; see [README.md](README.md) for the sitemap rules) → writes to `--out` dir (default: `./public`)
 4. Runs spec validators inline, prints warnings but does not fail the build
 
-Per-file flags: `--skip-robots`, `--skip-llms`, `--skip-agents`, `--skip-sitemap`, `--sitemap` (force-emit even with the firecrawl driver).
+Per-file flags come in two symmetric sets. Default mode emits everything applicable to the config; pass any positive selector to narrow to that set; `--skip-*` subtracts from whichever set is selected.
+
+- Positive selectors: `--robots`, `--llms`, `--llms-full`, `--agents`, `--sitemap` (also forces emission for the `firecrawl` driver; warns + skips for the `sitemap` driver), `--headers` (emits the §4.5 deployment config for the detected hosting platform; `--platform <cloudflare|netlify|vercel|unknown>` overrides the probe)
+- Negative selectors: `--skip-robots`, `--skip-llms`, `--skip-llms-full`, `--skip-agents`, `--skip-sitemap`, `--skip-headers`
+
+The `--headers` flag delegates to `@agentify/core/src/headers.ts` (`generateHeadersFile(platform)`, `mergeVercelHeaders()`); the platform comes from `detectProject().hostingPlatform`. Auto-generation is implemented for Cloudflare and Netlify (a `_headers` file in `--out`) and Vercel (a `vercel.json` at the project root with merge semantics). Other platforms (nginx, Apache, Caddy, S3+CloudFront, etc.) get the `unknown` fallback `_headers` plus a console note pointing at the README's per-platform table; agentify deliberately does not write into `/etc/` or external IaC trees.
 
 **`check` command:**
 ```bash

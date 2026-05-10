@@ -28,15 +28,30 @@ program
   .command('generate')
   .description(
     'Generate robots.txt, llms.txt, agents.txt, and agents.json from agentic.config.js.\n' +
-    'Outputs to --out directory (default: ./public).',
+    'Outputs to --out directory (default: ./public).\n' +
+    '\n' +
+    'By default every applicable file is generated. Pass one or more positive flags\n' +
+    '(--robots, --llms, --llms-full, --agents, --sitemap) to emit only those files.\n' +
+    'Negative flags (--skip-*) subtract from whatever set is selected.',
   )
   .option('-c, --config <path>', 'Path to config file', './agentic.config.js')
   .option('-o, --out <dir>', 'Output directory', './public')
-  .option('--skip-robots', 'Skip robots.txt generation')
-  .option('--skip-llms', 'Skip llms.txt generation (useful if using Firecrawl separately)')
-  .option('--skip-agents', 'Skip agents.txt and agents.json generation (emit only robots.txt + llms.txt)')
-  .option('--sitemap', 'Force sitemap.xml emission (also for firecrawl driver — usually a curated subset)')
-  .option('--skip-sitemap', 'Never emit sitemap.xml (overrides default for static/manual drivers)')
+  // Positive selectors: pass one or more to emit only those files.
+  .option('--robots', 'Emit only robots.txt (combine with other positive flags to widen the set)')
+  .option('--llms', 'Emit only llms.txt')
+  .option('--llms-full', 'Emit only llms-full.txt (requires content.fullTxt in config)')
+  .option('--agents', 'Emit only agents.txt and agents.json')
+  .option('--sitemap', 'Emit only sitemap.xml (also forces emission for the firecrawl driver)')
+  .option('--headers', 'Emit only the §4.5 headers config for the detected hosting platform (`_headers` for Cloudflare/Netlify, `vercel.json` for Vercel, fallback `_headers` otherwise)')
+  // Negative selectors: subtract from the selected set. Useful with the default
+  // "emit everything" mode, or to drop one file from a positive selection.
+  .option('--skip-robots', 'Skip robots.txt')
+  .option('--skip-llms', 'Skip llms.txt')
+  .option('--skip-llms-full', 'Skip llms-full.txt (keep llms.txt; useful when fullTxt is configured but you only want to refresh the index)')
+  .option('--skip-agents', 'Skip agents.txt and agents.json')
+  .option('--skip-sitemap', 'Skip sitemap.xml')
+  .option('--skip-headers', 'Skip the §4.5 headers config file')
+  .option('--platform <name>', 'Override the detected hosting platform for `--headers` (cloudflare|netlify|vercel|unknown)')
   .action(generateCommand)
 
 program

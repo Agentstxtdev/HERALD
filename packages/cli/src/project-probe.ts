@@ -9,6 +9,12 @@ import { resolve } from 'node:path'
 
 export interface Detected {
   framework: 'nextjs' | 'express' | 'hono' | 'astro' | 'unknown'
+  /**
+   * Hosting platform inferred from project files. Used by `agentify generate`
+   * to emit the right §4.5 headers config (`_headers` for Cloudflare/Netlify,
+   * `vercel.json` for Vercel, fallback to `_headers` otherwise).
+   */
+  hostingPlatform: 'cloudflare' | 'netlify' | 'vercel' | 'unknown'
   siteName: string
   siteUrl: string
   hasSitemap: boolean
@@ -48,6 +54,24 @@ export function detectProject(): Detected {
   else if (pkgDeps['hono']) framework = 'hono'
   else if (pkgDeps['astro'] || pkgDeps['@astrojs/core']) framework = 'astro'
 
+  // Detect hosting platform — used to choose the §4.5 headers config format.
+  // File-presence wins over deps because a project can pull in a Cloudflare
+  // adapter as a peer dep without actually deploying there. The presence of
+  // `wrangler.{json,toml}` / `netlify.toml` / `vercel.json` is a stronger
+  // signal that the user is actually targeting that platform.
+  let hostingPlatform: Detected['hostingPlatform'] = 'unknown'
+  if (existsSync(resolve(cwd, 'wrangler.json')) || existsSync(resolve(cwd, 'wrangler.toml'))) {
+    hostingPlatform = 'cloudflare'
+  } else if (existsSync(resolve(cwd, 'netlify.toml'))) {
+    hostingPlatform = 'netlify'
+  } else if (existsSync(resolve(cwd, 'vercel.json')) || existsSync(resolve(cwd, '.vercel'))) {
+    hostingPlatform = 'vercel'
+  } else if (pkgDeps['@astrojs/cloudflare'] || pkgDeps['@cloudflare/workers-types'] || pkgDeps['wrangler']) {
+    hostingPlatform = 'cloudflare'
+  } else if (pkgDeps['@netlify/plugin-nextjs'] || pkgDeps['netlify-cli']) {
+    hostingPlatform = 'netlify'
+  }
+
   // Detect sitemap
   const sitemapCandidates = [
     resolve(cwd, 'public', 'sitemap.xml'),
@@ -79,6 +103,7 @@ export function detectProject(): Detected {
 
   return {
     framework,
+    hostingPlatform,
     siteName: pkgName
       .split(/[-_/]/)
       .map((s) => s.charAt(0).toUpperCase() + s.slice(1))

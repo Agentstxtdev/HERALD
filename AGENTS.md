@@ -48,12 +48,13 @@ All packages are ESM (`"type": "module"`). TypeScript uses `NodeNext` module res
 
 ```
 packages/core/src/
-├── types.ts        — all shared TypeScript interfaces (incl. ContentDriver)
+├── types.ts        — all shared TypeScript interfaces (incl. ContentDriver, HostingPlatform)
 ├── robots.ts       — generateRobotsTxt()
 ├── llms.ts         — generateLlmsTxt(), generateLlmsFullTxt()
 ├── sitemap.ts      — sitemap parser + generator + Firecrawl driver + ContentDriver factories
 ├── agents-txt.ts   — generateAgentsTxt()
 ├── agents-json.ts  — generateAgentsJson()
+├── headers.ts      — generateHeadersFile(platform), mergeVercelHeaders(), headersDeploymentNote()
 ├── validate.ts     — validateRobotsTxt(), validateLlmsTxt(), validateAgentsTxt(), validateAgentsJson()
 └── index.ts        — re-exports everything
 ```
@@ -64,12 +65,13 @@ Each generator is a pure function: takes `AgenticConfig`, returns a string. No I
 
 | Generator | Output | What it adds over the previous layer |
 |-----------|--------|--------------------------------------|
-| `generateRobotsTxt()` | `robots.txt` | AI crawler rules, `Agents-Txt:` + `Content-Signal:` directives |
+| `generateRobotsTxt()` | `robots.txt` | AI crawler rules, `Sitemap:` + `Content-Signal:` directives, `Allow: /agents.txt` exposes the spec file at its canonical path |
 | `generateLlmsTxt()` | `llms.txt` | Curated page index for LLM inference (requires content driver) |
 | `generateLlmsFullTxt()` | `llms-full.txt` | Long-form companion: inlines page content under each heading (Firecrawl source recommended) |
 | `generateAgentsTxt()` | `agents.txt` | Plain-text capabilities declaration (payments, auth, MCP, skills) |
 | `generateAgentsJson()` | `agents.json` | Structured JSON catalog: same config, richer per-block detail |
 | `generateSitemapXml()` | `sitemap.xml` | sitemaps.org 0.9 `<urlset>` from a `PageEntry[]` (XML-escaped, deduped) |
+| `generateHeadersFile(platform)` | `_headers` (Cloudflare/Netlify) or `vercel.json` (Vercel) | Platform-specific config carrying the spec §4.5 response headers (`Content-Type` with charset, `Access-Control-Allow-Origin: *`, `Cache-Control`). For Vercel, returns a JSON snippet the CLI merges with any existing `vercel.json`. |
 
 **`agents-json.ts`: the structured catalog**
 
@@ -376,7 +378,7 @@ packages/cli/src/
 ### `init` command
 
 Orchestrates three concerns that are now separated into distinct modules:
-1. **`project-probe.ts`**: `detectProject()` reads `package.json`, scans common paths for `sitemap.xml`, and reads `.env` files for wallet addresses and API keys. Pure reads, no side effects.
+1. **`project-probe.ts`**: `detectProject()` reads `package.json`, scans common paths for `sitemap.xml`, reads `.env` files for wallet addresses and API keys, and detects the hosting platform (`hostingPlatform: 'cloudflare' | 'netlify' | 'vercel' | 'unknown'`) from file presence (`wrangler.json`/`wrangler.toml`/`netlify.toml`/`vercel.json`/`.vercel/`) with a dep-based fallback (`@astrojs/cloudflare`, `@cloudflare/workers-types`, `wrangler`, `@netlify/plugin-*`). Pure reads, no side effects.
 2. **`commands/init.ts`**: readline wizard that prompts the user and assembles an `AgenticConfigChoices` object from answers.
 3. **`config-writer.ts`**: `buildAgenticConfigContent(choices)` converts structured choices into the `agentic.config.js` string; `writeAgenticConfig(path, choices)` writes it. The `s()` helper (JSON.stringify-based injection prevention) lives here.
 
@@ -394,11 +396,23 @@ Loads `agentic.config.js` via dynamic `import()`, then immediately validates it 
 
 On success, calls the generators from `@agentify/core`, writes files to `--out` (default `./public`), then runs the spec compliance validators (`validateRobotsTxt`, `validateLlmsTxt`, `validateAgentsTxt`, `validateAgentsJson` from core) and prints any warnings inline.
 
-Per-file opt-out flags:
+Per-file flags come in two symmetric sets. The default mode emits everything applicable to the config; pass any positive selector and the output set narrows to those flags only; any `--skip-*` flag subtracts from whichever set is selected. Resolution rules live in `packages/cli/src/commands/generate.ts → resolveOutputs()`.
+
+Positive selectors (emit only these):
+- `--robots`: emit robots.txt
+- `--llms`: emit llms.txt
+- `--llms-full`: emit llms-full.txt (requires `content.fullTxt` in config)
+- `--agents`: emit agents.txt + agents.json (paired)
+- `--sitemap`: emit sitemap.xml (also forces emission for the `firecrawl` driver; warns + skips for the `sitemap` driver since reading what we'd overwrite is circular)
+- `--headers`: emit the §4.5 headers config for the detected platform. Cloudflare/Netlify get `_headers` in `--out`; Vercel gets `vercel.json` at the project root with merge semantics (existing entries with a different `source` are preserved verbatim, the `/agents.txt` and `/agents.json` sources are replaced). Pass `--platform <cloudflare|netlify|vercel|unknown>` to override the probe.
+
+Negative selectors (subtract from the selected set):
+- `--skip-robots`: skip robots.txt (useful when your framework or CDN owns it)
 - `--skip-llms`: skip llms.txt (useful when Firecrawl is run separately or is too slow for CI)
+- `--skip-llms-full`: skip llms-full.txt (keep llms.txt; useful when you only want to refresh the index without re-running the Firecrawl scrape)
 - `--skip-agents`: skip agents.txt + agents.json (treat AGENTIFY as a robots.txt + llms.txt tool only)
 - `--skip-sitemap`: never emit sitemap.xml (use when your framework already emits one)
-- `--sitemap`: force sitemap.xml even when the driver isn't authoritative (firecrawl); ignored with a warning for `sitemap` driver since reading what we'd overwrite is circular
+- `--skip-headers`: skip the §4.5 headers config (use when your platform isn't auto-generated for and you've configured headers elsewhere — nginx, Apache, Caddy, S3+CloudFront, programmatic handler in `@agentify/web`, etc.)
 
 **sitemap.xml emission policy:** default behavior depends on `content.driver`:
 
@@ -406,7 +420,7 @@ Per-file opt-out flags:
 |---|---|---|
 | `static` | emit | `driver.pages` ∪ `driver.sections[].pages` |
 | `manual` | emit | `driver.sections[].pages` |
-| `firecrawl` | skip | `crawlWithFirecrawl()` (only when `--sitemap` is passed) |
+| `firecrawl` | skip | `crawlWithFirecrawl()` (only when `--sitemap` is passed explicitly) |
 | `sitemap` | skip | circular, already exists at the configured URL |
 
 Pages are deduplicated by URL and XML-escaped before serialization in `generateSitemapXml`.

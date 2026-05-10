@@ -82,10 +82,36 @@ npx agentify generate --out ./public
 ```
 -c, --config <path>    config file path (default: ./agentic.config.js)
 -o, --out <dir>        output directory (default: ./public)
+
+# Positive selectors — pass any to emit only those files:
+--robots               emit robots.txt
+--llms                 emit llms.txt
+--llms-full            emit llms-full.txt (requires content.fullTxt)
+--agents               emit agents.txt + agents.json
+--sitemap              emit sitemap.xml (also forces firecrawl-driver emission)
+
+# Negative selectors — subtract from whichever set is selected:
+--skip-robots          skip robots.txt
 --skip-llms            skip llms.txt (useful if Firecrawl runs separately in CI)
+--skip-llms-full       skip the Firecrawl scrape; keep the cheap llms.txt index
+--skip-agents          skip agents.txt + agents.json
+--skip-sitemap         never emit sitemap.xml
 ```
 
+Default mode (no flags) emits everything applicable to the config. Pass any positive selector and only those files are emitted; pass `--skip-*` to subtract.
+
 **For Astro / 11ty / Hugo / Jamstack**: generation is all they need. Deploy the output files with their site. No middleware.
+
+**About the `_headers` / `vercel.json` file `generate` produces:** the agents.txt spec §4.5 mandates `Content-Type: text/plain; charset=utf-8` on `agents.txt`, `Content-Type: application/json` on `agents.json`, `Access-Control-Allow-Origin: *` on both, and recommends `Cache-Control: public, max-age=3600`. `agentify generate` detects the user's hosting platform and emits the right config to satisfy this without manual work:
+
+| Detected platform | Emits | Where |
+|---|---|---|
+| Cloudflare (Workers / Pages) | `_headers` | `--out` (typically `public/`) |
+| Netlify | `_headers` (same syntax as Cloudflare) | `--out` |
+| Vercel | `vercel.json` with merge semantics | project root |
+| Unknown | `_headers` as a best-effort default + console warning | `--out` |
+
+For platforms agentify doesn't write a config for (nginx, Apache, Caddy, S3+CloudFront, etc.), tell the user to translate the rules manually — the README has copy-paste server config snippets. They can also pass `--platform <name>` to force a specific generator, or `--skip-headers` if they handle headers in their server framework (Express/Hono/Next.js handlers via `@agentify/web` already set them programmatically).
 
 ---
 
@@ -122,7 +148,7 @@ npx agentify check https://mysite.com
 
 **What `check` does:** Fetches `robots.txt`, `llms.txt`, `agents.json`, `sitemap.xml` from the live URL and scores them using the same validators as `generate`, not ad-hoc string matching.
 
-Run this after deploying to confirm everything is reachable and spec-compliant.
+For deeper §4.5 verification (response headers + cross-file consistency between agents.txt and agents.json), point the user at the live `audit_site` MCP tool published by the agents.txt project at `https://agentstxt.dev/mcp`. It validates Content-Type / CORS / Cache-Control on both files, schema-validates `agents.json` per §10, scans for accidental treasury or secret leaks per §10.4 / §12, and cross-checks that `agents.txt` and `agents.json` declare the same capabilities. Run both `agentify check` and `audit_site` after deploy.
 
 ---
 
@@ -143,5 +169,5 @@ Run this after deploying to confirm everything is reachable and spec-compliant.
 - `mppx` passes through if not installed (dev-safe), but logs a warning
 - x402 v2 is implemented directly against the public facilitator at `https://x402.org/facilitator` (no `@x402/*` SDK). MPP runs through the optional `mppx` peer dep (Tempo USDC + Stripe SPT).
 - `@agentify/core` has zero runtime deps (edge-safe); payment code is in `@agentify/web`
-- `--skip-llms` is useful when Firecrawl is a separate CI step that takes too long
+- `--skip-llms` is useful when Firecrawl is a separate CI step that takes too long; `--skip-llms-full` keeps the cheap `llms.txt` index but skips the Firecrawl-billed scrape
 - `pnpm` workspace required if contributing to the monorepo itself

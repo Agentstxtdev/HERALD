@@ -62,7 +62,7 @@ export function generateRobotsTxt(
   config: AgenticConfig,
   existingContent?: string,
 ): string {
-  const { site, content, crawlers = {}, payments, authorization } = config
+  const { site, content, crawlers = {} } = config
 
   const {
     blockFreeAiScrapers = true,
@@ -158,13 +158,9 @@ export function generateRobotsTxt(
   // 'firecrawl' driver: no Sitemap: directive — agentify skips emitting
   // sitemap.xml in that case (Firecrawl returns a curated subset, not authoritative).
 
-  lines.push(`# llms.txt: ${baseUrl}/llms.txt`)
-  lines.push(`# agents.txt: ${baseUrl}/agents.txt`)
-
-  // ── Agents-Txt discovery directive (follows established Sitemap: pattern) ──
-  if (payments?.enabled || authorization?.enabled || config.mcp || config.skills) {
-    lines.push(`Agents-Txt: ${baseUrl}/agents.txt`)
-  }
+  // No Agents-Txt: directive: per the agents.txt spec §4.3, the file is fixed
+  // at <origin>/agents.txt, so the `Allow: /agents.txt` line above is sufficient
+  // discovery. Emitting Agents-Txt: would duplicate that information.
 
   // ── Content-Signal (IETF AIPREF draft, CC0) ────────────────────────────────
   const search = allowSearchEngines !== false ? 'yes' : 'no'

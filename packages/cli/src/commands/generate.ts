@@ -7,6 +7,9 @@ import {
   generateAgentsTxt,
   generateAgentsJson,
   generateSitemapXml,
+  generateHeadersFile,
+  mergeVercelHeaders,
+  headersDeploymentNote,
   parseSitemap,
   crawlWithFirecrawl,
   validateRobotsTxt,
@@ -16,19 +19,34 @@ import {
   validateSitemapXml,
   ROBOTS_GENERATED_MARKER,
   type AgenticConfig,
+  type HostingPlatform,
   type PageEntry,
 } from '@agentify/core'
 import { AgenticConfigSchema } from '../config-schema.js'
+import { detectProject } from '../project-probe.js'
 
 interface GenerateOptions {
   config: string
   out: string
+  // Positive selectors — when any are passed, only those outputs are emitted.
+  robots?: boolean
+  llms?: boolean
+  llmsFull?: boolean
+  agents?: boolean
+  sitemap?: boolean
+  headers?: boolean
+  // Negative selectors — subtracted from whatever the positive set resolves to.
   skipRobots?: boolean
   skipLlms?: boolean
+  skipLlmsFull?: boolean
   skipAgents?: boolean
-  sitemap?: boolean
   skipSitemap?: boolean
+  skipHeaders?: boolean
+  /** Override the detected hosting platform (cloudflare|netlify|vercel|unknown). */
+  platform?: string
 }
+
+type Output = 'robots' | 'llms' | 'llms-full' | 'agents' | 'sitemap' | 'headers'
 
 async function loadConfig(configPath: string): Promise<AgenticConfig> {
   const abs = resolve(configPath)
@@ -58,6 +76,84 @@ async function loadConfig(configPath: string): Promise<AgenticConfig> {
   }
 }
 
+function resolveOutputs(options: GenerateOptions, config: AgenticConfig): Set<Output> {
+  // Positive selectors win when present: an explicit `--agents` means
+  // "only agents", regardless of what would be emitted by default.
+  const hasPositive =
+    options.robots || options.llms || options.llmsFull || options.agents || options.sitemap || options.headers
+
+  const enabled = new Set<Output>()
+
+  if (hasPositive) {
+    if (options.robots)   enabled.add('robots')
+    if (options.llms)     enabled.add('llms')
+    if (options.llmsFull) enabled.add('llms-full')
+    if (options.agents)   enabled.add('agents')
+    if (options.sitemap)  enabled.add('sitemap')
+    if (options.headers)  enabled.add('headers')
+  } else {
+    // Default: everything that makes sense for this config.
+    enabled.add('robots')
+    enabled.add('llms')
+    enabled.add('agents')
+    enabled.add('headers')
+    if (config.content?.fullTxt) enabled.add('llms-full')
+    const driverType = config.content?.driver?.type
+    if (driverType === 'static' || driverType === 'manual') enabled.add('sitemap')
+  }
+
+  // Negative selectors subtract — same semantics whether or not positive flags
+  // were passed, so `--agents --skip-llms-full` is well-defined (no-op here).
+  if (options.skipRobots)   enabled.delete('robots')
+  if (options.skipLlms)     enabled.delete('llms')
+  if (options.skipLlmsFull) enabled.delete('llms-full')
+  if (options.skipAgents)   enabled.delete('agents')
+  if (options.skipSitemap)  enabled.delete('sitemap')
+  if (options.skipHeaders)  enabled.delete('headers')
+
+  return enabled
+}
+
+const VALID_PLATFORMS: readonly HostingPlatform[] = ['cloudflare', 'netlify', 'vercel', 'unknown']
+
+function resolvePlatform(options: GenerateOptions): HostingPlatform {
+  if (options.platform) {
+    const p = options.platform.toLowerCase() as HostingPlatform
+    if (VALID_PLATFORMS.includes(p)) return p
+    console.warn(`   ⚠  Unknown --platform "${options.platform}". Falling back to detection. Valid: ${VALID_PLATFORMS.join(', ')}.`)
+  }
+  return detectProject().hostingPlatform
+}
+
+function writeHeadersFile(options: GenerateOptions, outDir: string): void {
+  const platform = resolvePlatform(options)
+  const file = generateHeadersFile(platform)
+
+  const targetPath = file.pathRelativeTo === 'out'
+    ? join(outDir, file.filename)
+    : resolve(process.cwd(), file.filename)
+
+  if (file.strategy === 'merge-json' && existsSync(targetPath)) {
+    // vercel.json: parse, merge, write back. Preserves any user-authored
+    // entries with a different `source`; collisions are resolved in our favour.
+    let existing: { headers?: unknown; [k: string]: unknown } = {}
+    try {
+      existing = JSON.parse(readFileSync(targetPath, 'utf-8')) as typeof existing
+    } catch (err) {
+      console.warn(`   ⚠  Existing ${file.filename} is not valid JSON; not merging. (${String(err)})`)
+      return
+    }
+    const merged = { ...existing, headers: mergeVercelHeaders(existing.headers) }
+    writeFileSync(targetPath, JSON.stringify(merged, null, 2) + '\n', 'utf-8')
+    console.log(`   ✔  ${file.filename} → ${targetPath}  (merged §4.5 entries; existing entries preserved)`)
+  } else {
+    writeFileSync(targetPath, file.content, 'utf-8')
+    console.log(`   ✔  ${file.filename} → ${targetPath}  (platform: ${platform})`)
+  }
+
+  console.log(`      ${headersDeploymentNote(platform)}`)
+}
+
 export async function generateCommand(options: GenerateOptions): Promise<void> {
   console.log('\n🤖 agentify — generating files...\n')
 
@@ -72,8 +168,10 @@ export async function generateCommand(options: GenerateOptions): Promise<void> {
   const outDir = resolve(options.out)
   mkdirSync(outDir, { recursive: true })
 
+  const outputs = resolveOutputs(options, config)
+
   // ── robots.txt ────────────────────────────────────────────────────────────
-  if (!options.skipRobots) {
+  if (outputs.has('robots')) {
     const robotsPath = join(outDir, 'robots.txt')
     let existingRobots: string | undefined
     if (existsSync(robotsPath)) {
@@ -102,12 +200,10 @@ export async function generateCommand(options: GenerateOptions): Promise<void> {
     for (const r of validateRobotsTxt(robotsTxt, config).filter((v) => v.status !== 'pass')) {
       console.warn(`      ⚠  ${r.message}`)
     }
-  } else {
-    console.log(`   ⏭  robots.txt skipped`)
   }
 
   // ── llms.txt ──────────────────────────────────────────────────────────────
-  if (!options.skipLlms) {
+  if (outputs.has('llms')) {
     try {
       const llmsTxt = await generateLlmsTxt(config)
       const llmsPath = join(outDir, 'llms.txt')
@@ -116,72 +212,74 @@ export async function generateCommand(options: GenerateOptions): Promise<void> {
       for (const r of validateLlmsTxt(llmsTxt).filter((v) => v.status !== 'pass')) {
         console.warn(`      ⚠  ${r.message}`)
       }
+    } catch (err) {
+      console.warn(`   ⚠  llms.txt generation failed: ${String(err)}`)
+      console.warn(`      Add content.driver config or pass --skip-llms`)
+    }
+  }
 
-      if (config.content?.fullTxt) {
+  // ── llms-full.txt ─────────────────────────────────────────────────────────
+  if (outputs.has('llms-full')) {
+    if (!config.content?.fullTxt) {
+      console.warn(`   ⚠  llms-full.txt requested but content.fullTxt is not configured — skipping`)
+    } else {
+      try {
         const llmsFullTxt = await generateLlmsFullTxt(config)
         const llmsFullPath = join(outDir, 'llms-full.txt')
         writeFileSync(llmsFullPath, llmsFullTxt, 'utf-8')
         const sourceType = config.content.fullTxt.driver.type
         const note = sourceType === 'firecrawl' ? '(content scraped via Firecrawl)' : `(${sourceType} source — link-list only)`
         console.log(`   ✔  llms-full.txt → ${llmsFullPath}  ${note}`)
+      } catch (err) {
+        console.warn(`   ⚠  llms-full.txt generation failed: ${String(err)}`)
       }
-    } catch (err) {
-      console.warn(`   ⚠  llms.txt generation failed: ${String(err)}`)
-      console.warn(`      Add content.driver config or use --skip-llms`)
     }
   }
 
   // ── sitemap.xml ───────────────────────────────────────────────────────────
   // Default policy: emit when content.driver is 'static' or 'manual' (user-supplied
-  // authoritative URL list). Skip 'sitemap' (circular — we'd be reading our own
-  // output) and 'firecrawl' (curated subset, not authoritative). Both opt-in/out
-  // overrides honor --sitemap and --skip-sitemap.
-  if (!options.skipSitemap) {
+  // authoritative URL list). When the user explicitly passes `--sitemap` we honor
+  // that even for 'firecrawl' (curated subset). Driver type 'sitemap' is always
+  // skipped because we'd be reading the file we'd overwrite.
+  if (outputs.has('sitemap')) {
     const driver = config.content?.driver
     const driverType = driver?.type
-    const defaultEmit = driverType === 'static' || driverType === 'manual'
-    const shouldEmit = options.sitemap || defaultEmit
 
-    if (shouldEmit) {
-      if (driverType === 'sitemap' && options.sitemap) {
-        console.warn(`   ⚠  --sitemap with driver 'sitemap' is circular (reading the file we'd overwrite). Skipping.`)
-      } else {
-        try {
-          let pages: PageEntry[] = []
-          if (driver?.type === 'static') {
-            pages = [
-              ...driver.pages,
-              ...(driver.sections ?? []).flatMap((s) => s.pages),
-            ]
-          } else if (driver?.type === 'manual') {
-            pages = driver.sections.flatMap((s) => s.pages)
-          } else if (driver?.type === 'firecrawl') {
-            pages = await crawlWithFirecrawl(driver)
-          } else if (driver?.type === 'sitemap') {
-            // unreachable here (handled above), but keep exhaustive
-            pages = await parseSitemap(driver.sitemapUrl)
-          }
-
-          if (pages.length === 0) {
-            console.warn(`   ⚠  sitemap.xml: no pages resolved from content driver — skipping`)
-          } else {
-            const sitemapXml = generateSitemapXml(pages)
-            const sitemapPath = join(outDir, 'sitemap.xml')
-            writeFileSync(sitemapPath, sitemapXml, 'utf-8')
-            console.log(`   ✔  sitemap.xml → ${sitemapPath}  (${pages.length} URLs)`)
-            for (const r of validateSitemapXml(sitemapXml).filter((v) => v.status !== 'pass')) {
-              console.warn(`      ⚠  ${r.message}`)
-            }
-          }
-        } catch (err) {
-          console.warn(`   ⚠  sitemap.xml generation failed: ${String(err)}`)
+    if (driverType === 'sitemap') {
+      console.warn(`   ⚠  sitemap.xml: driver is 'sitemap' (circular — would overwrite the file we read). Skipping.`)
+    } else {
+      try {
+        let pages: PageEntry[] = []
+        if (driver?.type === 'static') {
+          pages = [
+            ...driver.pages,
+            ...(driver.sections ?? []).flatMap((s) => s.pages),
+          ]
+        } else if (driver?.type === 'manual') {
+          pages = driver.sections.flatMap((s) => s.pages)
+        } else if (driver?.type === 'firecrawl') {
+          pages = await crawlWithFirecrawl(driver)
         }
+
+        if (pages.length === 0) {
+          console.warn(`   ⚠  sitemap.xml: no pages resolved from content driver — skipping`)
+        } else {
+          const sitemapXml = generateSitemapXml(pages)
+          const sitemapPath = join(outDir, 'sitemap.xml')
+          writeFileSync(sitemapPath, sitemapXml, 'utf-8')
+          console.log(`   ✔  sitemap.xml → ${sitemapPath}  (${pages.length} URLs)`)
+          for (const r of validateSitemapXml(sitemapXml).filter((v) => v.status !== 'pass')) {
+            console.warn(`      ⚠  ${r.message}`)
+          }
+        }
+      } catch (err) {
+        console.warn(`   ⚠  sitemap.xml generation failed: ${String(err)}`)
       }
     }
   }
 
   // ── agents.txt + agents.json ───────────────────────────────────────────────
-  if (!options.skipAgents) {
+  if (outputs.has('agents')) {
     const agentsTxt = generateAgentsTxt(config)
     const agentsTxtPath = join(outDir, 'agents.txt')
     writeFileSync(agentsTxtPath, agentsTxt, 'utf-8')
@@ -199,18 +297,24 @@ export async function generateCommand(options: GenerateOptions): Promise<void> {
     }
   }
 
+  // ── §4.5 headers config (platform-specific) ───────────────────────────────
+  // Cloudflare/Netlify: writes `_headers` into outDir; Vercel: merges
+  // /agents.txt + /agents.json entries into vercel.json at project root.
+  if (outputs.has('headers')) {
+    try {
+      writeHeadersFile(options, outDir)
+    } catch (err) {
+      console.warn(`   ⚠  Headers config emission failed: ${String(err)}`)
+    }
+  }
+
   // ── Summary ───────────────────────────────────────────────────────────────
   console.log('\n✅ Done!\n')
   const baseUrl = config.site.url.replace(/\/$/, '')
   console.log(`   Site:       ${config.site.url}`)
-  if (!options.skipLlms) console.log(`   llms.txt:    ${baseUrl}/llms.txt`)
-  const driverType = config.content?.driver?.type
-  const sitemapEmitted =
-    !options.skipSitemap &&
-    (options.sitemap || driverType === 'static' || driverType === 'manual') &&
-    !(driverType === 'sitemap' && options.sitemap)
-  if (sitemapEmitted) console.log(`   sitemap.xml: ${baseUrl}/sitemap.xml`)
-  if (!options.skipAgents) {
+  if (outputs.has('llms'))     console.log(`   llms.txt:    ${baseUrl}/llms.txt`)
+  if (outputs.has('sitemap'))  console.log(`   sitemap.xml: ${baseUrl}/sitemap.xml`)
+  if (outputs.has('agents')) {
     console.log(`   agents.txt:  ${baseUrl}/agents.txt`)
     console.log(`   agents.json: ${baseUrl}/agents.json`)
   }

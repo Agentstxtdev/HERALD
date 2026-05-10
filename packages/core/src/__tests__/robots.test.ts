@@ -21,10 +21,13 @@ describe('generateRobotsTxt', () => {
     expect(output).toContain('Allow: /')
   })
 
-  it('always includes agentic discovery comments', () => {
+  it('does not emit redundant # llms.txt or # agents.txt comment lines', () => {
+    // The Agents-Txt: directive (when emitted) is the spec-defined way to
+    // advertise agents.txt; llms.txt is always at /llms.txt and needs no
+    // discovery hint. Commented-out duplicates were removed.
     const output = generateRobotsTxt(baseConfig)
-    expect(output).toContain('# llms.txt: https://example.com/llms.txt')
-    expect(output).toContain('# agents.txt: https://example.com/agents.txt')
+    expect(output).not.toContain('# llms.txt:')
+    expect(output).not.toContain('# agents.txt:')
   })
 
   it('always includes Content-Signal directive', () => {
@@ -62,61 +65,34 @@ describe('generateRobotsTxt', () => {
     expect(output).toContain('ai-input=yes')
   })
 
-  it('includes Agents-Txt directive when payments are enabled', () => {
+  it('never emits an Agents-Txt: directive (per agents.txt spec §4.3)', () => {
+    // The spec MUST NOT-emits a separate Agents-Txt: directive: agents.txt is
+    // fixed at <origin>/agents.txt, and the `Allow: /agents.txt` line in the
+    // wildcard block already exposes the file. Verify across capability shapes.
+    const configs: AgenticConfig[] = [
+      baseConfig,
+      { site: baseConfig.site, payments: { enabled: true, protocols: ['x402'] } },
+      { site: baseConfig.site, authorization: { enabled: true } },
+      { site: baseConfig.site, mcp: { endpoints: 'https://example.com/mcp' } },
+      { site: baseConfig.site, skills: { urls: 'https://example.com/.well-known/skills/main.md' } },
+    ]
+    for (const config of configs) {
+      const output = generateRobotsTxt(config)
+      expect(output).not.toContain('Agents-Txt:')
+      // Allow rule is the actual discovery surface.
+      expect(output).toContain('Allow: /agents.txt')
+    }
+  })
+
+  it('strips trailing slash from site.url in discovery directives', () => {
     const config: AgenticConfig = {
-      site: baseConfig.site,
-      payments: { enabled: true, protocols: ['x402'] },
+      site: { name: 'Test', url: 'https://example.com/' },
+      content: { driver: { type: 'static', pages: [{ title: 'Home', url: 'https://example.com/' }] } },
+      payments: { enabled: true },
     }
     const output = generateRobotsTxt(config)
-    expect(output).toContain('Agents-Txt: https://example.com/agents.txt')
-  })
-
-  it('does not include Agents-Txt directive when payments are disabled', () => {
-    const output = generateRobotsTxt(baseConfig)
-    expect(output).not.toContain('Agents-Txt:')
-  })
-
-  it('includes Agents-Txt directive when authorization is enabled (without payments)', () => {
-    const config: AgenticConfig = {
-      site: baseConfig.site,
-      authorization: { enabled: true },
-    }
-    const output = generateRobotsTxt(config)
-    expect(output).toContain('Agents-Txt: https://example.com/agents.txt')
-  })
-
-  it('does not include Agents-Txt directive when authorization is disabled and payments are disabled', () => {
-    const config: AgenticConfig = {
-      site: baseConfig.site,
-      authorization: { enabled: false },
-    }
-    const output = generateRobotsTxt(config)
-    expect(output).not.toContain('Agents-Txt:')
-  })
-
-  it('includes Agents-Txt directive when mcp is configured (without payments or authorization)', () => {
-    const config: AgenticConfig = {
-      site: baseConfig.site,
-      mcp: { endpoints: 'https://example.com/mcp' },
-    }
-    const output = generateRobotsTxt(config)
-    expect(output).toContain('Agents-Txt: https://example.com/agents.txt')
-  })
-
-  it('includes Agents-Txt directive when skills is configured (without payments, authorization, or mcp)', () => {
-    const config: AgenticConfig = {
-      site: baseConfig.site,
-      skills: { urls: 'https://example.com/.well-known/skills/main.md' },
-    }
-    const output = generateRobotsTxt(config)
-    expect(output).toContain('Agents-Txt: https://example.com/agents.txt')
-  })
-
-  it('strips trailing slash from site.url in discovery comments', () => {
-    const config: AgenticConfig = { site: { name: 'Test', url: 'https://example.com/' } }
-    const output = generateRobotsTxt(config)
-    expect(output).toContain('# llms.txt: https://example.com/llms.txt')
-    expect(output).not.toContain('https://example.com//llms.txt')
+    expect(output).toContain('Sitemap: https://example.com/sitemap.xml')
+    expect(output).not.toContain('https://example.com//')
   })
 
   it('blocks all FREE_AI_SCRAPERS by default', () => {

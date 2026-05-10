@@ -169,10 +169,49 @@ npx agentify init [options]
 npx agentify generate [options]
   -c, --config <path>    Config file path (default: ./agentic.config.js)
   -o, --out <dir>        Output directory (default: ./public)
-  --skip-llms            Skip llms.txt generation
+
+  # Positive selectors — pass any to emit only those files
+  --robots               Emit robots.txt
+  --llms                 Emit llms.txt
+  --llms-full            Emit llms-full.txt (requires content.fullTxt)
+  --agents               Emit agents.txt + agents.json
+  --sitemap              Emit sitemap.xml (also forces emission for the firecrawl driver)
+  --headers              Emit §4.5 headers config (`_headers` for Cloudflare/Netlify,
+                         `vercel.json` for Vercel, fallback `_headers` otherwise)
+  --platform <name>      Override the detected platform: cloudflare|netlify|vercel|unknown
+
+  # Negative selectors — subtract from the selected (or default) set
+  --skip-robots          Skip robots.txt
+  --skip-llms            Skip llms.txt
+  --skip-llms-full       Skip the Firecrawl scrape; keep llms.txt
+  --skip-agents          Skip agents.txt + agents.json
+  --skip-sitemap         Never emit sitemap.xml
+  --skip-headers         Skip the §4.5 headers config
 
 npx agentify check <url>
   Fetches and scores robots.txt, llms.txt, agents.json, sitemap.xml from live URL
+```
+
+### §4.5 Headers — what gets emitted per platform
+
+`agentify generate --headers` produces:
+
+| Detected platform | File written | Path | Strategy |
+|---|---|---|---|
+| `cloudflare` | `_headers` | `--out` (typically `public/`) | overwrite |
+| `netlify` | `_headers` (same syntax) | `--out` | overwrite |
+| `vercel` | `vercel.json` | project root | merge `headers[]` (existing entries with a different `source` preserved verbatim; `/agents.txt` and `/agents.json` replaced) |
+| `unknown` | `_headers` (best-effort) | `--out` | overwrite + console warning |
+
+Detection (`detectProject().hostingPlatform`) goes file-presence first (`wrangler.json`/`wrangler.toml`/`netlify.toml`/`vercel.json`/`.vercel/`), dep-fallback second (`@astrojs/cloudflare`, `@cloudflare/workers-types`, `wrangler`, `@netlify/plugin-*`, `netlify-cli`).
+
+### §4.5 Headers — manual config for unsupported platforms
+
+For nginx, Apache, Caddy, AWS S3+CloudFront, etc., the headers must be set in the platform's own configuration. Required values are the same:
+
+```
+/agents.txt  : Content-Type: text/plain; charset=utf-8 + ACAO: * + Cache-Control: public, max-age=3600
+/agents.json : Content-Type: application/json + ACAO: * + Cache-Control: public, max-age=3600
 ```
 
 ---

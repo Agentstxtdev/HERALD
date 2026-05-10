@@ -172,20 +172,33 @@ pnpm add @agentify/web
 npx agentify init       # interactive setup
 npx agentify generate   # writes robots.txt, llms.txt, agents.txt, agents.json
                         # also writes sitemap.xml when content driver is static/manual
-npx agentify generate --skip-agents                              # only robots.txt + llms.txt
-npx agentify generate --skip-robots --skip-llms --skip-sitemap   # only agents.txt + agents.json
-npx agentify generate --skip-llms --skip-agents --skip-sitemap   # only robots.txt
-npx agentify generate --sitemap                                  # force sitemap.xml even for firecrawl driver
+                        # also writes llms-full.txt when content.fullTxt is configured
+
+# Pick exactly which files to emit with positive flags:
+npx agentify generate --agents                  # only agents.txt + agents.json
+npx agentify generate --robots --llms           # only robots.txt + llms.txt
+npx agentify generate --robots                  # only robots.txt
+npx agentify generate --sitemap                 # only sitemap.xml (also emits for firecrawl driver)
+npx agentify generate --llms-full               # only refresh llms-full.txt
+
+# Or subtract from the default with --skip-* (back-compat with previous CLI):
+npx agentify generate --skip-agents             # everything except agents.txt + agents.json
+npx agentify generate --skip-llms-full          # keep llms.txt, skip the expensive Firecrawl scrape
 ```
 
 ---
 
 ### Generated robots.txt example
 
+`robots.txt` is the Layer 1 *access control* file for your site. The format is defined by the [Robots Exclusion Protocol (RFC 9309)](https://www.rfc-editor.org/rfc/rfc9309) and is honored by every well-behaved crawler. It declares which user agents may visit which paths, and it is the right place to draw the line between visitors you welcome and ones you do not.
+
+Beyond the RFC, AGENTIFY's generator does four things on top of a plain `robots.txt`. It explicitly allows the major search engine crawlers (Googlebot, Bingbot, and similar) so your SEO is unaffected. It blocks the well-known free AI training scrapers (GPTBot, ClaudeBot, CCBot, Google-Extended) when `crawlers.blockFreeAiScrapers` is enabled, since those crawls produce no value for the site owner. It allows the paid agentic agents (such as `AgentstxtBot`) through to the rest of the stack, where they can negotiate access via x402 or MPP through `agents.txt`. And it appends the `Sitemap:` and `Content-Signal:` directives that downstream tools rely on for sitemap discovery and for stating AI-usage preferences. The default wildcard block also `Allow: /agents.txt` and `Allow: /llms.txt`, which both grants explicit access and exposes those files to any crawler reading `robots.txt` (no separate discovery directive is needed; `agents.txt` is fixed at the canonical path).
+
+The generator also merges intelligently with an existing `robots.txt` file. Anything below the `# ── Existing rules (preserved) ──` marker is kept verbatim across regenerations, so any project-specific rules you have authored survive every `agentify generate` run.
 
 ```
 # robots.txt
-# Agentic Web Standard: https://github.com/agentstxt/agents.txt
+# Standard: https://www.rfc-editor.org/rfc/rfc9309
 
 # Search engine crawlers
 User-agent: Googlebot
@@ -210,7 +223,10 @@ Allow: /agents.txt
 Allow: /
 
 Sitemap: https://mysite.com/sitemap.xml
+Content-Signal: search=yes, ai-train=no, ai-input=no
 ```
+
+`Sitemap:` is the long-standing widely-supported extension that points at your URL inventory; it appears whenever the content driver produces an authoritative URL list (`static`, `manual`, or `firecrawl` with `--sitemap`). `Content-Signal:` follows the IETF AIPREF draft (CC0) and lets you state AI-usage preferences in a machine-readable way alongside the access rules above. There is intentionally no `Agents-Txt:` directive: the agents.txt spec (§4.3) fixes the file at `<origin>/agents.txt`, so the `Allow: /agents.txt` line in the wildcard block is sufficient discovery and a separate directive would only duplicate that information.
 
 ---
 
@@ -232,27 +248,27 @@ If your framework already generates a sitemap (Next.js `app/sitemap.ts`, `@astro
 
 ### Generated llms.txt example
 
+`llms.txt` is the Layer 3 *content briefing* for your site: an LLM-optimized index that follows the [llmstxt.org](https://llmstxt.org/) spec. It tells an agent what your site is and points at the pages worth reading, in a structured plain-text format. Format is fixed: an H1 with the site name, an optional `>` blockquote summary, then `## Section` headings each containing a bullet list of `[Title](url): description` lines. A trailing `## Optional` section flags pages an agent can safely ignore on a first pass.
+
+The page list itself comes from `content.driver` in your `agentic.config.js`. The driver decides where the URLs originate (your existing `sitemap.xml`, a Firecrawl crawl, an explicit list of pages, or fully curated sections), and `@agentify/core` renders them into the format above. Payment terms, authentication, MCP endpoints, and skill packages **do not** belong in `llms.txt`; those live one layer up in `agents.txt` / `agents.json`.
 
 ```markdown
 # My Site
 
 > A site accessible to AI agents.
 
-This site supports agentic access via the x402 payment protocol.
-Agents may access protected content for 0.001 USDC per request on eip155:8453.
-Treasury: `0xYourWalletAddress`
-Discovery: https://mysite.com/agents.txt
-
 ## Docs
-- [Getting Started](https://mysite.com/docs/getting-started): Quick start guide
-- [API Reference](https://mysite.com/docs/api): Full API documentation
+- [Getting Started](https://mysite.com/docs/getting-started): Quick start guide for new users.
+- [API Reference](https://mysite.com/docs/api): Full API documentation with examples.
 
 ## Blog
-- [How x402 Works](https://mysite.com/blog/x402): Deep dive into HTTP-native payments
+- [How x402 Works](https://mysite.com/blog/x402): Deep dive into HTTP-native payments.
 
 ## Optional
-- [Archive](https://mysite.com/archive): Older posts
+- [Archive](https://mysite.com/archive): Older posts kept for reference.
 ```
+
+For richer per-page descriptions and the expanded `llms-full.txt` companion (where the markdown body of each page is inlined under its heading), use the `firecrawl` content driver, covered next.
 
 ---
 
@@ -335,11 +351,23 @@ AGENTIFY is driven by a single file at your project root: **`agentic.config.js`*
 
 Per-file flags for `generate`:
 
-- `--sitemap`: force-emit even for `firecrawl` (warns + skips for `sitemap` driver since that's still circular)
-- `--skip-sitemap`: never emit, even for `static` / `manual`
+**Positive selectors** (pass one or more to emit only those files; otherwise everything applicable to the config is emitted):
+
+- `--robots`: emit `robots.txt`
+- `--llms`: emit `llms.txt`
+- `--llms-full`: emit `llms-full.txt` (requires `content.fullTxt` in the config)
+- `--agents`: emit `agents.txt` and `agents.json`
+- `--sitemap`: emit `sitemap.xml` (also forces emission for the `firecrawl` driver; warns + skips for the `sitemap` driver since that would be circular)
+- `--headers`: emit the §4.5 headers config for the detected hosting platform (`_headers` for Cloudflare/Netlify, `vercel.json` for Vercel; `--platform <name>` overrides detection). See *Serving headers* below for the details.
+
+**Negative selectors** (subtract from whatever set is selected):
+
 - `--skip-robots`: skip `robots.txt` (useful when your framework or CDN owns it)
 - `--skip-llms`: skip `llms.txt`
+- `--skip-llms-full`: skip `llms-full.txt` (keep `llms.txt`; useful when you only want to refresh the index)
 - `--skip-agents`: skip `agents.txt` and `agents.json`
+- `--skip-sitemap`: never emit `sitemap.xml`, even for `static` / `manual`
+- `--skip-headers`: skip the §4.5 headers config file
 
 See `npx agentify generate --help` for the full list.
 
@@ -415,6 +443,52 @@ Both `init` and `generate` run a Zod schema (CLI-only, doesn't bloat `@agentify/
 ```
 
 The `generate` step then runs the spec validators (RFC 9309 for robots.txt, llmstxt.org for llms.txt, agents.txt v1 for agents.txt/json, sitemaps.org 0.9 for sitemap.xml) on the *output* files and prints any compliance warnings, so a typo in your config can never silently produce a non-compliant file.
+
+### Serving headers (agents.txt spec §4.5)
+
+The agents.txt spec mandates four response headers on `/agents.txt` and `/agents.json`: a Content-Type with charset (for agents.txt), `Access-Control-Allow-Origin: *` (so browser-context agents can read the files cross-origin), and a `Cache-Control: public, max-age=3600` (SHOULD). Static-asset pipelines on most hosting platforms do not set these by default, so the headers have to be wired in some platform-specific way.
+
+`agentify generate` handles this for you. The CLI detects your hosting platform from project files and emits the right config:
+
+| Platform | Detected via | Emits |
+|----------|--------------|-------|
+| **Cloudflare** (Workers / Pages) | `wrangler.json`, `wrangler.toml`, `@astrojs/cloudflare`, `@cloudflare/workers-types`, `wrangler` dep | `_headers` in `--out` |
+| **Netlify** | `netlify.toml`, `@netlify/plugin-*` | `_headers` in `--out` (same syntax as Cloudflare) |
+| **Vercel** | `vercel.json`, `.vercel/` | `vercel.json#headers` at the project root, **merged** with any existing entries (the `/agents.txt` and `/agents.json` sources are replaced; everything else is preserved verbatim) |
+| **Unknown** | nothing matched | `_headers` in `--out` as a best-effort default, plus a console warning. Translate to your platform's mechanism — see the per-platform table below. |
+
+Override detection with `--platform <cloudflare\|netlify\|vercel\|unknown>` if needed. Skip the file with `--skip-headers`. Emit only the headers config with `--headers`.
+
+For platforms the CLI does not generate for, configure the four headers yourself. Required values are the same regardless of mechanism:
+
+```
+/agents.txt
+  Content-Type: text/plain; charset=utf-8
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=3600
+
+/agents.json
+  Content-Type: application/json
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=3600
+```
+
+| Platform | Mechanism |
+|----------|-----------|
+| Nginx | `add_header` directives inside the matching `location` block |
+| Apache | `Header set` in `.htaccess` or vhost config |
+| Caddy | `header` directive in your Caddyfile |
+| AWS S3 + CloudFront | Response Headers Policy (or Lambda@Edge) attached to the distribution |
+| Express / Hono / Next.js handlers | Set headers in the route handler that responds with the file. `@agentify/web` does this for routes it owns. |
+
+Once deployed, run `agents.txt`'s own MCP `audit_site` tool against your live URL to verify §4.5 compliance:
+
+```bash
+# via the public MCP endpoint
+mcp call audit_site '{"url": "https://mysite.com"}'
+```
+
+A clean run reports `corsAllOrigins: true`, the right `Content-Type` on each file, and a present `Cache-Control`.
 
 <br>
 
@@ -905,7 +979,7 @@ Yes, but only a public address (no private keys on the server). Create one with 
 Absolutely. Set `payments: { enabled: false }` (or omit the payments block entirely). AGENTIFY still generates robots.txt + llms.txt + agents.txt + agents.json, just without any payment capability advertised.
 
 **Can I use this without agents.txt (just robots.txt and llms.txt)?**  
-Yes. Run `npx agentify generate --skip-agents` to emit only `robots.txt` and `llms.txt`. Add `--skip-llms` on top for robots.txt only. AGENTIFY is the tooling; agents.txt is one of the layers it can emit, not a hard requirement.
+Yes. Run `npx agentify generate --robots --llms` to emit only those two files (or, equivalently from the default mode, `--skip-agents`). Pass just `--robots` for robots.txt only. AGENTIFY is the tooling; agents.txt is one of the layers it can emit, not a hard requirement.
 
 **Is Firecrawl required?**  
 No. It's optional. The default sitemap driver works without any API keys. Firecrawl gives better results (titles, descriptions, grouping) but is not required.

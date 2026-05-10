@@ -26,7 +26,9 @@ describe('generateLlmsTxt', () => {
     expect(output).not.toContain('> ')
   })
 
-  it('includes payment paragraph when payments.enabled with x402', async () => {
+  it('does not inject payment information even when payments.x402 is configured', async () => {
+    // llms.txt is Layer 3 (content curation). Payment declarations belong in
+    // Layer 4 (agents.txt / agents.json) and 402 challenges, not here.
     const config: AgenticConfig = {
       site: baseConfig.site,
       payments: {
@@ -38,48 +40,10 @@ describe('generateLlmsTxt', () => {
       },
     }
     const output = await generateLlmsTxt(config)
-    expect(output).toContain('x402 payment protocol')
-    expect(output).toContain('0.002 USDC')
-    expect(output).toContain('Discovery: https://example.com/agents.txt')
-  })
-
-  it('includes treasury address when evmAddress is set', async () => {
-    const addr = '0x1234567890123456789012345678901234567890'
-    const config: AgenticConfig = {
-      site: baseConfig.site,
-      payments: {
-        enabled: true,
-        x402: { treasury: { evmAddress: addr } },
-      },
-    }
-    const output = await generateLlmsTxt(config)
-    expect(output).toContain(`Treasury: \`${addr}\``)
-  })
-
-  it('uses default amount and token when pricing not specified', async () => {
-    const config: AgenticConfig = {
-      site: baseConfig.site,
-      payments: {
-        enabled: true,
-        x402: { treasury: { evmAddress: '0x1234567890123456789012345678901234567890' } },
-      },
-    }
-    const output = await generateLlmsTxt(config)
-    expect(output).toContain('0.001 USDC')
-  })
-
-  it('omits payment paragraph when payments.enabled is false', async () => {
-    const config: AgenticConfig = {
-      site: baseConfig.site,
-      payments: { enabled: false },
-    }
-    const output = await generateLlmsTxt(config)
     expect(output).not.toContain('x402 payment protocol')
-  })
-
-  it('omits payment paragraph when payments not configured', async () => {
-    const output = await generateLlmsTxt(baseConfig)
-    expect(output).not.toContain('x402 payment protocol')
+    expect(output).not.toContain('Treasury:')
+    expect(output).not.toContain('Discovery:')
+    expect(output).not.toContain('USDC')
   })
 
   it('renders pages as H2 section with links using staticDriver', async () => {

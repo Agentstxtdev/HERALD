@@ -150,7 +150,7 @@ describe('detectProject', () => {
     const { detectProject } = await import('../project-probe.js')
     const result = detectProject()
     const expectedKeys: Array<keyof typeof result> = [
-      'framework', 'siteName', 'siteUrl', 'hasSitemap', 'sitemapUrl',
+      'framework', 'hostingPlatform', 'siteName', 'siteUrl', 'hasSitemap', 'sitemapUrl',
       'hasExistingRobots', 'hasExistingLlms',
       'envEvmAddress', 'envSolanaAddress', 'envStripeKey', 'envTempoKey', 'envFirecrawlKey',
     ]
