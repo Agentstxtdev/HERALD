@@ -81,7 +81,7 @@ Layer 3: CONTENT BRIEFING   /llms.txt     (llmstxt.org)      "Here's what's insi
 Layer 4: AGENT CAPABILITIES /agents.txt   (agents.txt spec)  "Here's what you can do inside my house"
 ```
 
-`agents.txt` (with companion `agents.json`) is the newest piece — an open standard for declaring agent-interaction capabilities (payments, auth, MCP, skills) without prescribing any specific protocol. AGENTIFY exists to make adopting it trivial; the spec itself lives at [agentstxt.dev](https://agentstxt.dev).
+`agents.txt` (with companion `agents.json`) is the newest piece, an open standard for declaring agent-interaction capabilities (payments, auth, MCP, skills) without prescribing any specific protocol. AGENTIFY exists to make adopting it trivial; the spec itself lives at [agentstxt.dev](https://agentstxt.dev).
 
 > [!NOTE]
 > **AGENTIFY also ships an optional `x402 v2 + MPP` payment middleware for Express, Hono, and Next.js.**
@@ -277,7 +277,7 @@ Discovery: https://mysite.com/agents.txt
 
 <a href="https://firecrawl.dev"><img src="docs/logos/firecrawl-colored-light-wordmark.svg" alt="Firecrawl" height="36"></a>
 
-<sub><i>Not sponsored or affiliated — Firecrawl is one of the supported content drivers.</i></sub>
+<sub><i>Not sponsored or affiliated. Firecrawl is one of the supported content drivers.</i></sub>
 
 Instead of parsing `sitemap.xml`, use [Firecrawl](https://firecrawl.dev) (free tier available) to crawl your site and generate a content-aware llms.txt:
 
@@ -364,7 +364,7 @@ Per-file flags for `generate`:
 
 See `npx agentify generate --help` for the full list.
 
-### `agentic.config.js` — the file you create
+### `agentic.config.js`: the file you create
 
 You don't manually write this from scratch. Run **`npx agentify init`** in your project root and the wizard writes it for you. The file shape:
 
@@ -415,15 +415,15 @@ export default {
 
 The **same file** is consumed by:
 
-- **CLI** — `npx agentify generate` reads it to write static files into `--out`
-- **`@agentify/web` middleware** — `import config from './agentic.config.js'`, then `app.use(createAgenticRouter(config))` and `app.use('/api', agenticPaymentMiddleware(config, '/api'))`
+- **CLI**: `npx agentify generate` reads it to write static files into `--out`
+- **`@agentify/web` middleware**: `import config from './agentic.config.js'`, then `app.use(createAgenticRouter(config))` and `app.use('/api', agenticPaymentMiddleware(config, '/api'))`
 
 You write it once. There is no separate runtime config; nothing duplicates.
 
 ### Where the file lives
 
-- **Static / Jamstack sites** (Astro, Hugo, 11ty, Next.js export) — at your project root, generated at build time by `npx agentify generate --out ./public`.
-- **Server frameworks** (Express, Hono, Next.js App Router) — at your project root, imported into your server file. The `@agentify/web` adapter serves the discovery files from memory and gates payments at request time.
+- **Static / Jamstack sites** (Astro, Hugo, 11ty, Next.js export): at your project root, generated at build time by `npx agentify generate --out ./public`.
+- **Server frameworks** (Express, Hono, Next.js App Router): at your project root, imported into your server file. The `@agentify/web` adapter serves the discovery files from memory and gates payments at request time.
 
 ### Validation
 
@@ -435,7 +435,7 @@ Both `init` and `generate` run a Zod schema (CLI-only, doesn't bloat `@agentify/
   • payments.x402.treasury.evmAddress: must be a 40-char hex EVM address (0x...)
 ```
 
-The `generate` step then runs the spec validators (RFC 9309 for robots.txt, llmstxt.org for llms.txt, agents.txt v1 for agents.txt/json, sitemaps.org 0.9 for sitemap.xml) on the *output* files and prints any compliance warnings — so a typo in your config can never silently produce a non-compliant file.
+The `generate` step then runs the spec validators (RFC 9309 for robots.txt, llmstxt.org for llms.txt, agents.txt v1 for agents.txt/json, sitemaps.org 0.9 for sitemap.xml) on the *output* files and prints any compliance warnings, so a typo in your config can never silently produce a non-compliant file.
 
 </details>
 
@@ -631,12 +631,12 @@ Agent → GET /api/content  (with PAYMENT-SIGNATURE: <base64 PaymentPayload>)
 ```
 
 Verification + on-chain settlement are delegated to the public facilitator at
-`https://x402.org/facilitator` by default — free, no API key required. Payments
+`https://x402.org/facilitator` by default. Payments
 go directly to your treasury wallet (the facilitator does not custody funds).
 Override with `x402.facilitatorUrl` to run your own.
 
 When MPP is also configured, the same 402 carries an additional
-`WWW-Authenticate: Payment` header — a single 402 advertises both protocols and
+`WWW-Authenticate: Payment` header; a single 402 advertises both protocols and
 the agent picks whichever it supports.
 
 Migration v1→v2 reference: https://docs.x402.org/guides/migration-v1-to-v2
@@ -655,7 +655,7 @@ AGENTIFY implements the resource-server side of x402 v2 directly, not via the of
 | 1. Build the 402 challenge | Translates `X402Config` into a `PaymentRequirements[]` array. Each entry carries `scheme: 'exact'`, CAIP-2 `network`, atomic-unit `amount`, `asset` (token contract or fiat code), `payTo`, `maxTimeoutSeconds`, and `extra` (e.g. `{ name: 'USDC', version: '2' }` for EVM; `{ name: 'USDC' }` for Solana). | `buildAccepts()` |
 | 2. Wrap in the v2 body | Emits `{ x402Version: 2, error?, resource: { url, description, mimeType }, accepts }` as the 402 JSON response body. | `buildPaymentRequired()` |
 | 3. Decode the agent's payment | Reads the `PAYMENT-SIGNATURE` header (also accepts the legacy `X-Payment` for v1 clients), runs `base64 → JSON.parse`, then runs a plain-TS shape validator that rejects malformed payloads (wrong types, missing required fields, non-numeric amounts) before any network round-trip. | `decodePaymentSignature()`, `validatePaymentPayload()` |
-| 4. Match against advertised accepts | Looks up the agent's chosen `accepted` block (`network` + `amount`) in the `accepts[]` we issued. Mismatch returns 400 — agents can't pay $0.001 for a $0.01 route. | `matchAccepts()` |
+| 4. Match against advertised accepts | Looks up the agent's chosen `accepted` block (`network` + `amount`) in the `accepts[]` we issued. Mismatch returns 400; agents can't pay $0.001 for a $0.01 route. | `matchAccepts()` |
 | 5. Settle via the facilitator | POSTs `{ x402Version: 2, paymentPayload, paymentRequirements }` to `${facilitatorUrl}/settle`. Default facilitator is `https://x402.org/facilitator` (free, no API key); override via `x402.facilitatorUrl`. The facilitator verifies the EIP-3009 / SVM signature, replay-checks the nonce, submits the on-chain transaction, returns `SettlementResponse`. | `settleX402()` |
 | 6. Return the verified response | On success, attaches `PAYMENT-RESPONSE: <base64 SettlementResponse>` to the protected response and lets the request through. On failure, re-issues a 402 with the facilitator's error reason. | `encodePaymentResponse()`, `gateRequest()` |
 
@@ -671,7 +671,7 @@ AGENTIFY implements the resource-server side of x402 v2 directly, not via the of
 
 For non-USDC tokens or other CAIP-2 networks, set `x402.assets[network] = '<contract>'`.
 
-**Security boundary.** AGENTIFY does not verify cryptographic signatures, hold private keys, replay-protect state, or submit on-chain transactions. The facilitator does. The trust assumption is "the facilitator at `facilitatorUrl` honestly verifies and settles" — the same assumption every x402 server makes, including ones using the official SDK. Run your own facilitator if that trust isn't acceptable for your deployment.
+**Security boundary.** AGENTIFY does not verify cryptographic signatures, hold private keys, replay-protect state, or submit on-chain transactions. The facilitator does. The trust assumption is "the facilitator at `facilitatorUrl` honestly verifies and settles", the same assumption every x402 server makes, including ones using the official SDK. Run your own facilitator if that trust isn't acceptable for your deployment.
 
 </details>
 
@@ -723,7 +723,7 @@ These set the default price for all protected routes. `x402.perPath` and `mpp.pe
 
 <br>
 
-Out of the box, `@agentify/web` issues a single 402 advertising both protocols at once — agents pick whichever they support.
+Out of the box, `@agentify/web` issues a single 402 advertising both protocols at once; agents pick whichever they support.
 
 ### Protocols (gate decision order)
 
@@ -734,7 +734,7 @@ Out of the box, `@agentify/web` issues a single 402 advertising both protocols a
 
 If neither header is present, both protocols' challenges are emitted in the same 402 response: x402 `accepts[]` in the body, MPP `WWW-Authenticate` in the headers.
 
-### x402 v2 — chains and tokens
+### x402 v2: chains and tokens
 
 Built-in CAIP-2 networks with USDC contract addresses baked in (no extra config required):
 
@@ -746,9 +746,9 @@ Built-in CAIP-2 networks with USDC contract addresses baked in (no extra config 
 | Solana mainnet | `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp` | USDC `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` |
 | Solana devnet | `solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1` | USDC `4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU` |
 
-You select chains via `x402.treasury.evmChains` and `x402.treasury.solanaNetwork`. Any other CAIP-2 network or non-USDC token works through `x402.assets[network] = '<contract>'`. The set of networks a 402 will actually settle on is whatever your `facilitatorUrl` supports — `x402.org` covers EVM + Solana out of the box, and you can run your own facilitator for additional chains.
+You select chains via `x402.treasury.evmChains` and `x402.treasury.solanaNetwork`. Any other CAIP-2 network or non-USDC token works through `x402.assets[network] = '<contract>'`. The set of networks a 402 will actually settle on is whatever your `facilitatorUrl` supports; `x402.org` covers EVM + Solana out of the box, and you can run your own facilitator for additional chains.
 
-### MPP — methods and tokens
+### MPP: methods and tokens
 
 Activate by setting the relevant credentials. Both can run simultaneously and will appear together in the 402 challenge:
 
@@ -819,7 +819,7 @@ npm install @agentify/web express mppx         # + MPP via Tempo
 npm install @agentify/web express mppx stripe  # + Stripe (full MPP)
 ```
 
-`@x402/*` packages are not required — `@agentify/web` implements x402 v2 directly.
+`@x402/*` packages are not required; `@agentify/web` implements x402 v2 directly.
 
 </details>
 
@@ -934,13 +934,15 @@ Yes. Run `npx agentify generate --skip-agents` to emit only `robots.txt` and `ll
 No. It's optional. The default sitemap driver works without any API keys. Firecrawl gives better results (titles, descriptions, grouping) but is not required.
 
 **How does payment verification work?**
-We POST `{ x402Version: 2, paymentPayload, paymentRequirements }` to the facilitator's `/settle` endpoint and trust its `SettlementResponse`. The default facilitator is the free public one at `https://x402.org/facilitator` — it verifies cryptographic signatures and submits the on-chain transaction itself. Run your own facilitator and set `payments.x402.facilitatorUrl` if you need different policies. There is no built-in dev/trust mode — point `facilitatorUrl` at a local mock facilitator during development.
+We POST `{ x402Version: 2, paymentPayload, paymentRequirements }` to the facilitator's `/settle` endpoint and trust its `SettlementResponse`. The default facilitator is the free public one at `https://x402.org/facilitator`; it verifies cryptographic signatures and submits the on-chain transaction itself. Run your own facilitator and set `payments.x402.facilitatorUrl` if you need different policies. There is no built-in dev/trust mode; point `facilitatorUrl` at a local mock facilitator during development.
 
 ---
 
 ## License
 
-Apache 2.0: reference implementation (`packages/`). CC0: specification [agentstxt.dev](https://agentstxt.dev).
+This repository contains the agentify reference implementation only. It is released under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0); see [`LICENSE`](LICENSE).
+
+The agents.txt specification that agentify implements lives in a separate repository under [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/) at [agentstxt.dev](https://agentstxt.dev). Anyone may implement the spec without restriction.
 
 ---
 

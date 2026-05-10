@@ -1,4 +1,4 @@
-# agentify — code reference
+# agentify: code reference
 
 ## Full `agentic.config.js` Schema
 
@@ -192,8 +192,7 @@ npm install @agentify/web
 npm install mppx stripe
 ```
 
-x402 v2 uses a hand-rolled facilitator client (default https://x402.org/facilitator)
-— no `@x402/*` SDK is required.
+x402 v2 uses a hand-rolled facilitator client (default https://x402.org/facilitator). No `@x402/*` SDK is required.
 
 ---
 
@@ -268,4 +267,4 @@ staticDriver(pages)    → ContentDriver   // ← use this in tests; no network 
 manualDriver(sections) → ContentDriver
 ```
 
-Zero runtime dependencies — safe on Node.js, edge runtimes, Deno, Bun.
+Zero runtime dependencies, safe on Node.js, edge runtimes, Deno, Bun.

@@ -1,4 +1,4 @@
-# AGENTIFY — Codebase Guide
+# AGENTIFY: Codebase Guide
 
 This document explains the architecture of the `agentify` monorepo: what each package does, how the pieces fit together, and where to make changes when extending the system.
 
@@ -17,7 +17,7 @@ A framework that makes any website readable and (optionally) monetizable by AI a
 | `agents.txt` standard | `agents.json` | Agent capabilities catalog (structured JSON companion) |
 | x402 v2 (own implementation) + MPP via `mppx` | HTTP 402 | Optional agent micropayments (crypto + fiat) |
 
-The `agents.txt` standard is defined and maintained outside this repository; agentify is an implementation of it. Anyone may write a different implementation — agentify exists to make adoption trivial in JavaScript-/TypeScript-flavored projects.
+The `agents.txt` standard is defined and maintained outside this repository; agentify is an implementation of it. Anyone may write a different implementation; agentify exists to make adoption trivial in JavaScript-/TypeScript-flavored projects.
 
 ---
 
@@ -66,22 +66,22 @@ Each generator is a pure function: takes `AgenticConfig`, returns a string. No I
 |-----------|--------|--------------------------------------|
 | `generateRobotsTxt()` | `robots.txt` | AI crawler rules, `Agents-Txt:` + `Content-Signal:` directives |
 | `generateLlmsTxt()` | `llms.txt` | Curated page index for LLM inference (requires content driver) |
-| `generateLlmsFullTxt()` | `llms-full.txt` | Long-form companion — inlines page content under each heading (Firecrawl source recommended) |
-| `generateAgentsTxt()` | `agents.txt` | Plain-text capabilities declaration — payments, auth, MCP, skills |
-| `generateAgentsJson()` | `agents.json` | Structured JSON catalog — same config, richer per-block detail |
+| `generateLlmsFullTxt()` | `llms-full.txt` | Long-form companion: inlines page content under each heading (Firecrawl source recommended) |
+| `generateAgentsTxt()` | `agents.txt` | Plain-text capabilities declaration (payments, auth, MCP, skills) |
+| `generateAgentsJson()` | `agents.json` | Structured JSON catalog: same config, richer per-block detail |
 | `generateSitemapXml()` | `sitemap.xml` | sitemaps.org 0.9 `<urlset>` from a `PageEntry[]` (XML-escaped, deduped) |
 
-**`agents-json.ts` — the structured catalog**
+**`agents-json.ts`: the structured catalog**
 
 `generateAgentsJson` produces the same information as `agents.txt` but in structured JSON with additions that agents cannot derive from the plain-text format alone:
 
-- `payments.pricing` — default price upfront so agents can pre-screen affordability before hitting a gated route. Uses `amount` (decimal string) and `token` (e.g. `'USDC'` / `'USD'`). Wallet/treasury addresses are deliberately excluded — they stay in `402` responses only.
-- `payments.x402.chains` — CAIP-2 chain IDs so agents know if they support the chain before attempting payment.
-- `payments.mpp.pricing` — the default per-request charge for MPP-gated routes (used to seed the `WWW-Authenticate` challenge). Specific payment method types (Stripe card networks, Tempo USDC, Solana via Stripe SPT) are advertised by MPP's own 402 challenge at request time, not in this discovery file.
-- `authorization.discovery` — always `"/.well-known/agent-configuration"`. Hardcoded so agents don't need to know the agent-auth spec path.
-- `mcp[].type` — always `"streamable-http"` for HTTP MCP endpoints. Hardcoded by the generator (MCP spec 2025-03-26+).
+- `payments.pricing`: default price upfront so agents can pre-screen affordability before hitting a gated route. Uses `amount` (decimal string) and `token` (e.g. `'USDC'` / `'USD'`). Wallet/treasury addresses are deliberately excluded; they stay in `402` responses only.
+- `payments.x402.chains`: CAIP-2 chain IDs so agents know if they support the chain before attempting payment.
+- `payments.mpp.pricing`: the default per-request charge for MPP-gated routes (used to seed the `WWW-Authenticate` challenge). Specific payment method types (Stripe card networks, Tempo USDC, Solana via Stripe SPT) are advertised by MPP's own 402 challenge at request time, not in this discovery file.
+- `authorization.discovery`: always `"/.well-known/agent-configuration"`. Hardcoded so agents don't need to know the agent-auth spec path.
+- `mcp[].type`: always `"streamable-http"` for HTTP MCP endpoints. Hardcoded by the generator (MCP spec 2025-03-26+).
 
-The version field in the JSON output (`"1.0"`) tracks the spec version, not a semver — agents use it to identify the schema generation.
+The version field in the JSON output (`"1.0"`) tracks the spec version, not a semver; agents use it to identify the schema generation.
 
 **Security invariant (both files):** Never output wallet addresses, API keys, JWKs, Stripe secret keys, or any credentials. `agents.txt` and `agents.json` are public discovery artifacts served without authentication.
 
@@ -126,7 +126,7 @@ type LlmsDriver =
 
 The `firecrawl` variant calls `crawlWithFirecrawl(opts)` against [`/v2/map`](https://docs.firecrawl.dev/api-reference/endpoint/map). One API call per generation: the response includes `title` and `description` per URL, so no per-page scraping is needed to populate llms.txt entries.
 
-Alternatively, pass a `ContentDriver` directly as the second argument to `generateLlmsTxt(config, driver)`. `ContentDriver` is an interface (`{ resolve(): Promise<ContentSection[]> }`) with four pre-built factories exported from `sitemap.ts`: `sitemapDriver(sitemapUrl)`, `firecrawlDriver(opts)`, `staticDriver(pages, sections?)`, `manualDriver(sections)`. This is the seam for tests — pass `staticDriver(pages)` to exercise the full generator without network calls.
+Alternatively, pass a `ContentDriver` directly as the second argument to `generateLlmsTxt(config, driver)`. `ContentDriver` is an interface (`{ resolve(): Promise<ContentSection[]> }`) with four pre-built factories exported from `sitemap.ts`: `sitemapDriver(sitemapUrl)`, `firecrawlDriver(opts)`, `staticDriver(pages, sections?)`, `manualDriver(sections)`. This is the seam for tests; pass `staticDriver(pages)` to exercise the full generator without network calls.
 
 #### llms-full.txt
 
@@ -137,7 +137,7 @@ interface ContentConfig {
 }
 ```
 
-The `llms-full.txt` filename is community convention; the formal spec names the expanded forms `llms-ctx.txt` / `llms-ctx-full.txt` (produced by the `llms_txt2ctx` CLI). We emit at `/llms-full.txt` because that's what agents look for. The mechanism — inlining page markdown under each heading — matches the spec's "expanded link" definition.
+The `llms-full.txt` filename is community convention; the formal spec names the expanded forms `llms-ctx.txt` / `llms-ctx-full.txt` (produced by the `llms_txt2ctx` CLI). We emit at `/llms-full.txt` because that's what agents look for. The mechanism (inlining page markdown under each heading) matches the spec's "expanded link" definition.
 
 `content.fullTxt.driver` is purely a config knob: it lets the expanded file be built from a different URL list than `llms.txt`. Cross-domain sources are not prohibited by the spec (verified against [llmstxt.org/domains.html](https://llmstxt.org/domains.html), which contains no rules about origins), so pointing `fullTxt.driver` at a docs subdomain or unrelated origin is spec-compatible.
 
@@ -237,7 +237,7 @@ The package exports sub-paths so users only pull in what they use:
 
 `mppx` and `stripe` are optional peer deps regardless of framework.
 
-### `x402.ts` — direct v2 protocol implementation
+### `x402.ts`: direct v2 protocol implementation
 
 We implement x402 v2 ourselves against the public facilitator at
 `https://x402.org/facilitator` rather than depending on the `@x402/*` SDK
@@ -275,7 +275,7 @@ Wire summary (v2):
 - In: `PAYMENT-SIGNATURE: <base64 PaymentPayload>` (also accepts legacy `X-Payment` for v1 clients)
 - Out (verified): `PAYMENT-RESPONSE: <base64 SettlementResponse>` attached to the 200 response
 
-### `mpp.ts` — Machine Payments Protocol via mppx
+### `mpp.ts`: Machine Payments Protocol via mppx
 
 MPP (IETF `draft-ryan-httpauth-payment`) uses a challenge/credential flow.
 `createMppxRuntime(mppConfig, realm)` loads `mppx/server` dynamically, builds
@@ -290,7 +290,7 @@ Stripe = always 2 (currency-minor units like cents).
 If `mppx` is not installed → `ready: false`, MPP path is skipped, x402 still
 serves the 402 alone.
 
-### `payment-gate.ts` — the shared decision
+### `payment-gate.ts`: the shared decision
 
 `gateRequest(request: Request, opts: { config, pathPrefix }): Promise<GateResult>`
 is the *only* place the protocol decision lives. Result variants:
@@ -317,7 +317,7 @@ Decision order:
 ```
 
 The runtime is cached in a `WeakMap` keyed by `AgenticConfig` so `Mppx.create`
-only fires once per config — never per request.
+only fires once per config; never per request.
 
 ### Framework adapters
 
@@ -376,9 +376,9 @@ packages/cli/src/
 ### `init` command
 
 Orchestrates three concerns that are now separated into distinct modules:
-1. **`project-probe.ts`** — `detectProject()` reads `package.json`, scans common paths for `sitemap.xml`, and reads `.env` files for wallet addresses and API keys. Pure reads, no side effects.
-2. **`commands/init.ts`** — readline wizard that prompts the user and assembles an `AgenticConfigChoices` object from answers.
-3. **`config-writer.ts`** — `buildAgenticConfigContent(choices)` converts structured choices into the `agentic.config.js` string; `writeAgenticConfig(path, choices)` writes it. The `s()` helper (JSON.stringify-based injection prevention) lives here.
+1. **`project-probe.ts`**: `detectProject()` reads `package.json`, scans common paths for `sitemap.xml`, and reads `.env` files for wallet addresses and API keys. Pure reads, no side effects.
+2. **`commands/init.ts`**: readline wizard that prompts the user and assembles an `AgenticConfigChoices` object from answers.
+3. **`config-writer.ts`**: `buildAgenticConfigContent(choices)` converts structured choices into the `agentic.config.js` string; `writeAgenticConfig(path, choices)` writes it. The `s()` helper (JSON.stringify-based injection prevention) lives here.
 
 The `-y` flag skips all prompts and uses detected defaults.
 
@@ -395,10 +395,10 @@ Loads `agentic.config.js` via dynamic `import()`, then immediately validates it 
 On success, calls the generators from `@agentify/core`, writes files to `--out` (default `./public`), then runs the spec compliance validators (`validateRobotsTxt`, `validateLlmsTxt`, `validateAgentsTxt`, `validateAgentsJson` from core) and prints any warnings inline.
 
 Per-file opt-out flags:
-- `--skip-llms` — skip llms.txt (useful when Firecrawl is run separately or is too slow for CI)
-- `--skip-agents` — skip agents.txt + agents.json (treat AGENTIFY as a robots.txt + llms.txt tool only)
-- `--skip-sitemap` — never emit sitemap.xml (use when your framework already emits one)
-- `--sitemap` — force sitemap.xml even when the driver isn't authoritative (firecrawl); ignored with a warning for `sitemap` driver since reading what we'd overwrite is circular
+- `--skip-llms`: skip llms.txt (useful when Firecrawl is run separately or is too slow for CI)
+- `--skip-agents`: skip agents.txt + agents.json (treat AGENTIFY as a robots.txt + llms.txt tool only)
+- `--skip-sitemap`: never emit sitemap.xml (use when your framework already emits one)
+- `--sitemap`: force sitemap.xml even when the driver isn't authoritative (firecrawl); ignored with a warning for `sitemap` driver since reading what we'd overwrite is circular
 
 **sitemap.xml emission policy:** default behavior depends on `content.driver`:
 
@@ -407,13 +407,13 @@ Per-file opt-out flags:
 | `static` | emit | `driver.pages` ∪ `driver.sections[].pages` |
 | `manual` | emit | `driver.sections[].pages` |
 | `firecrawl` | skip | `crawlWithFirecrawl()` (only when `--sitemap` is passed) |
-| `sitemap` | skip | circular — already exists at the configured URL |
+| `sitemap` | skip | circular, already exists at the configured URL |
 
 Pages are deduplicated by URL and XML-escaped before serialization in `generateSitemapXml`.
 
 ### `check` command
 
-Fetches `robots.txt`, `llms.txt`, `agents.txt`, `agents.json`, and `sitemap.xml` from a live URL and scores the site using the same `validateRobotsTxt`, `validateLlmsTxt`, `validateAgentsTxt`, and `validateAgentsJson` functions from `@agentify/core` that `generate` uses — not ad-hoc string matching.
+Fetches `robots.txt`, `llms.txt`, `agents.txt`, `agents.json`, and `sitemap.xml` from a live URL and scores the site using the same `validateRobotsTxt`, `validateLlmsTxt`, `validateAgentsTxt`, and `validateAgentsJson` functions from `@agentify/core` that `generate` uses, not ad-hoc string matching.
 
 ---
 
@@ -467,7 +467,7 @@ Agent                                      Server (gateRequest)              mpp
 
 ## Adding a new framework adapter
 
-You don't need to know about x402 or mppx at all — adapters are pure
+You don't need to know about x402 or mppx at all; adapters are pure
 request/response shape conversion. Mirror `express.ts`:
 
 ```ts
@@ -491,7 +491,7 @@ export function agenticPaymentMiddleware(config: AgenticConfig, pathPrefix = '')
 }
 ```
 
-The framework runtime is the only new peer dep — `mppx` and `stripe` already
+The framework runtime is the only new peer dep; `mppx` and `stripe` already
 cover payments (added to peer deps when first introduced).
 
 Then add the sub-path export to `packages/web/package.json`:
@@ -507,9 +507,9 @@ Then add the sub-path export to `packages/web/package.json`:
 
 ## Adding a new content driver
 
-All drivers implement the same interface — `{ resolve(): Promise<ContentSection[]> }`. The steps below wire a new driver all the way from the interface through to the config file and CLI auto-detection. Stop at whatever layer you need.
+All drivers implement the same interface: `{ resolve(): Promise<ContentSection[]> }`. The steps below wire a new driver all the way from the interface through to the config file and CLI auto-detection. Stop at whatever layer you need.
 
-**1. Implement `ContentDriver`** — the contract everything else builds on:
+**1. Implement `ContentDriver`**: the contract everything else builds on:
 
 ```ts
 // packages/core/src/sitemap.ts
@@ -534,7 +534,7 @@ type LlmsDriver =
   | { type: 'my-driver'; /* your opts */ }   // ← add here
 ```
 
-**3. Handle in `resolveContent()`** (`packages/core/src/llms.ts`) — the switch that maps config → driver:
+**3. Handle in `resolveContent()`** (`packages/core/src/llms.ts`): the switch that maps config → driver:
 
 ```ts
 case 'my-driver':
@@ -556,16 +556,16 @@ if (hasFile('.myservice.json') || env.MY_SERVICE_API_KEY) {
 
 **One config object drives everything.** `AgenticConfig` is the single source of truth. Every generator and every middleware adapter reads from it. Users write the config once; the framework handles the rest.
 
-**`@agentify/core` has zero runtime dependencies.** It can run anywhere — Node.js, edge runtimes, Deno, Bun. Framework-specific code lives in `@agentify/web` sub-paths behind optional peer deps.
+**`@agentify/core` has zero runtime dependencies.** It can run anywhere: Node.js, edge runtimes, Deno, Bun. Framework-specific code lives in `@agentify/web` sub-paths behind optional peer deps.
 
 **We hand-roll x402 v2 against the public facilitator.** The `@x402/*` SDK family exists but adds a v1↔v2-flavored decision flow that doesn't compose with our MPP-first ordering. Our `x402.ts` is ~250 lines (atomic-unit conversion, accepts builder, header coding, facilitator settle); cryptographic verification + on-chain settlement still happen in the facilitator. Override `x402.facilitatorUrl` to point at your own facilitator.
 
 **One gate, three thin adapters.** All payment logic lives in `payment-gate.ts`'s `gateRequest()`. Adapters are <100 lines each and only do framework↔fetch shape conversion. Adding a new framework never requires touching payment code.
 
-**MPP is layered before x402.** When `Authorization: Payment` is present we run mppx first — an agent that holds an MPP credential is never bounced through the x402 gate. The 402 challenge itself carries both protocols (x402 `accepts[]` body + MPP `WWW-Authenticate` header), so an agent only ever sees one 402.
+**MPP is layered before x402.** When `Authorization: Payment` is present we run mppx first; an agent that holds an MPP credential is never bounced through the x402 gate. The 402 challenge itself carries both protocols (x402 `accepts[]` body + MPP `WWW-Authenticate` header), so an agent only ever sees one 402.
 
 **Mppx instance is built once, then `Mppx.compose(...)` rebuilt per request.** The instance (with `secretKey`/`realm`/registered methods) is cached in a `WeakMap<AgenticConfig>`. Per-request we call `Mppx.compose(tempo.charge({amount, recipient}), stripe.charge({amount, currency}))(request)` so amounts can vary by route while construction is amortized.
 
-**Validation is split across two layers with different purposes.** `@agentify/core` exports `validateRobotsTxt`, `validateLlmsTxt`, `validateAgentsTxt`, and `validateAgentsJson` — these are *semantic spec compliance* checks on generated outputs (does robots.txt block the right scrapers? does llms.txt start with `#`?). They run post-generation and live in core because they're useful to any caller. The CLI's `config-schema.ts` is a *Zod structural schema* for `AgenticConfig` — it validates user-supplied input before generation and lives in the CLI only to keep core's zero-runtime-dep guarantee intact. Adding Zod to core would break compatibility with edge runtimes and Deno/Bun deployments.
+**Validation is split across two layers with different purposes.** `@agentify/core` exports `validateRobotsTxt`, `validateLlmsTxt`, `validateAgentsTxt`, and `validateAgentsJson`; these are *semantic spec compliance* checks on generated outputs (does robots.txt block the right scrapers? does llms.txt start with `#`?). They run post-generation and live in core because they're useful to any caller. The CLI's `config-schema.ts` is a *Zod structural schema* for `AgenticConfig`; it validates user-supplied input before generation and lives in the CLI only to keep core's zero-runtime-dep guarantee intact. Adding Zod to core would break compatibility with edge runtimes and Deno/Bun deployments.
 
-**`agents.txt` and `agents.json` are complementary, not redundant.** `agents.txt` is the announcement layer — minimal, plain text, easy to serve anywhere, readable by humans and simple parsers. `agents.json` is the machine-first catalog — structured, schema-validatable, with richer per-block detail (pricing upfront, chain IDs, authorization discovery pointer, MCP transport type). The relationship mirrors `llms.txt` and `llms-full.txt`. Both are generated from the same config; site operators write nothing extra. Sites should serve both; agents that support structured JSON should prefer `agents.json`.
+**`agents.txt` and `agents.json` are complementary, not redundant.** `agents.txt` is the announcement layer: minimal, plain text, easy to serve anywhere, readable by humans and simple parsers. `agents.json` is the machine-first catalog: structured, schema-validatable, with richer per-block detail (pricing upfront, chain IDs, authorization discovery pointer, MCP transport type). The relationship mirrors `llms.txt` and `llms-full.txt`. Both are generated from the same config; site operators write nothing extra. Sites should serve both; agents that support structured JSON should prefer `agents.json`.
