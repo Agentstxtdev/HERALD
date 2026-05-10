@@ -106,9 +106,9 @@ Layer 4: AGENT CAPABILITIES /agents.txt   (agents.txt spec)  "Here's what you ca
   <td align="center" width="60"><img src="assets/logos/claude.svg"     width="32" alt="Claude Code"><br><sub>Claude</sub></td>
   <td align="center" width="60"><img src="assets/logos/codex.svg"      width="32" alt="Codex"><br><sub>Codex</sub></td>
   <td align="center" width="60"><img src="assets/logos/cursor.svg"     width="32" alt="Cursor"><br><sub>Cursor</sub></td>
+  <td align="center" width="60"><img src="assets/logos/exy.png"        width="32" alt="Pi"><br><sub>Pi</sub></td>
   <td align="center" width="60"><img src="assets/logos/bash.svg"       width="32" alt="Bash"><br><sub>Bash</sub></td>
   <td align="center" width="60"><img src="assets/logos/http.svg"       width="32" alt="HTTP"><br><sub>HTTP</sub></td>
-  <td align="center" width="60"><img src="assets/logos/exy.png"        width="32" alt="Pi"><br><sub>Pi</sub></td>
 </tr>
 <tr>
   <th align="left">Runtimes &amp; platforms</th>
@@ -180,10 +180,8 @@ npx agentify generate --sitemap                                  # force sitemap
 
 ---
 
-<details>
-<summary><font size="4"><b>Generated robots.txt example</b></font></summary>
+### Generated robots.txt example
 
-<br>
 
 ```
 # robots.txt
@@ -214,14 +212,10 @@ Allow: /
 Sitemap: https://mysite.com/sitemap.xml
 ```
 
-</details>
-
 ---
 
-<details>
-<summary><font size="4"><b>sitemap.xml emission policy</b></font></summary>
+### sitemap.xml emission policy
 
-<br>
 
 AGENTIFY only emits `sitemap.xml` when it has authoritative URLs to put in it. The default policy keys off `content.driver`:
 
@@ -234,16 +228,10 @@ AGENTIFY only emits `sitemap.xml` when it has authoritative URLs to put in it. T
 
 If your framework already generates a sitemap (Next.js `app/sitemap.ts`, `@astrojs/sitemap`, Hugo, Jekyll, 11ty), keep using it; pass `--skip-sitemap` and `robots.txt` will still reference your framework-emitted file via the `Sitemap:` directive.
 
-</details>
-
 ---
 
-<details>
-<summary><font size="4"><b>Generated llms.txt example</b></font></summary>
+### Generated llms.txt example
 
-<br>
-
-<br>
 
 ```markdown
 # My Site
@@ -266,14 +254,9 @@ Discovery: https://mysite.com/agents.txt
 - [Archive](https://mysite.com/archive): Older posts
 ```
 
-</details>
-
 ---
 
-<details>
-<summary><font size="4"><b>Firecrawl integration (richer llms.txt)</b></font></summary>
-
-<br>
+### Firecrawl integration (richer llms.txt)
 
 <a href="https://firecrawl.dev"><img src="assets/logos/firecrawl-colored-light-wordmark.svg" alt="Firecrawl" height="36"></a>
 
@@ -335,14 +318,10 @@ Behavior per source driver type:
 
 Omit the `fullTxt` block to skip llms-full.txt generation entirely.
 
-</details>
-
 ---
 
-<details>
-<summary><font size="4"><b>The agentify CLI and <code>agentic.config.js</code></b></font></summary>
+### The agentify CLI and `agentic.config.js`
 
-<br>
 
 AGENTIFY is driven by a single file at your project root: **`agentic.config.js`**. It's the source of truth for every discovery file AGENTIFY emits and (when enabled) the payment middleware. The CLI creates, validates, and re-renders from it.
 
@@ -436,8 +415,6 @@ Both `init` and `generate` run a Zod schema (CLI-only, doesn't bloat `@agentify/
 ```
 
 The `generate` step then runs the spec validators (RFC 9309 for robots.txt, llmstxt.org for llms.txt, agents.txt v1 for agents.txt/json, sitemaps.org 0.9 for sitemap.xml) on the *output* files and prints any compliance warnings, so a typo in your config can never silently produce a non-compliant file.
-
-</details>
 
 <br>
 
