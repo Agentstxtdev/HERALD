@@ -23,15 +23,19 @@ export function generateAgentsTxt(config: AgenticConfig): string {
   ]
 
   // ── Payments block ─────────────────────────────────────────────────────────
-  // Only emitted when `payments.enabled` AND at least one protocol is actually
-  // configured (x402 has a treasury address, MPP has tempo/stripe credentials).
-  // Avoids declaring capabilities the site can't fulfil.
-  if (payments?.enabled) {
+  // Emitted only when at least one protocol is actually configured (x402 has a
+  // treasury, MPP has tempo/stripe credentials). Presence of `Protocols:` IS
+  // the payment-block signal per spec §3.1 — no `Payments: enabled` line.
+  // `Payments: required` is an OPTIONAL site-level policy hint (§5.3),
+  // symmetric with `Identity: required`.
+  if (payments) {
     const active = resolveActiveProtocols(payments)
     if (active.length > 0) {
       lines.push('')
-      lines.push('Payments: enabled')
       lines.push(`Protocols: ${active.join(', ')}`)
+      if (payments.required) {
+        lines.push('Payments: required')
+      }
     }
   }
 

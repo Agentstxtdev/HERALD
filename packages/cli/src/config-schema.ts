@@ -127,8 +127,8 @@ const MppConfigSchema = z.object({
 })
 
 const PaymentConfigSchema = z.object({
-  enabled: z.boolean().optional(),
   protocols: z.array(z.enum(['x402', 'mpp'])).optional(),
+  required: z.boolean().optional(),
   x402: X402ConfigSchema.optional(),
   mpp: MppConfigSchema.optional(),
   exemptUserAgents: z.array(z.string()).optional(),

@@ -79,13 +79,12 @@ export async function checkCompliance(siteUrl: string): Promise<void> {
   } else {
     const agentsTxtValidation = validateAgentsTxt(agentsTxtRes.body)
     const allPass = agentsTxtValidation.every((r) => r.status !== 'fail')
-    const hasPayments = agentsTxtRes.body.includes('Payments: enabled')
     const protocols = agentsTxtRes.body.match(/^Protocols:\s*(.+)$/m)?.[1] ?? ''
     results.push({
       file: 'agents.txt',
       url: `${base}/agents.txt`,
       status: allPass ? 'ok' : 'warn',
-      note: hasPayments ? `✓ Payments: ${protocols}` : '⚠ No payment config',
+      note: protocols ? `✓ Payments: ${protocols}` : '⚠ No payment config',
     })
   }
 

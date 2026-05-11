@@ -40,18 +40,54 @@ export function generateAgentsJson(config: AgenticConfig): string {
   }
 
   // ── Payments ───────────────────────────────────────────────────────────────
-  // Only emitted when `payments.enabled` AND at least one protocol is actually
-  // configured. Avoids declaring capabilities the site can't fulfil.
-  if (payments?.enabled) {
+  // Per-protocol blocks (`x402`, `mpp`, ...) are each emitted only when the
+  // protocol is actually wired up. The presence of any per-protocol key IS the
+  // support signal per spec §10.2; there is no top-level `protocols` array.
+  // The corresponding `Protocols:` line in agents.txt carries the same set as
+  // plain text for the announcement layer.
+  if (payments) {
     const active = resolveActiveProtocols(payments)
     if (active.length > 0) {
-      const p: Record<string, unknown> = {
-        enabled: true,
-        protocols: active,
+      const p: Record<string, unknown> = {}
+
+      // x402: accepted chains (CAIP-2 IDs) and an optional description of what
+      // the agent is paying for. Only emitted when x402 is active.
+      if (active.includes('x402') && payments.x402) {
+        const chains: string[] = payments.x402.treasury.evmChains ?? ['eip155:8453']
+        if (payments.x402.treasury.solanaAddress) {
+          const network = payments.x402.treasury.solanaNetwork ?? 'mainnet-beta'
+          chains.push(SOLANA_CHAIN_IDS[network] ?? `solana:${network}`)
+        }
+        p.x402 = {
+          chains,
+          ...(payments.x402.description ? { description: payments.x402.description } : {}),
+        }
       }
 
-      // Pricing — safe to expose; agents use this to pre-screen affordability.
-      // Wallet addresses are deliberately excluded (stay in 402 responses).
+      // mpp: configured method identifiers, plus an optional description of
+      // what the agent is paying for. Only emitted when MPP is active. The
+      // methods list mirrors the credentials actually wired up so an agent
+      // without a Tempo wallet learns from this field that Stripe is available
+      // without first hitting the 402 challenge.
+      if (active.includes('mpp') && payments.mpp) {
+        const methods: Array<'tempo' | 'stripe'> = []
+        if (payments.mpp.tempoRecipient) methods.push('tempo')
+        if (payments.mpp.stripeSecretKey && payments.mpp.stripeNetworkId) methods.push('stripe')
+        if (methods.length > 0) {
+          p.mpp = {
+            methods,
+            ...(payments.mpp.description ? { description: payments.mpp.description } : {}),
+          }
+        }
+      }
+
+      // Site-level policy. Symmetric with `authorization.identity`.
+      if (payments.required) {
+        p.required = true
+      }
+
+      // Pricing. Safe to expose; agents use this to pre-screen affordability.
+      // Wallet addresses are deliberately excluded and stay in 402 responses.
       const defaultPricing = payments.x402?.pricing ?? payments.mpp?.pricing
       if (defaultPricing) {
         p.pricing = {
@@ -60,17 +96,11 @@ export function generateAgentsJson(config: AgenticConfig): string {
         }
       }
 
-      // x402: accepted chains (CAIP-2 IDs). Only emitted when x402 is active.
-      if (active.includes('x402') && payments.x402) {
-        const chains: string[] = payments.x402.treasury.evmChains ?? ['eip155:8453']
-        if (payments.x402.treasury.solanaAddress) {
-          const network = payments.x402.treasury.solanaNetwork ?? 'mainnet-beta'
-          chains.push(SOLANA_CHAIN_IDS[network] ?? `solana:${network}`)
-        }
-        p.x402 = { chains }
+      // Only attach the payments block when at least one per-protocol key
+      // exists. A configured-but-empty record would lie about capabilities.
+      if (Object.keys(p).some((k) => k === 'x402' || k === 'mpp')) {
+        obj.payments = p
       }
-
-      obj.payments = p
     }
   }
 

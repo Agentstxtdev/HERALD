@@ -101,28 +101,20 @@ describe('validateAgentsTxt', () => {
   })
 
   it('warns standard-header when # agents.txt is missing', () => {
-    const results = validateAgentsTxt('Payments: enabled\nProtocols: x402\n')
+    const results = validateAgentsTxt('Protocols: x402\n')
     const rule = results.find((r) => r.rule === 'standard-header')
     expect(rule?.status).toBe('warn')
     expect(rule?.message).toContain('Missing')
   })
 
-  it('returns only standard-header when no Payments: enabled line', () => {
+  it('returns only standard-header when no Protocols: line', () => {
     const results = validateAgentsTxt('# agents.txt\n')
     expect(results).toHaveLength(1)
     expect(results[0]?.rule).toBe('standard-header')
   })
 
-  it('fails protocols-valid when Payments: enabled but Protocols: is missing', () => {
-    const content = '# agents.txt\nPayments: enabled\n'
-    const results = validateAgentsTxt(content)
-    const rule = results.find((r) => r.rule === 'protocols-valid')
-    expect(rule?.status).toBe('fail')
-    expect(rule?.message).toContain('Protocols: field is missing')
-  })
-
   it('passes protocols-valid for x402', () => {
-    const content = '# agents.txt\nPayments: enabled\nProtocols: x402\n'
+    const content = '# agents.txt\nProtocols: x402\n'
     const results = validateAgentsTxt(content)
     const rule = results.find((r) => r.rule === 'protocols-valid')
     expect(rule?.status).toBe('pass')
@@ -130,14 +122,14 @@ describe('validateAgentsTxt', () => {
   })
 
   it('passes protocols-valid for mpp', () => {
-    const content = '# agents.txt\nPayments: enabled\nProtocols: mpp\n'
+    const content = '# agents.txt\nProtocols: mpp\n'
     const results = validateAgentsTxt(content)
     const rule = results.find((r) => r.rule === 'protocols-valid')
     expect(rule?.status).toBe('pass')
   })
 
   it('passes protocols-valid for x402 and mpp together', () => {
-    const content = '# agents.txt\nPayments: enabled\nProtocols: x402, mpp\n'
+    const content = '# agents.txt\nProtocols: x402, mpp\n'
     const results = validateAgentsTxt(content)
     const rule = results.find((r) => r.rule === 'protocols-valid')
     expect(rule?.status).toBe('pass')
@@ -146,21 +138,21 @@ describe('validateAgentsTxt', () => {
   })
 
   it('passes protocols-valid for ucp and acp (open list)', () => {
-    const content = '# agents.txt\nPayments: enabled\nProtocols: ucp, acp\n'
+    const content = '# agents.txt\nProtocols: ucp, acp\n'
     const results = validateAgentsTxt(content)
     const rule = results.find((r) => r.rule === 'protocols-valid')
     expect(rule?.status).toBe('pass')
   })
 
   it('fails protocols-valid when only unknown protocols listed', () => {
-    const content = '# agents.txt\nPayments: enabled\nProtocols: unknown-proto\n'
+    const content = '# agents.txt\nProtocols: unknown-proto\n'
     const results = validateAgentsTxt(content)
     const rule = results.find((r) => r.rule === 'protocols-valid')
     expect(rule?.status).toBe('fail')
   })
 
   it('warns unknown-protocols for unrecognised protocol names', () => {
-    const content = '# agents.txt\nPayments: enabled\nProtocols: x402, future-proto\n'
+    const content = '# agents.txt\nProtocols: x402, future-proto\n'
     const results = validateAgentsTxt(content)
     const rule = results.find((r) => r.rule === 'unknown-protocols')
     expect(rule?.status).toBe('warn')
@@ -168,14 +160,14 @@ describe('validateAgentsTxt', () => {
   })
 
   it('does not emit unknown-protocols when all protocols are known', () => {
-    const content = '# agents.txt\nPayments: enabled\nProtocols: x402, mpp\n'
+    const content = '# agents.txt\nProtocols: x402, mpp\n'
     const results = validateAgentsTxt(content)
     const rule = results.find((r) => r.rule === 'unknown-protocols')
     expect(rule).toBeUndefined()
   })
 
   it('returns a ValidationResult array with rule, status, and message fields', () => {
-    const results = validateAgentsTxt('# agents.txt\nPayments: enabled\nProtocols: x402\n')
+    const results = validateAgentsTxt('# agents.txt\nProtocols: x402\n')
     for (const r of results) {
       expect(r).toHaveProperty('rule')
       expect(r).toHaveProperty('status')

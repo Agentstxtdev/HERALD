@@ -71,10 +71,10 @@ describe('generateRobotsTxt', () => {
     // wildcard block already exposes the file. Verify across capability shapes.
     const configs: AgenticConfig[] = [
       baseConfig,
-      { site: baseConfig.site, payments: { enabled: true, protocols: ['x402'] } },
+      { site: baseConfig.site, payments: { protocols: ['x402'] } },
       { site: baseConfig.site, authorization: { enabled: true } },
       { site: baseConfig.site, mcp: { endpoints: 'https://example.com/mcp' } },
-      { site: baseConfig.site, skills: { urls: 'https://example.com/.well-known/skills/main.md' } },
+      { site: baseConfig.site, skills: { urls: 'https://example.com/skills/main/SKILL.md' } },
     ]
     for (const config of configs) {
       const output = generateRobotsTxt(config)

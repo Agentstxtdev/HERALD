@@ -20,6 +20,7 @@ import {
   generateLlmsTxt,
   generateAgentsTxt,
   generateAgentsJson,
+  resolveActiveProtocols,
   type AgenticConfig,
 } from '@agentify/core'
 import { gateRequest } from './payment-gate.js'
@@ -68,7 +69,7 @@ export function agenticPaymentMiddleware(
   config: AgenticConfig,
   pathPrefix = '',
 ): MiddlewareHandler {
-  if (!config.payments?.enabled) {
+  if (!config.payments || resolveActiveProtocols(config.payments).length === 0) {
     return async (_c: Context, next: Next) => next()
   }
 

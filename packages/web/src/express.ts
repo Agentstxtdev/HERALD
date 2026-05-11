@@ -24,6 +24,7 @@ import {
   generateLlmsTxt,
   generateAgentsTxt,
   generateAgentsJson,
+  resolveActiveProtocols,
   type AgenticConfig,
 } from '@agentify/core'
 import { gateRequest } from './payment-gate.js'
@@ -78,7 +79,7 @@ export function createAgenticRouter(config: AgenticConfig): ExpressRouter {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function agenticPaymentMiddleware(config: AgenticConfig, pathPrefix = '') {
-  if (!config.payments?.enabled) {
+  if (!config.payments || resolveActiveProtocols(config.payments).length === 0) {
     return (_req: ExpressRequest, _res: ExpressResponse, next: NextFunction) => next()
   }
 

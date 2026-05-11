@@ -5,7 +5,6 @@ import type { AgenticConfig } from '@agentify/core'
 const baseConfig: AgenticConfig = {
   site: { name: 'Test', url: 'https://x.com' },
   payments: {
-    enabled: true,
     protocols: ['x402'],
     x402: {
       treasury: { evmAddress: '0xabc', evmChains: ['eip155:8453'] },
@@ -20,8 +19,8 @@ function freshConfig(): AgenticConfig {
 }
 
 describe('gateRequest', () => {
-  it('passes through when payments are disabled', async () => {
-    const cfg: AgenticConfig = { ...freshConfig(), payments: { enabled: false } }
+  it('passes through when no payments config', async () => {
+    const cfg: AgenticConfig = { site: baseConfig.site }
     const req = new Request('https://x.com/api/foo')
     const out = await gateRequest(req, { config: cfg, pathPrefix: '/api' })
     expect(out.kind).toBe('pass')
@@ -64,15 +63,13 @@ describe('gateRequest', () => {
     expect(out.response.status).toBe(400)
   })
 
-  it('block-style 402 when no protocols configured', async () => {
+  it('passes through when protocols listed but no credentials configured', async () => {
     const cfg: AgenticConfig = {
       site: { name: 'Test', url: 'https://x.com' },
-      payments: { enabled: true, protocols: [] },
+      payments: { protocols: ['x402', 'mpp'] }, // no treasury, no mpp creds
     }
     const req = new Request('https://x.com/api/foo')
     const out = await gateRequest(req, { config: cfg, pathPrefix: '/api' })
-    expect(out.kind).toBe('respond')
-    if (out.kind !== 'respond') return
-    expect(out.response.status).toBe(402)
+    expect(out.kind).toBe('pass')
   })
 })

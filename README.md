@@ -407,7 +407,6 @@ export default {
 
   // Optional: payment middleware (only relevant if you also use @agentify/web)
   payments: {
-    enabled: true,
     protocols: ['mpp', 'x402'],
     x402: {
       treasury: {
@@ -531,7 +530,6 @@ const config: AgenticConfig = {
     allowPaidAgents: true,
   },
   payments: {
-    enabled: true,
     protocols: ['mpp', 'x402'],   // MPP first (session-based), x402 fallback (per-request)
     x402: {
       treasury: {
@@ -629,7 +627,6 @@ const config: AgenticConfig = {
   content: { driver: { type: 'sitemap', sitemapUrl: 'https://mysite.com/sitemap.xml' } },
   crawlers: { blockFreeAiScrapers: true },
   payments: {
-    enabled: true,
     protocols: ['mpp', 'x402'],
     x402: {
       treasury: { evmAddress: '0xYourWalletAddress', evmChains: ['eip155:8453'] },
@@ -761,9 +758,12 @@ These set the default price for all protected routes. `x402.perPath` and `mpp.pe
 
 | Field | Where it lives | Why |
 |---|---|---|
-| `payments.protocols` | `agents.json` | Agents pre-check protocol support |
+| `payments.x402` (object) | `agents.json` | Presence signals x402 support; agents pre-check protocol availability |
+| `payments.mpp` (object) | `agents.json` | Presence signals MPP support; same pre-check role as x402 |
+| `payments.x402.chains` | `agents.json` | Agents verify chain compatibility before paying |
+| `payments.mpp.methods` | `agents.json` | Configured MPP methods (`tempo`, `stripe`); pre-screening without hitting the 402 |
 | `payments.pricing` | `agents.json` | Agents pre-screen affordability |
-| `payments.x402.chains` | `agents.json` | Agents verify chain compatibility |
+| `payments.required` (optional) | `agents.json` and `agents.txt` | Site-level policy: every interaction requires payment, no free path |
 | Wallet addresses (`evmAddress`, `solanaAddress`, `tempoRecipient`) | `402` responses only | Security: never in discovery files |
 | Stripe keys, API keys, MPP secret key | Server env only | Never in any output |
 
@@ -825,8 +825,8 @@ import type { AgenticConfig } from '@agentify/core'
 const config: AgenticConfig = {
   site: { name: 'My Site', url: 'https://mysite.com' },
   payments: {
-    enabled: true,
     protocols: ['mpp', 'x402'],                      // either, both, or one
+    // required: true,                               // optional: site-level policy hint
 
     x402: {
       treasury: {
@@ -976,7 +976,7 @@ No. It generates a _better_ robots.txt that adds AI-specific rules on top of you
 Yes, but only a public address (no private keys on the server). Create one with MetaMask, Coinbase Wallet, or any EVM wallet. Funds go directly on-chain.
 
 **Can I use this without payments?**  
-Absolutely. Set `payments: { enabled: false }` (or omit the payments block entirely). AGENTIFY still generates robots.txt + llms.txt + agents.txt + agents.json, just without any payment capability advertised.
+Absolutely. Omit the `payments` block entirely (or list `protocols` but leave the credentials unset; both produce the same output). AGENTIFY still generates robots.txt + llms.txt + agents.txt + agents.json, just without any payment capability advertised.
 
 **Can I use this without agents.txt (just robots.txt and llms.txt)?**  
 Yes. Run `npx agentify generate --robots --llms` to emit only those two files (or, equivalently from the default mode, `--skip-agents`). Pass just `--robots` for robots.txt only. AGENTIFY is the tooling; agents.txt is one of the layers it can emit, not a hard requirement.

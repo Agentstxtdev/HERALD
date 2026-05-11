@@ -112,9 +112,15 @@ export interface TreasuryConfig {
 export interface X402Config {
   /** EVM and/or Solana treasury addresses */
   treasury: TreasuryConfig
+  /**
+   * Human-readable description of what the agent is paying for. Surfaced in
+   * `agents.json` as `payments.x402.description` and may be propagated into the
+   * 402 response as `accepts[].extra.description`.
+   */
+  description?: string
   /** Default price for protected routes */
   pricing?: PricingConfig
-  /** Per-path pricing overrides — keys are exact paths (with prefix). */
+  /** Per-path pricing overrides. Keys are exact paths (with prefix). */
   perPath?: Record<string, PricingConfig>
   /**
    * Facilitator base URL. Default: https://x402.org/facilitator (free, public).
@@ -168,7 +174,11 @@ export interface MppConfig {
   pricing?: PricingConfig
   /** Per-path charge amounts — keys are exact paths (with prefix). */
   perPath?: Record<string, PricingConfig>
-  /** Description shown to agents in the 402 challenge. */
+  /**
+   * Human-readable description of what the agent is paying for. Surfaced in
+   * `agents.json` as `payments.mpp.description` and also propagated into the
+   * MPP `WWW-Authenticate` challenge at request time.
+   */
   description?: string
   /** Stripe currency (ISO 4217). Default: 'usd'. */
   stripeCurrency?: string
@@ -177,13 +187,23 @@ export interface MppConfig {
 }
 
 export interface PaymentConfig {
-  enabled?: boolean
   /**
    * Which payment protocols to accept. Agents pick what they support.
    * Default: ['mpp', 'x402'] — MPP first (session-based fiat + stablecoins);
    * x402 as fallback for pure on-chain micropayments.
+   *
+   * Whether the payments block is emitted into agents.txt / agents.json is
+   * decided by the generator from `resolveActiveProtocols(payments)`: a
+   * protocol is "active" only when its credentials are present. If none are
+   * active, the block is omitted entirely.
    */
   protocols?: Array<'x402' | 'mpp'>
+  /**
+   * Site-level policy: when true, emits `Payments: required` — every
+   * interaction with the site requires payment, no free path exists.
+   * Symmetric with `authorization.identityRequired`.
+   */
+  required?: boolean
   /** x402 config (EVM + Solana on-chain micropayments) */
   x402?: X402Config
   /** MPP config (Stripe — fiat + stablecoins, session-based) */

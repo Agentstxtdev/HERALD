@@ -78,8 +78,10 @@ Each generator is a pure function: takes `AgenticConfig`, returns a string. No I
 `generateAgentsJson` produces the same information as `agents.txt` but in structured JSON with additions that agents cannot derive from the plain-text format alone:
 
 - `payments.pricing`: default price upfront so agents can pre-screen affordability before hitting a gated route. Uses `amount` (decimal string) and `token` (e.g. `'USDC'` / `'USD'`). Wallet/treasury addresses are deliberately excluded; they stay in `402` responses only.
-- `payments.x402.chains`: CAIP-2 chain IDs so agents know if they support the chain before attempting payment.
-- `payments.mpp.pricing`: the default per-request charge for MPP-gated routes (used to seed the `WWW-Authenticate` challenge). Specific payment method types (Stripe card networks, Tempo USDC, Solana via Stripe SPT) are advertised by MPP's own 402 challenge at request time, not in this discovery file.
+- `payments.x402.chains`: CAIP-2 chain IDs so agents know if they support the chain before attempting payment. Presence of the `payments.x402` object is itself the x402 support signal.
+- `payments.mpp.methods`: array of configured MPP method identifiers (`'tempo'`, `'stripe'`) so an agent without a Tempo wallet learns from this field that Stripe is available without first hitting the `WWW-Authenticate: Payment` challenge. The challenge remains the authoritative source for per-method parameters (network identifiers, recipient identifiers, currency codes). Presence of the `payments.mpp` object is itself the MPP support signal.
+- `payments.required` (optional boolean): site-level policy hint. When `true`, every interaction with the site requires payment and there is no free path. Symmetric with `authorization.identity: "required"`.
+- **No top-level `payments.protocols` array.** The set of supported protocols is `keys(payments) intersect {x402, mpp}`. `agents.txt` carries the same set as the `Protocols:` directive because plain text needs a directive name; the `audit_site` cross-file check validates that the two encodings agree.
 - `authorization.discovery`: always `"/.well-known/agent-configuration"`. Hardcoded so agents don't need to know the agent-auth spec path.
 - `mcp[].type`: always `"streamable-http"` for HTTP MCP endpoints. Hardcoded by the generator (MCP spec 2025-03-26+).
 
@@ -151,8 +153,8 @@ Two payment protocols are modelled separately and cleanly:
 
 ```ts
 interface PaymentConfig {
-  enabled?:          boolean
   protocols?:        Array<'x402' | 'mpp'>
+  required?:         boolean       // site-level policy: emits Payments: required + payments.required
   x402?:             X402Config    // crypto micropayments
   mpp?:              MppConfig     // Stripe/Tempo session payments
   exemptUserAgents?: string[]

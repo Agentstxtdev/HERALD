@@ -55,14 +55,17 @@ function resolveGate(opts: GateOptions): Promise<ResolvedGate> {
   if (cached) return cached
   const built = (async () => {
     const payments = opts.config.payments
-    const enabled = !!payments?.enabled
     const protocols = (payments?.protocols ?? ['mpp', 'x402']) as ReadonlyArray<'mpp' | 'x402'>
     const exemptUserAgents = (payments?.exemptUserAgents ?? []).map((u) => u.toLowerCase())
-    const hasX402 = enabled && protocols.includes('x402') && !!payments?.x402
-    const wantsMpp = enabled && protocols.includes('mpp') && !!payments?.mpp
+    // The gate is active iff at least one protocol has real credentials —
+    // mirrors `resolveActiveProtocols(payments)` from @agentify/core. No
+    // master `enabled` flag: presence of usable credentials IS the signal.
+    const hasX402 = !!payments && protocols.includes('x402') && !!payments.x402?.treasury && !!(payments.x402.treasury.evmAddress || payments.x402.treasury.solanaAddress)
+    const wantsMpp = !!payments && protocols.includes('mpp') && !!payments.mpp && !!(payments.mpp.tempoRecipient || (payments.mpp.stripeSecretKey && payments.mpp.stripeNetworkId))
     const mppx = wantsMpp
       ? await createMppxRuntime(payments!.mpp!, payments!.mpp!.realm ?? opts.config.site.name)
       : ({ charge: async () => ({ status: 0 }), ready: false } as MppxRuntime)
+    const enabled = hasX402 || mppx.ready
     return {
       enabled,
       protocols,

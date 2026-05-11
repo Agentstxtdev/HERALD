@@ -94,29 +94,22 @@ export function validateAgentsTxt(content: string): ValidationResult[] {
   })
 
   // ── Payments block ─────────────────────────────────────────────────────────
-  const hasPaymentsEnabled = content.includes('Payments: enabled')
+  // Presence of `Protocols:` is the payment-block signal per spec §3.1.
+  // `Payments: required` is the optional site-level policy directive.
+  const protocolsMatch = content.match(/^Protocols:\s*(.+)$/m)
 
-  if (hasPaymentsEnabled) {
-    const protocolsMatch = content.match(/^Protocols:\s*(.+)$/m)
-    if (!protocolsMatch) {
-      results.push({
-        rule: 'protocols-valid',
-        status: 'fail',
-        message: 'Payments: enabled is set but Protocols: field is missing',
-      })
-    } else {
-      const protocols = (protocolsMatch[1] ?? '').split(',').map((p) => p.trim()).filter(Boolean)
-      const valid = protocols.filter((p) => VALID_PAYMENT_PROTOCOLS.includes(p))
-      const unknown = protocols.filter((p) => !VALID_PAYMENT_PROTOCOLS.includes(p))
+  if (protocolsMatch) {
+    const protocols = (protocolsMatch[1] ?? '').split(',').map((p) => p.trim()).filter(Boolean)
+    const valid = protocols.filter((p) => VALID_PAYMENT_PROTOCOLS.includes(p))
+    const unknown = protocols.filter((p) => !VALID_PAYMENT_PROTOCOLS.includes(p))
 
-      results.push(
-        valid.length === 0
-          ? { rule: 'protocols-valid', status: 'fail', message: `No valid payment protocols. Must include at least one of: ${VALID_PAYMENT_PROTOCOLS.join(', ')}` }
-          : { rule: 'protocols-valid', status: 'pass', message: `Valid payment protocols: ${valid.join(', ')}` },
-      )
-      if (unknown.length > 0) {
-        results.push({ rule: 'unknown-protocols', status: 'warn', message: `Unknown payment protocol names: ${unknown.join(', ')}` })
-      }
+    results.push(
+      valid.length === 0
+        ? { rule: 'protocols-valid', status: 'fail', message: `No valid payment protocols. Must include at least one of: ${VALID_PAYMENT_PROTOCOLS.join(', ')}` }
+        : { rule: 'protocols-valid', status: 'pass', message: `Valid payment protocols: ${valid.join(', ')}` },
+    )
+    if (unknown.length > 0) {
+      results.push({ rule: 'unknown-protocols', status: 'warn', message: `Unknown payment protocol names: ${unknown.join(', ')}` })
     }
   }
 
@@ -403,20 +396,37 @@ export function validateAgentsJson(content: string): ValidationResult[] {
   )
 
   // ── Payments ───────────────────────────────────────────────────────────────
+  // Presence of at least one per-protocol object inside the payments block IS
+  // the support signal per spec §10.2. There is no top-level `protocols`
+  // array; the supported set is `keys(payments) intersect {x402, mpp, ...}`.
   if (parsed.payments !== undefined) {
     const p = parsed.payments as Record<string, unknown>
-    if (p.enabled === true) {
-      const protocols = p.protocols
-      if (!Array.isArray(protocols) || (protocols as unknown[]).length === 0) {
-        results.push({ rule: 'json-payments-valid', status: 'fail', message: 'payments.enabled is true but protocols is missing or empty' })
+    if ('required' in p && typeof p.required !== 'boolean') {
+      results.push({ rule: 'json-payments-required', status: 'fail', message: '"payments.required" must be a boolean when present' })
+    }
+    const protocolKeys = Object.keys(p).filter((k) => k === 'x402' || k === 'mpp')
+    if (protocolKeys.length === 0) {
+      results.push({ rule: 'json-payments-valid', status: 'fail', message: 'payments block must include at least one per-protocol object (x402 or mpp)' })
+    } else {
+      results.push({ rule: 'json-payments-valid', status: 'pass', message: `Payment protocols: ${protocolKeys.join(', ')}` })
+    }
+    const mpp = p.mpp as Record<string, unknown> | undefined
+    if (mpp && 'methods' in mpp) {
+      const methods = mpp.methods
+      if (!Array.isArray(methods) || methods.length === 0) {
+        results.push({ rule: 'json-mpp-methods', status: 'fail', message: '"payments.mpp.methods" must be a non-empty array when present' })
       } else {
-        results.push({ rule: 'json-payments-valid', status: 'pass', message: `Payment protocols: ${(protocols as string[]).join(', ')}` })
-      }
-      const pricing = p.pricing as Record<string, unknown> | undefined
-      if (pricing?.amount !== undefined && typeof pricing.amount === 'string') {
-        if (!/^\d+(\.\d+)?$/.test(pricing.amount)) {
-          results.push({ rule: 'json-pricing-amount', status: 'warn', message: `payments.pricing.amount should be a decimal string e.g. "0.001", got: "${pricing.amount}"` })
+        const recognised = new Set(['tempo', 'stripe'])
+        const unknown = (methods as unknown[]).filter((m) => typeof m !== 'string' || !recognised.has(m as string))
+        if (unknown.length > 0) {
+          results.push({ rule: 'json-mpp-methods-unknown', status: 'warn', message: `Unrecognised MPP methods: ${unknown.join(', ')} (recognised: tempo, stripe)` })
         }
+      }
+    }
+    const pricing = p.pricing as Record<string, unknown> | undefined
+    if (pricing?.amount !== undefined && typeof pricing.amount === 'string') {
+      if (!/^\d+(\.\d+)?$/.test(pricing.amount)) {
+        results.push({ rule: 'json-pricing-amount', status: 'warn', message: `payments.pricing.amount should be a decimal string e.g. "0.001", got: "${pricing.amount}"` })
       }
     }
   }

@@ -37,10 +37,7 @@ export interface AgenticConfigChoices {
   description: string
   framework: 'nextjs' | 'express' | 'hono' | 'astro' | 'unknown'
   content: ContentDriverChoice
-  payments: {
-    enabled: false
-  } | {
-    enabled: true
+  payments?: {
     protocols: string[]
     x402?: X402Choice
     mpp?: MppChoice
@@ -94,7 +91,7 @@ function buildContentBlock(choice: ContentDriverChoice): string {
 }
 
 function buildPaymentsBlock(payments: AgenticConfigChoices['payments']): string {
-  if (!payments.enabled) return ''
+  if (!payments) return ''
 
   const { protocols, x402, mpp } = payments
 
@@ -156,7 +153,6 @@ function buildPaymentsBlock(payments: AgenticConfigChoices['payments']): string 
 
   return `
   payments: {
-    enabled: true,
     protocols: ${JSON.stringify(effectiveProtocols)},
     ${x402Block}
     ${mppBlock}

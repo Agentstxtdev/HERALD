@@ -30,29 +30,49 @@ describe('generateAgentsTxt', () => {
     expect(output).not.toContain('Protocols:')
   })
 
-  it('returns header only when payments.enabled is false', () => {
+  it('returns header only when payments has no protocols and no backing', () => {
     const config: AgenticConfig = {
       site: baseConfig.site,
-      payments: { enabled: false },
+      payments: { protocols: [] },
     }
     const output = generateAgentsTxt(config)
     expect(output).not.toContain('Payments:')
     expect(output).not.toContain('Protocols:')
   })
 
-  it('includes Payments: enabled when payments.enabled is true', () => {
+  it('emits the Protocols: line as the payments block signal', () => {
     const config: AgenticConfig = {
       site: baseConfig.site,
-      payments: { enabled: true, protocols: ['x402'], ...x402Backing },
+      payments: { protocols: ['x402'], ...x402Backing },
     }
     const output = generateAgentsTxt(config)
-    expect(output).toContain('Payments: enabled')
+    expect(output).toContain('Protocols: x402')
+    expect(output).not.toContain('Payments: enabled')
+  })
+
+  it('emits Payments: required when payments.required is true', () => {
+    const config: AgenticConfig = {
+      site: baseConfig.site,
+      payments: { protocols: ['x402'], required: true, ...x402Backing },
+    }
+    const output = generateAgentsTxt(config)
+    expect(output).toContain('Protocols: x402')
+    expect(output).toContain('Payments: required')
+  })
+
+  it('omits Payments: required line when payments.required is not set', () => {
+    const config: AgenticConfig = {
+      site: baseConfig.site,
+      payments: { protocols: ['x402'], ...x402Backing },
+    }
+    const output = generateAgentsTxt(config)
+    expect(output).not.toContain('Payments:')
   })
 
   it('outputs x402 only when protocols is [x402]', () => {
     const config: AgenticConfig = {
       site: baseConfig.site,
-      payments: { enabled: true, protocols: ['x402'], ...x402Backing },
+      payments: { protocols: ['x402'], ...x402Backing },
     }
     const output = generateAgentsTxt(config)
     expect(output).toContain('Protocols: x402')
@@ -62,7 +82,7 @@ describe('generateAgentsTxt', () => {
   it('outputs mpp only when protocols is [mpp]', () => {
     const config: AgenticConfig = {
       site: baseConfig.site,
-      payments: { enabled: true, protocols: ['mpp'], ...mppBacking },
+      payments: { protocols: ['mpp'], ...mppBacking },
     }
     const output = generateAgentsTxt(config)
     expect(output).toContain('Protocols: mpp')
@@ -72,7 +92,7 @@ describe('generateAgentsTxt', () => {
   it('outputs both when protocols is [x402, mpp]', () => {
     const config: AgenticConfig = {
       site: baseConfig.site,
-      payments: { enabled: true, protocols: ['x402', 'mpp'], ...allBacking },
+      payments: { protocols: ['x402', 'mpp'], ...allBacking },
     }
     const output = generateAgentsTxt(config)
     expect(output).toContain('Protocols: x402, mpp')
@@ -81,7 +101,7 @@ describe('generateAgentsTxt', () => {
   it('defaults protocols to [mpp, x402] when protocols is not specified', () => {
     const config: AgenticConfig = {
       site: baseConfig.site,
-      payments: { enabled: true, ...allBacking },
+      payments: { ...allBacking },
     }
     const output = generateAgentsTxt(config)
     expect(output).toContain('Protocols: mpp, x402')
@@ -91,17 +111,17 @@ describe('generateAgentsTxt', () => {
     const config: AgenticConfig = {
       site: baseConfig.site,
       // x402 listed but no treasury → x402 dropped. mpp listed and has tempoRecipient → kept.
-      payments: { enabled: true, protocols: ['x402', 'mpp'], ...mppBacking },
+      payments: { protocols: ['x402', 'mpp'], ...mppBacking },
     }
     const output = generateAgentsTxt(config)
     expect(output).toContain('Protocols: mpp')
     expect(output).not.toContain('Protocols: x402')
   })
 
-  it('omits Payments block entirely when enabled but no protocol is backed', () => {
+  it('omits Payments block entirely when no protocol is backed', () => {
     const config: AgenticConfig = {
       site: baseConfig.site,
-      payments: { enabled: true, protocols: ['x402', 'mpp'] }, // no backing
+      payments: { protocols: ['x402', 'mpp'] }, // no backing
     }
     const output = generateAgentsTxt(config)
     expect(output).not.toContain('Payments:')
@@ -111,17 +131,16 @@ describe('generateAgentsTxt', () => {
   it('has a blank line between JSON comment and payment section', () => {
     const config: AgenticConfig = {
       site: baseConfig.site,
-      payments: { enabled: true, protocols: ['x402'], ...x402Backing },
+      payments: { protocols: ['x402'], ...x402Backing },
     }
     const output = generateAgentsTxt(config)
-    expect(output).toContain('# JSON: https://example.com/agents.json\n\nPayments:')
+    expect(output).toContain('# JSON: https://example.com/agents.json\n\nProtocols:')
   })
 
   it('does not include wallet addresses or pricing', () => {
     const config: AgenticConfig = {
       site: baseConfig.site,
       payments: {
-        enabled: true,
         protocols: ['x402'],
         x402: {
           treasury: { evmAddress: '0x1234567890123456789012345678901234567890' },
@@ -202,7 +221,7 @@ describe('generateAgentsTxt — authorization block', () => {
   it('has a blank line between payments block and authorization block', () => {
     const config: AgenticConfig = {
       site: baseConfig.site,
-      payments: { enabled: true, protocols: ['x402'], ...x402Backing },
+      payments: { protocols: ['x402'], ...x402Backing },
       authorization: { enabled: true },
     }
     const output = generateAgentsTxt(config)
@@ -212,11 +231,10 @@ describe('generateAgentsTxt — authorization block', () => {
   it('includes both payments and authorization blocks together — setup for next suite', () => {
     const config: AgenticConfig = {
       site: baseConfig.site,
-      payments: { enabled: true, protocols: ['x402', 'mpp'], ...allBacking },
+      payments: { protocols: ['x402', 'mpp'], ...allBacking },
       authorization: { enabled: true, identityRequired: true },
     }
     const output = generateAgentsTxt(config)
-    expect(output).toContain('Payments: enabled')
     expect(output).toContain('Protocols: x402, mpp')
     expect(output).toContain('Authorization: agent-auth')
     expect(output).toContain('Identity: required')
@@ -289,12 +307,11 @@ describe('generateAgentsTxt — MCP block', () => {
   it('includes all three blocks together', () => {
     const config: AgenticConfig = {
       site: baseConfig.site,
-      payments: { enabled: true, protocols: ['x402', 'mpp'], ...allBacking },
+      payments: { protocols: ['x402', 'mpp'], ...allBacking },
       authorization: { enabled: true, identityRequired: true },
       mcp: { endpoints: ['https://example.com/mcp', 'https://example.com/mcp-premium'] },
     }
     const output = generateAgentsTxt(config)
-    expect(output).toContain('Payments: enabled')
     expect(output).toContain('Protocols: x402, mpp')
     expect(output).toContain('Authorization: agent-auth')
     expect(output).toContain('Identity: required')
@@ -312,34 +329,34 @@ describe('generateAgentsTxt — Skills block', () => {
   it('emits a single Skills: line for a string URL', () => {
     const config: AgenticConfig = {
       site: baseConfig.site,
-      skills: { urls: 'https://example.com/.well-known/skills/main.md' },
+      skills: { urls: 'https://example.com/skills/main/SKILL.md' },
     }
     const output = generateAgentsTxt(config)
-    expect(output).toContain('Skills: https://example.com/.well-known/skills/main.md')
+    expect(output).toContain('Skills: https://example.com/skills/main/SKILL.md')
   })
 
   it('emits a single Skills: line for a one-item array', () => {
     const config: AgenticConfig = {
       site: baseConfig.site,
-      skills: { urls: ['https://example.com/.well-known/skills/main.md'] },
+      skills: { urls: ['https://example.com/skills/main/SKILL.md'] },
     }
     const output = generateAgentsTxt(config)
-    expect(output).toContain('Skills: https://example.com/.well-known/skills/main.md')
+    expect(output).toContain('Skills: https://example.com/skills/main/SKILL.md')
   })
 
   it('emits multiple Skills: lines in order for multiple URLs', () => {
     const config: AgenticConfig = {
       site: baseConfig.site,
-      skills: { urls: ['https://example.com/.well-known/skills/main.md', 'https://example.com/.well-known/skills/premium.md'] },
+      skills: { urls: ['https://example.com/skills/main/SKILL.md', 'https://example.com/skills/premium/SKILL.md'] },
     }
     const output = generateAgentsTxt(config)
-    expect(output).toContain('Skills: https://example.com/.well-known/skills/main.md\nSkills: https://example.com/.well-known/skills/premium.md')
+    expect(output).toContain('Skills: https://example.com/skills/main/SKILL.md\nSkills: https://example.com/skills/premium/SKILL.md')
   })
 
   it('has a blank line between JSON comment and Skills block when no other blocks', () => {
     const config: AgenticConfig = {
       site: baseConfig.site,
-      skills: { urls: 'https://example.com/.well-known/skills/main.md' },
+      skills: { urls: 'https://example.com/skills/main/SKILL.md' },
     }
     const output = generateAgentsTxt(config)
     expect(output).toContain('# JSON: https://example.com/agents.json\n\nSkills:')
@@ -349,7 +366,7 @@ describe('generateAgentsTxt — Skills block', () => {
     const config: AgenticConfig = {
       site: baseConfig.site,
       mcp: { endpoints: 'https://example.com/mcp' },
-      skills: { urls: 'https://example.com/.well-known/skills/main.md' },
+      skills: { urls: 'https://example.com/skills/main/SKILL.md' },
     }
     const output = generateAgentsTxt(config)
     expect(output).toContain('MCP: https://example.com/mcp\n\nSkills:')
@@ -358,30 +375,29 @@ describe('generateAgentsTxt — Skills block', () => {
   it('works standalone without payments, authorization, or MCP', () => {
     const config: AgenticConfig = {
       site: baseConfig.site,
-      skills: { urls: 'https://example.com/.well-known/skills/main.md' },
+      skills: { urls: 'https://example.com/skills/main/SKILL.md' },
     }
     const output = generateAgentsTxt(config)
     expect(output).not.toContain('Payments:')
     expect(output).not.toContain('Authorization:')
     expect(output).not.toContain('MCP:')
-    expect(output).toContain('Skills: https://example.com/.well-known/skills/main.md')
+    expect(output).toContain('Skills: https://example.com/skills/main/SKILL.md')
   })
 
   it('includes all four blocks together', () => {
     const config: AgenticConfig = {
       site: baseConfig.site,
-      payments: { enabled: true, protocols: ['x402', 'mpp'], ...allBacking },
+      payments: { protocols: ['x402', 'mpp'], ...allBacking },
       authorization: { enabled: true, identityRequired: true },
       mcp: { endpoints: 'https://example.com/mcp' },
-      skills: { urls: ['https://example.com/.well-known/skills/main.md', 'https://example.com/.well-known/skills/premium.md'] },
+      skills: { urls: ['https://example.com/skills/main/SKILL.md', 'https://example.com/skills/premium/SKILL.md'] },
     }
     const output = generateAgentsTxt(config)
-    expect(output).toContain('Payments: enabled')
     expect(output).toContain('Protocols: x402, mpp')
     expect(output).toContain('Authorization: agent-auth')
     expect(output).toContain('Identity: required')
     expect(output).toContain('MCP: https://example.com/mcp')
-    expect(output).toContain('Skills: https://example.com/.well-known/skills/main.md')
-    expect(output).toContain('Skills: https://example.com/.well-known/skills/premium.md')
+    expect(output).toContain('Skills: https://example.com/skills/main/SKILL.md')
+    expect(output).toContain('Skills: https://example.com/skills/premium/SKILL.md')
   })
 })

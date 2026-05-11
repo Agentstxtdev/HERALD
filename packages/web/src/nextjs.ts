@@ -27,6 +27,7 @@ import {
   generateLlmsTxt,
   generateAgentsTxt,
   generateAgentsJson,
+  resolveActiveProtocols,
   type AgenticConfig,
 } from '@agentify/core'
 import { gateRequest } from './payment-gate.js'
@@ -103,7 +104,7 @@ export function agentsJsonHandler(config: AgenticConfig) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function createPaymentProxy(config: AgenticConfig, pathPrefix = '') {
-  if (!config.payments?.enabled) {
+  if (!config.payments || resolveActiveProtocols(config.payments).length === 0) {
     return (_req: NextRequest): NextResponse => NextResponse.next()
   }
 

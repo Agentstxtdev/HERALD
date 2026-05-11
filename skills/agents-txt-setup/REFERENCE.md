@@ -41,7 +41,6 @@ export default {
   },
 
   payments: {
-    enabled: true,
     protocols: ['mpp', 'x402'],  // MPP verified first — agents see only one 402
 
     x402: {

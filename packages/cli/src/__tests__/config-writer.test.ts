@@ -8,7 +8,6 @@ const minimalChoices: AgenticConfigChoices = {
   description: 'A great site',
   framework: 'unknown',
   content: { type: 'sitemap', sitemapUrl: 'https://example.com/sitemap.xml' },
-  payments: { enabled: false },
 }
 
 // ── s() helper ────────────────────────────────────────────────────────────────
@@ -86,7 +85,7 @@ describe('buildAgenticConfigContent', () => {
     expect(output).toContain('sections:')
   })
 
-  it('does not include payments block when payments disabled', () => {
+  it('does not include payments block when payments not configured', () => {
     const output = buildAgenticConfigContent(minimalChoices)
     expect(output).not.toContain('payments:')
   })
@@ -95,7 +94,6 @@ describe('buildAgenticConfigContent', () => {
     const choices: AgenticConfigChoices = {
       ...minimalChoices,
       payments: {
-        enabled: true,
         protocols: ['x402'],
         x402: {
           evmAddress: '0x1234567890123456789012345678901234567890',
@@ -116,7 +114,6 @@ describe('buildAgenticConfigContent', () => {
     const choices: AgenticConfigChoices = {
       ...minimalChoices,
       payments: {
-        enabled: true,
         protocols: ['mpp'],
         mpp: { tempoRecipient: '0xabc', stripeKey: 'sk_test_abc', stripeNetworkId: 'net_123' },
       },
@@ -132,7 +129,6 @@ describe('buildAgenticConfigContent', () => {
     const choices: AgenticConfigChoices = {
       ...minimalChoices,
       payments: {
-        enabled: true,
         protocols: ['mpp'],
         mpp: { tempoRecipient: '', stripeKey: '', stripeNetworkId: '' },
       },
@@ -145,7 +141,6 @@ describe('buildAgenticConfigContent', () => {
     const choices: AgenticConfigChoices = {
       ...minimalChoices,
       payments: {
-        enabled: true,
         protocols: ['x402', 'mpp'],
         x402: { evmAddress: '0x1234567890123456789012345678901234567890', solanaAddress: '', priceAmount: '0.001' },
         mpp: { tempoRecipient: '', stripeKey: '', stripeNetworkId: '' },
@@ -184,7 +179,6 @@ describe('buildAgenticConfigContent', () => {
     const choices: AgenticConfigChoices = {
       ...minimalChoices,
       payments: {
-        enabled: true,
         protocols: ['x402'],
         x402: { evmAddress: '0x1234567890123456789012345678901234567890', solanaAddress: '', priceAmount: '0.001' },
       },

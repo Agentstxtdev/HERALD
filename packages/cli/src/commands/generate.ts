@@ -18,6 +18,7 @@ import {
   validateAgentsJson,
   validateSitemapXml,
   ROBOTS_GENERATED_MARKER,
+  resolveActiveProtocols,
   type AgenticConfig,
   type HostingPlatform,
   type PageEntry,
@@ -319,11 +320,11 @@ export async function generateCommand(options: GenerateOptions): Promise<void> {
     console.log(`   agents.json: ${baseUrl}/agents.json`)
   }
 
-  if (config.payments?.enabled) {
-    const protocols = config.payments.protocols ?? []
-    console.log(`   💰 Payments: ${protocols.join(', ')}`)
+  const activeProtocols = config.payments ? resolveActiveProtocols(config.payments) : []
+  if (activeProtocols.length > 0) {
+    console.log(`   💰 Payments: ${activeProtocols.join(', ')}`)
   } else {
-    console.log(`   💡 Payments disabled. Add payments config to monetize agent access.`)
+    console.log(`   💡 No payment protocols configured. Add wallet credentials to monetize agent access.`)
   }
   console.log()
 }

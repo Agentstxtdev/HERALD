@@ -161,13 +161,10 @@ export async function initCommand(options: InitOptions): Promise<void> {
     }
 
     payments = {
-      enabled: true,
       protocols,
       ...(x402Choice !== undefined ? { x402: x402Choice } : {}),
       ...(mppChoice !== undefined ? { mpp: mppChoice } : {}),
     }
-  } else {
-    payments = { enabled: false }
   }
 
   rl?.close()
@@ -180,7 +177,7 @@ export async function initCommand(options: InitOptions): Promise<void> {
     description,
     framework: detected.framework,
     content: contentDriver,
-    payments,
+    ...(payments !== undefined ? { payments } : {}),
   }
 
   if (existsSync(configPath)) {
@@ -220,7 +217,7 @@ export async function initCommand(options: InitOptions): Promise<void> {
     console.log(`  • Set FIRECRAWL_API_KEY in .env (free at firecrawl.dev)`)
   }
 
-  if (payments.enabled && payments.protocols?.includes('mpp')) {
+  if (payments?.protocols?.includes('mpp')) {
     console.log(`  • npm install mppx  (required for MPP payment verification)`)
   }
 

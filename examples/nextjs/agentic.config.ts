@@ -38,7 +38,6 @@ const config: AgenticConfig = {
   },
 
   payments: {
-    enabled: hasMpp || hasX402,
     // MPP first (session-based fiat + USDC); x402 as fallback for pure on-chain micropayments
     protocols: [
       ...(hasMpp ? (['mpp'] as const) : []),
