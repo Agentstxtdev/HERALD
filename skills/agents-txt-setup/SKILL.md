@@ -57,9 +57,10 @@ The single `AgenticConfig` object drives everything. Every generator and middlew
 | `site.url` | Must be a valid URL. Used in every generated file. |
 | `content.driver.type` | `sitemap` = parse sitemap.xml; `firecrawl` = crawl + group pages (richer, free tier); `static` / `manual` = provide pages yourself |
 | `crawlers.blockFreeAiScrapers` | Blocks GPTBot, ClaudeBot, CCBot, Google-Extended in robots.txt |
-| `payments.protocols` | `['x402']` = crypto only; `['mpp']` = fiat/USDC session; `['mpp','x402']` = both (MPP checked first) |
+| `payments.protocols` | `['x402']` = crypto only; `['mpp']` = fiat/USDC session; `['mpp','x402']` = both (MPP checked first). Also accepts `x-` prefixed experimental identifiers (e.g. `'x-mypay'`) per spec §3.1; those flow through to agents.txt and agents.json verbatim, runtime handler is the user's responsibility. |
 | `payments.x402.treasury.evmAddress` | Their EVM wallet (40-char hex, 0x prefix). No private keys on server. |
 | `payments.mpp` | Requires `npm install mppx`. Stripe for fiat; `tempoEnabled: true` for USDC without Stripe. |
+| `a2a.cards` | One or more A2A AgentCard URLs (a2a-protocol.org). Optional. Useful when the site runs multiple A2A agents or serves AgentCards at non-canonical paths. The well-known path `/.well-known/agent-card.json` is enough for a single agent at the canonical location. |
 
 **Gotcha:** If Firecrawl is chosen, tell them to set `FIRECRAWL_API_KEY` in `.env`. Free tier at firecrawl.dev, no credit card.
 
@@ -171,3 +172,5 @@ For deeper §4.5 verification (response headers + cross-file consistency between
 - `@agentify/core` has zero runtime deps (edge-safe); payment code is in `@agentify/web`
 - `--skip-llms` is useful when Firecrawl is a separate CI step that takes too long; `--skip-llms-full` keeps the cheap `llms.txt` index but skips the Firecrawl-billed scrape
 - `pnpm` workspace required if contributing to the monorepo itself
+- `a2a` is optional. Most single-agent sites do not need it because A2A clients can probe `/.well-known/agent-card.json` directly. Suggest it only when the user has multiple A2A agents on one origin or serves an AgentCard at a non-canonical path.
+- For protocols not yet listed in `payments.protocols` / `authorization.protocols`, point users at the `x-` prefix (e.g. `'x-mypay'`). Agentify accepts them verbatim, validators pass them through without warnings, and there is no need to patch agentify. Only suggest a registry edit (`packages/core/src/protocols.ts`) when the protocol is stable and the user wants agentify-level support (gate middleware, wizard prompt, structured fields in `agents.json`).

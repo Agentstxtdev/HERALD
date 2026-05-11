@@ -3,6 +3,8 @@
 // Spec: https://github.com/agentstxt/agents.txt/blob/main/spec/AGENTS-TXT-STANDARD.md
 // ─────────────────────────────────────────────────────────────────────────────
 
+import type { PaymentProtocolId, AuthProtocolId } from './protocols.js'
+
 export interface SiteConfig {
   name: string
   url: string
@@ -192,12 +194,18 @@ export interface PaymentConfig {
    * Default: ['mpp', 'x402'] — MPP first (session-based fiat + stablecoins);
    * x402 as fallback for pure on-chain micropayments.
    *
+   * Accepts the registered identifiers ('x402', 'mpp') and any experimental
+   * identifier with the `x-` prefix (e.g. 'x-mypay') per spec §3.1.
+   * Experimental identifiers are advertised verbatim; their runtime gating
+   * is the caller's responsibility (the generator does not enforce activity
+   * for unknown identifiers).
+   *
    * Whether the payments block is emitted into agents.txt / agents.json is
    * decided by the generator from `resolveActiveProtocols(payments)`: a
-   * protocol is "active" only when its credentials are present. If none are
-   * active, the block is omitted entirely.
+   * registered protocol is "active" only when its credentials are present.
+   * If none are active, the block is omitted entirely.
    */
-  protocols?: Array<'x402' | 'mpp'>
+  protocols?: PaymentProtocolId[]
   /**
    * Site-level policy: when true, emits `Payments: required` — every
    * interaction with the site requires payment, no free path exists.
@@ -219,12 +227,14 @@ export interface PaymentConfig {
 export interface AuthorizationConfig {
   enabled: boolean
   /**
-   * Authorization protocol identifiers. Valid in v0.2: 'agent-auth'
-   * agent-auth — Agent Auth Protocol (agentauthprotocol.com)
+   * Authorization protocol identifiers. Registered: 'agent-auth'
+   *   agent-auth — Agent Auth Protocol (agentauthprotocol.com).
    *   Discovery endpoint: /.well-known/agent-configuration
    *   Details (capabilities, endpoints, approval flows) live there, not here.
+   *
+   * Experimental identifiers MAY use the `x-` prefix per spec §3.1.
    */
-  protocols?: string[]
+  protocols?: AuthProtocolId[]
   /**
    * When true, emits `Identity: required` — site-level policy that agents must
    * authenticate before any interaction, not just before capability execution.
@@ -282,6 +292,32 @@ export interface SkillsConfig {
   urls: string | SkillEntry | (string | SkillEntry)[]
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// A2A types — Agent2Agent Protocol AgentCard discoverability (a2a-protocol.org)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface A2AEntry {
+  url: string
+  /** Short description of the agent's capability or role. Appears in agents.json only. */
+  description?: string
+}
+
+export interface A2AConfig {
+  /**
+   * One or more A2A AgentCard URLs (a2a-protocol.org). Each URL points to a
+   * JSON document describing one agent's identity, capabilities, and supported
+   * extensions (including the x402 payments extension where applicable).
+   *
+   * The well-known path `/.well-known/agent-card.json` remains the primary
+   * discovery surface for single-agent sites; this directive covers
+   * multi-agent sites and AgentCards served at non-canonical paths.
+   *
+   * agents.txt carries only URLs; agent metadata stays in the AgentCard.
+   * Pass a string for URL-only, or an object to include a description in agents.json.
+   */
+  cards: string | A2AEntry | (string | A2AEntry)[]
+}
+
 export interface AgenticConfig {
   site: SiteConfig
   content?: ContentConfig
@@ -290,5 +326,6 @@ export interface AgenticConfig {
   authorization?: AuthorizationConfig
   mcp?: McpConfig
   skills?: SkillsConfig
+  a2a?: A2AConfig
 }
 

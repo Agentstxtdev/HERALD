@@ -1,5 +1,6 @@
 import type { AgenticConfig } from './types.js'
 import { resolveActiveProtocols } from './payments.js'
+import { isExperimentalIdentifier } from './protocols.js'
 
 const SOLANA_CHAIN_IDS: Record<string, string> = {
   'mainnet-beta': 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
@@ -27,7 +28,7 @@ const SOLANA_CHAIN_IDS: Record<string, string> = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function generateAgentsJson(config: AgenticConfig): string {
-  const { site, payments, authorization, mcp, skills } = config
+  const { site, payments, authorization, mcp, skills, a2a } = config
 
   const obj: Record<string, unknown> = {
     version: '1.0',
@@ -96,9 +97,18 @@ export function generateAgentsJson(config: AgenticConfig): string {
         }
       }
 
+      // Experimental identifiers (spec §3.1) are surfaced as empty objects:
+      // their presence signals support, the shape is the protocol author's
+      // responsibility, and agentify carries no runtime contract for them.
+      for (const proto of active) {
+        if (isExperimentalIdentifier(proto) && !(proto in p)) {
+          p[proto] = {}
+        }
+      }
+
       // Only attach the payments block when at least one per-protocol key
       // exists. A configured-but-empty record would lie about capabilities.
-      if (Object.keys(p).some((k) => k === 'x402' || k === 'mpp')) {
+      if (Object.keys(p).some((k) => k === 'x402' || k === 'mpp' || isExperimentalIdentifier(k))) {
         obj.payments = p
       }
     }
@@ -140,6 +150,20 @@ export function generateAgentsJson(config: AgenticConfig): string {
   if (skills) {
     const urls = Array.isArray(skills.urls) ? skills.urls : [skills.urls]
     obj.skills = urls.map((e) => {
+      const url = typeof e === 'string' ? e : e.url
+      const description = typeof e === 'string' ? undefined : e.description
+      return { url, ...(description && { description }) }
+    })
+  }
+
+  // ── A2A ────────────────────────────────────────────────────────────────────
+  // One entry per AgentCard URL (spec §9, §11.2). Symmetric with mcp[] and
+  // skills[]: agents.txt carries only the URL; the description field is
+  // agents.json-only. Per-agent metadata (capabilities, extensions, transport,
+  // security schemes) lives in the AgentCard itself.
+  if (a2a) {
+    const cards = Array.isArray(a2a.cards) ? a2a.cards : [a2a.cards]
+    obj.a2a = cards.map((e) => {
       const url = typeof e === 'string' ? e : e.url
       const description = typeof e === 'string' ? undefined : e.description
       return { url, ...(description && { description }) }

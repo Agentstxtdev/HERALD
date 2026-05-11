@@ -74,12 +74,18 @@ Everything flows from `AgenticConfig` (defined in `packages/core/src/types.ts`):
 
 ```ts
 interface AgenticConfig {
-  site:      { name, url, description }
-  content?:  { driver: LlmsDriver }   // sitemap | firecrawl | static | manual
-  crawlers?: { blockFreeAiScrapers, allowSearchEngines, allowPaidAgents }
-  payments?: { enabled, protocols, x402?, mpp?, exemptUserAgents? }
+  site:           { name, url, description }
+  content?:       { driver: LlmsDriver }   // sitemap | firecrawl | static | manual
+  crawlers?:      { blockFreeAiScrapers, allowSearchEngines, allowPaidAgents }
+  payments?:      { protocols, required?, x402?, mpp?, exemptUserAgents? }
+  authorization?: { enabled, protocols?, identityRequired? }
+  mcp?:           { endpoints }
+  skills?:        { urls }
+  a2a?:           { cards }            // A2A AgentCard URLs (a2a-protocol.org)
 }
 ```
+
+`payments.protocols` accepts the registered identifiers (`'x402'`, `'mpp'`) and any experimental identifier prefixed with `x-` (e.g. `'x-mypay'`) per agents.txt spec §3.1. Same convention for `authorization.protocols`. The set of identifiers comes from `@agentify/core`'s `protocols.ts` registry, which is the single source of truth.
 
 Users write `agentic.config.js` once. Every generator and middleware adapter reads from it.
 
@@ -257,6 +263,33 @@ returning `{ kind: 'pass' }`, `{ kind: 'pass-with-headers', headers }`, or
 const myDriver: ContentDriver = { resolve: async () => [{ name: 'Pages', pages: [...] }] }
 const llmsTxt = await generateLlmsTxt(config, myDriver)
 ```
+
+## Adding a New Protocol
+
+Two paths. Pick by stability.
+
+**Path 1: experimental (`x-` prefix), no agentify changes.** When a user wants to advertise a protocol that has not been registered in the spec yet, they declare it with an `x-` prefix in `agentic.config.js`:
+
+```js
+payments: { protocols: ['x402', 'x-mypay'], x402: { /* ... */ } }
+authorization: { enabled: true, protocols: ['agent-auth', 'x-myauth'] }
+```
+
+The identifier flows through to `agents.txt` (`Protocols: x402, x-mypay`) and `agents.json` (`payments['x-mypay']: {}`). Validators do not warn on it. The gate middleware ignores it; the user runs their own runtime handler. No agentify edits are required.
+
+**Path 2: register the protocol in agentify.** When the protocol has settled and we want generators, validators, the wizard, and (for payments) the gate to know about it:
+
+1. **Registry** ([`packages/core/src/protocols.ts`](packages/core/src/protocols.ts)): append the identifier to `PAYMENT_PROTOCOLS` or `AUTH_PROTOCOLS`. This single edit propagates to validators, the CLI Zod schema, and the audit tool via `isAcceptedPaymentIdentifier` / `isAcceptedAuthIdentifier`.
+2. **Types** ([`packages/core/src/types.ts`](packages/core/src/types.ts)): if the protocol has its own configuration block, add an interface (mirror `X402Config` / `MppConfig`). Hang it under `PaymentConfig` (or `AuthorizationConfig`) with the same key as the identifier.
+3. **Activity check** ([`packages/core/src/payments.ts`](packages/core/src/payments.ts), payments only): add an `isXyzActive(payments)` helper and a branch in `resolveActiveProtocols`. The "honest declarations" rule means the block is emitted only when the protocol can actually run.
+4. **Generators** ([`packages/core/src/agents-txt.ts`](packages/core/src/agents-txt.ts), [`agents-json.ts`](packages/core/src/agents-json.ts)): the `Protocols:` line and the per-protocol object are driven by `resolveActiveProtocols`, so payment protocols pick those up automatically once steps 1 and 3 are in place. If the protocol carries structured fields in `agents.json`, add a per-protocol emitter inside `generateAgentsJson`.
+5. **Middleware** ([`packages/web/src/payment-gate.ts`](packages/web/src/payment-gate.ts), payments only, optional): add a credential check before the existing protocol checks, and a challenge emitter in the unauthenticated 402 path. The gate is the only place protocol routing lives; adapters do not need to change.
+6. **CLI wizard** ([`packages/cli/src/commands/init.ts`](packages/cli/src/commands/init.ts), optional): add a prompt step inside the payments block when the new protocol needs credentials.
+7. **Tests**: add cases under `packages/core/src/__tests__/{agents-txt,agents-json}.test.ts` for emission with and without credentials.
+
+For a brand-new block kind (not payment, not auth, not MCP, not Skills, not A2A): the A2A diff is the most recent worked example. Add a new `XyzConfig` type, parser case if the tool reads agents.txt, `Xyz:` line emitter in `agents-txt.ts`, `xyz[]` array emitter in `agents-json.ts`, validator rules in `validate.ts`, Zod schema entry in `config-schema.ts`, and a wizard prompt.
+
+When the user mentions a new protocol that does not yet exist in `protocols.ts`, default to Path 1 (the `x-` prefix). Only suggest Path 2 if the protocol is clearly settled and the user wants agentify-level support. Never silently extend `PAYMENT_PROTOCOLS` / `AUTH_PROTOCOLS` without confirming the spec status.
 
 ## Key Design Decisions (Why, Not What)
 

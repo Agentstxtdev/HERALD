@@ -371,6 +371,71 @@ describe('generateAgentsJson — skills block', () => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
+// A2A block
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('generateAgentsJson — a2a block', () => {
+  it('omits a2a when not configured', () => {
+    const parsed = JSON.parse(generateAgentsJson(baseConfig))
+    expect(parsed).not.toHaveProperty('a2a')
+  })
+
+  it('normalizes a single string URL to { url }', () => {
+    const config: AgenticConfig = {
+      site: baseConfig.site,
+      a2a: { cards: 'https://example.com/.well-known/agent-card.json' },
+    }
+    const parsed = JSON.parse(generateAgentsJson(config))
+    expect(parsed.a2a).toEqual([{ url: 'https://example.com/.well-known/agent-card.json' }])
+  })
+
+  it('preserves description when entry object is provided', () => {
+    const config: AgenticConfig = {
+      site: baseConfig.site,
+      a2a: {
+        cards: { url: 'https://example.com/.well-known/agent-card.json', description: 'Support agent' },
+      },
+    }
+    const parsed = JSON.parse(generateAgentsJson(config))
+    expect(parsed.a2a).toEqual([
+      { url: 'https://example.com/.well-known/agent-card.json', description: 'Support agent' },
+    ])
+  })
+
+  it('emits multiple AgentCard entries in order', () => {
+    const config: AgenticConfig = {
+      site: baseConfig.site,
+      a2a: {
+        cards: [
+          'https://example.com/agents/sales/card.json',
+          { url: 'https://example.com/agents/support/card.json', description: 'Support' },
+        ],
+      },
+    }
+    const parsed = JSON.parse(generateAgentsJson(config))
+    expect(parsed.a2a).toEqual([
+      { url: 'https://example.com/agents/sales/card.json' },
+      { url: 'https://example.com/agents/support/card.json', description: 'Support' },
+    ])
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Experimental x- protocols
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('generateAgentsJson — experimental x- protocols', () => {
+  it('emits an empty object for an x- prefixed protocol key', () => {
+    const config: AgenticConfig = {
+      site: baseConfig.site,
+      payments: { protocols: ['x-mypay'] },
+    }
+    const parsed = JSON.parse(generateAgentsJson(config))
+    expect(parsed.payments).toEqual({ 'x-mypay': {} })
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Full config
 // ─────────────────────────────────────────────────────────────────────────────
 

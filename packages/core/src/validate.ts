@@ -1,5 +1,13 @@
 import { FREE_AI_SCRAPERS } from './robots.js'
 import type { AgenticConfig } from './types.js'
+import {
+  PAYMENT_PROTOCOLS,
+  AUTH_PROTOCOLS,
+  MPP_METHODS,
+  isAcceptedPaymentIdentifier,
+  isAcceptedAuthIdentifier,
+  isExperimentalIdentifier,
+} from './protocols.js'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Spec compliance validators — check generated output against the Agentic Web
@@ -78,9 +86,9 @@ export function validateLlmsTxt(content: string): ValidationResult[] {
 // agents.txt validator — checks agents.txt standard format
 // ─────────────────────────────────────────────────────────────────────────────
 
-// ── agents.txt — known protocol registries (open lists, forward-compatible) ──
-const VALID_PAYMENT_PROTOCOLS = ['x402', 'mpp', 'ucp', 'acp']
-const VALID_AUTH_PROTOCOLS = ['agent-auth']
+// ── agents.txt protocol identifiers are sourced from ./protocols.js, which is
+// the single registry for `x402` / `mpp` / `agent-auth`. Experimental
+// identifiers (`x-…`) pass acceptance per spec §3.1.
 
 export function validateAgentsTxt(content: string): ValidationResult[] {
   const results: ValidationResult[] = []
@@ -100,16 +108,16 @@ export function validateAgentsTxt(content: string): ValidationResult[] {
 
   if (protocolsMatch) {
     const protocols = (protocolsMatch[1] ?? '').split(',').map((p) => p.trim()).filter(Boolean)
-    const valid = protocols.filter((p) => VALID_PAYMENT_PROTOCOLS.includes(p))
-    const unknown = protocols.filter((p) => !VALID_PAYMENT_PROTOCOLS.includes(p))
+    const accepted = protocols.filter(isAcceptedPaymentIdentifier)
+    const unknown = protocols.filter((p) => !isAcceptedPaymentIdentifier(p))
 
     results.push(
-      valid.length === 0
-        ? { rule: 'protocols-valid', status: 'fail', message: `No valid payment protocols. Must include at least one of: ${VALID_PAYMENT_PROTOCOLS.join(', ')}` }
-        : { rule: 'protocols-valid', status: 'pass', message: `Valid payment protocols: ${valid.join(', ')}` },
+      accepted.length === 0
+        ? { rule: 'protocols-valid', status: 'fail', message: `No valid payment protocols. Must include at least one of: ${PAYMENT_PROTOCOLS.join(', ')} (or an x- prefixed experimental identifier)` }
+        : { rule: 'protocols-valid', status: 'pass', message: `Valid payment protocols: ${accepted.join(', ')}` },
     )
     if (unknown.length > 0) {
-      results.push({ rule: 'unknown-protocols', status: 'warn', message: `Unknown payment protocol names: ${unknown.join(', ')}` })
+      results.push({ rule: 'unknown-protocols', status: 'warn', message: `Unknown payment protocol names: ${unknown.join(', ')} (registered: ${PAYMENT_PROTOCOLS.join(', ')}; use \`x-\` prefix for experimental)` })
     }
   }
 
@@ -118,16 +126,16 @@ export function validateAgentsTxt(content: string): ValidationResult[] {
 
   if (authMatch) {
     const protocols = (authMatch[1] ?? '').split(',').map((p) => p.trim()).filter(Boolean)
-    const valid = protocols.filter((p) => VALID_AUTH_PROTOCOLS.includes(p))
-    const unknown = protocols.filter((p) => !VALID_AUTH_PROTOCOLS.includes(p))
+    const accepted = protocols.filter(isAcceptedAuthIdentifier)
+    const unknown = protocols.filter((p) => !isAcceptedAuthIdentifier(p))
 
     results.push(
-      valid.length === 0
-        ? { rule: 'authorization-valid', status: 'fail', message: `No valid auth protocols. Must include at least one of: ${VALID_AUTH_PROTOCOLS.join(', ')}` }
-        : { rule: 'authorization-valid', status: 'pass', message: `Valid auth protocols: ${valid.join(', ')}` },
+      accepted.length === 0
+        ? { rule: 'authorization-valid', status: 'fail', message: `No valid auth protocols. Must include at least one of: ${AUTH_PROTOCOLS.join(', ')} (or an x- prefixed experimental identifier)` }
+        : { rule: 'authorization-valid', status: 'pass', message: `Valid auth protocols: ${accepted.join(', ')}` },
     )
     if (unknown.length > 0) {
-      results.push({ rule: 'unknown-auth-protocols', status: 'warn', message: `Unknown auth protocol names: ${unknown.join(', ')}` })
+      results.push({ rule: 'unknown-auth-protocols', status: 'warn', message: `Unknown auth protocol names: ${unknown.join(', ')} (registered: ${AUTH_PROTOCOLS.join(', ')}; use \`x-\` prefix for experimental)` })
     }
   }
 
@@ -175,6 +183,24 @@ export function validateAgentsTxt(content: string): ValidationResult[] {
       results.push({ rule: 'skills-url-valid', status: 'pass', message: `Valid Skills URL: ${url}` })
       if (!url.startsWith('https://')) {
         results.push({ rule: 'skills-https', status: 'warn', message: `Skills URL should use HTTPS: ${url}` })
+      }
+    }
+  }
+
+  // ── A2A block ──────────────────────────────────────────────────────────────
+  const a2aMatches = [...content.matchAll(/^A2A:\s*(.+)$/gm)]
+
+  for (const match of a2aMatches) {
+    const url = (match[1] ?? '').trim()
+    let isValid = false
+    try { isValid = Boolean(new URL(url)) } catch { /* invalid */ }
+
+    if (!isValid) {
+      results.push({ rule: 'a2a-url-valid', status: 'fail', message: `A2A: value is not a valid URL: '${url}'` })
+    } else {
+      results.push({ rule: 'a2a-url-valid', status: 'pass', message: `Valid A2A AgentCard URL: ${url}` })
+      if (!url.startsWith('https://')) {
+        results.push({ rule: 'a2a-https', status: 'warn', message: `A2A URL should use HTTPS: ${url}` })
       }
     }
   }
@@ -404,9 +430,11 @@ export function validateAgentsJson(content: string): ValidationResult[] {
     if ('required' in p && typeof p.required !== 'boolean') {
       results.push({ rule: 'json-payments-required', status: 'fail', message: '"payments.required" must be a boolean when present' })
     }
-    const protocolKeys = Object.keys(p).filter((k) => k === 'x402' || k === 'mpp')
+    const protocolKeys = Object.keys(p).filter(
+      (k) => (PAYMENT_PROTOCOLS as readonly string[]).includes(k) || isExperimentalIdentifier(k),
+    )
     if (protocolKeys.length === 0) {
-      results.push({ rule: 'json-payments-valid', status: 'fail', message: 'payments block must include at least one per-protocol object (x402 or mpp)' })
+      results.push({ rule: 'json-payments-valid', status: 'fail', message: `payments block must include at least one per-protocol object (${PAYMENT_PROTOCOLS.join(' or ')}, or an x- prefixed experimental key)` })
     } else {
       results.push({ rule: 'json-payments-valid', status: 'pass', message: `Payment protocols: ${protocolKeys.join(', ')}` })
     }
@@ -416,10 +444,10 @@ export function validateAgentsJson(content: string): ValidationResult[] {
       if (!Array.isArray(methods) || methods.length === 0) {
         results.push({ rule: 'json-mpp-methods', status: 'fail', message: '"payments.mpp.methods" must be a non-empty array when present' })
       } else {
-        const recognised = new Set(['tempo', 'stripe'])
+        const recognised = new Set<string>(MPP_METHODS)
         const unknown = (methods as unknown[]).filter((m) => typeof m !== 'string' || !recognised.has(m as string))
         if (unknown.length > 0) {
-          results.push({ rule: 'json-mpp-methods-unknown', status: 'warn', message: `Unrecognised MPP methods: ${unknown.join(', ')} (recognised: tempo, stripe)` })
+          results.push({ rule: 'json-mpp-methods-unknown', status: 'warn', message: `Unrecognised MPP methods: ${unknown.join(', ')} (recognised: ${MPP_METHODS.join(', ')})` })
         }
       }
     }
@@ -468,6 +496,27 @@ export function validateAgentsJson(content: string): ValidationResult[] {
         results.push({ rule: 'json-skills-url-valid', status: 'pass', message: `Valid Skills url: ${url}` })
         if (!url.startsWith('https://')) {
           results.push({ rule: 'json-skills-https', status: 'warn', message: `Skills url should use HTTPS: ${url}` })
+        }
+      }
+    }
+  }
+
+  // ── A2A ────────────────────────────────────────────────────────────────────
+  if (Array.isArray(parsed.a2a)) {
+    for (const entry of parsed.a2a as Record<string, unknown>[]) {
+      const url = entry.url as string | undefined
+      if (!url) {
+        results.push({ rule: 'json-a2a-url-valid', status: 'fail', message: 'A2A entry missing url field' })
+        continue
+      }
+      let isValid = false
+      try { isValid = Boolean(new URL(url)) } catch { /* invalid */ }
+      if (!isValid) {
+        results.push({ rule: 'json-a2a-url-valid', status: 'fail', message: `A2A url is not a valid URL: '${url}'` })
+      } else {
+        results.push({ rule: 'json-a2a-url-valid', status: 'pass', message: `Valid A2A url: ${url}` })
+        if (!url.startsWith('https://')) {
+          results.push({ rule: 'json-a2a-https', status: 'warn', message: `A2A url should use HTTPS: ${url}` })
         }
       }
     }

@@ -137,11 +137,19 @@ describe('validateAgentsTxt', () => {
     expect(rule?.message).toContain('mpp')
   })
 
-  it('passes protocols-valid for ucp and acp (open list)', () => {
-    const content = '# agents.txt\nProtocols: ucp, acp\n'
+  it('passes protocols-valid for x- prefixed experimental identifiers', () => {
+    const content = '# agents.txt\nProtocols: x-mypay, x-otherpay\n'
     const results = validateAgentsTxt(content)
     const rule = results.find((r) => r.rule === 'protocols-valid')
     expect(rule?.status).toBe('pass')
+    expect(rule?.message).toContain('x-mypay')
+  })
+
+  it('does not warn on x- prefixed experimental identifiers', () => {
+    const content = '# agents.txt\nProtocols: x402, x-future\n'
+    const results = validateAgentsTxt(content)
+    const unknown = results.find((r) => r.rule === 'unknown-protocols')
+    expect(unknown).toBeUndefined()
   })
 
   it('fails protocols-valid when only unknown protocols listed', () => {

@@ -68,7 +68,7 @@ Each generator is a pure function: takes `AgenticConfig`, returns a string. No I
 | `generateRobotsTxt()` | `robots.txt` | AI crawler rules, `Sitemap:` + `Content-Signal:` directives, `Allow: /agents.txt` exposes the spec file at its canonical path |
 | `generateLlmsTxt()` | `llms.txt` | Curated page index for LLM inference (requires content driver) |
 | `generateLlmsFullTxt()` | `llms-full.txt` | Long-form companion: inlines page content under each heading (Firecrawl source recommended) |
-| `generateAgentsTxt()` | `agents.txt` | Plain-text capabilities declaration (payments, auth, MCP, skills) |
+| `generateAgentsTxt()` | `agents.txt` | Plain-text capabilities declaration (payments, auth, MCP, skills, A2A) |
 | `generateAgentsJson()` | `agents.json` | Structured JSON catalog: same config, richer per-block detail |
 | `generateSitemapXml()` | `sitemap.xml` | sitemaps.org 0.9 `<urlset>` from a `PageEntry[]` (XML-escaped, deduped) |
 | `generateHeadersFile(platform)` | `_headers` (Cloudflare/Netlify) or `vercel.json` (Vercel) | Platform-specific config carrying the spec §4.5 response headers (`Content-Type` with charset, `Access-Control-Allow-Origin: *`, `Cache-Control`). For Vercel, returns a JSON snippet the CLI merges with any existing `vercel.json`. |
@@ -102,6 +102,7 @@ interface AgenticConfig {
   authorization?: AuthorizationConfig  // agent-auth protocol
   mcp?:           McpConfig            // MCP server endpoint URLs
   skills?:        SkillsConfig         // skill package URLs (agentskills.io)
+  a2a?:           A2AConfig            // A2A AgentCard URLs (a2a-protocol.org)
 }
 ```
 
@@ -153,7 +154,7 @@ Two payment protocols are modelled separately and cleanly:
 
 ```ts
 interface PaymentConfig {
-  protocols?:        Array<'x402' | 'mpp'>
+  protocols?:        PaymentProtocolId[]   // 'x402' | 'mpp' | `x-${string}` (registry plus experimental)
   required?:         boolean       // site-level policy: emits Payments: required + payments.required
   x402?:             X402Config    // crypto micropayments
   mpp?:              MppConfig     // Stripe/Tempo session payments
@@ -189,17 +190,18 @@ interface MppConfig {
 }
 ```
 
-Three further config types cover the newer capability blocks:
+Four further config types cover the newer capability blocks:
 
 ```ts
 interface AuthorizationConfig {
   enabled:           boolean
-  protocols?:        string[]   // defaults to ['agent-auth'] when enabled
+  protocols?:        AuthProtocolId[]   // 'agent-auth' | `x-${string}` (registry plus experimental)
   identityRequired?: boolean    // emits Identity: required / identity: "required"
 }
 
 interface McpEndpoint  { url: string; description?: string }
 interface SkillEntry   { url: string; description?: string }
+interface A2AEntry     { url: string; description?: string }
 
 interface McpConfig {
   // string for URL-only; object adds a description that surfaces in agents.json
@@ -209,9 +211,37 @@ interface McpConfig {
 interface SkillsConfig {
   urls: string | SkillEntry | (string | SkillEntry)[]
 }
+
+interface A2AConfig {
+  // One or more A2A AgentCard URLs (a2a-protocol.org). The well-known path
+  // /.well-known/agent-card.json suffices for a single agent at the canonical
+  // location; this block covers multi-agent sites and non-canonical paths.
+  cards: string | A2AEntry | (string | A2AEntry)[]
+}
 ```
 
-`AuthorizationConfig`, `McpConfig`, and `SkillsConfig` are independent of each other and of `PaymentConfig`. Each block in the generated files is omitted entirely when its config field is absent.
+`AuthorizationConfig`, `McpConfig`, `SkillsConfig`, and `A2AConfig` are independent of each other and of `PaymentConfig`. Each block in the generated files is omitted entirely when its config field is absent.
+
+### The protocol registry (`packages/core/src/protocols.ts`)
+
+A single module is the source of truth for every protocol identifier the package recognises. The generators, validators, payment activity checks, and the CLI Zod schema all read from it.
+
+```ts
+export const PAYMENT_PROTOCOLS = ['x402', 'mpp'] as const
+export const AUTH_PROTOCOLS    = ['agent-auth'] as const
+export const MPP_METHODS       = ['tempo', 'stripe'] as const
+
+export type PaymentProtocolId = (typeof PAYMENT_PROTOCOLS)[number] | `x-${string}`
+export type AuthProtocolId    = (typeof AUTH_PROTOCOLS)[number]    | `x-${string}`
+
+export function isExperimentalIdentifier(v: string): boolean        // v.startsWith('x-') && v.length > 2
+export function isAcceptedPaymentIdentifier(v: string): boolean     // registered OR x- prefixed
+export function isAcceptedAuthIdentifier(v: string): boolean        // registered OR x- prefixed
+```
+
+The `x-` prefix matches the agents.txt spec §3.1 convention for experimental identifiers. Parsers must accept them, validators must not warn on them, and the generator passes them through to `agents.txt` and `agents.json` verbatim. The empty per-protocol object in `agents.json` (`payments['x-mypay']: {}`) is the support signal; the structured shape of the experimental block is the protocol author's responsibility.
+
+Adding a registered protocol is now a one-file edit: append to `PAYMENT_PROTOCOLS` or `AUTH_PROTOCOLS`. The full recipe is in [the README](README.md#adding-a-new-protocol). For payment protocols you also wire an activity check in `payments.ts` and (if the protocol carries structured fields) a per-protocol emitter in `agents-json.ts` alongside the existing x402 and MPP blocks. For a brand-new block kind, the A2A diff is the most recent worked example: a new `A2AConfig` type, an `A2A:` line emitter in `agents-txt.ts`, an `a2a[]` array emitter in `agents-json.ts`, parser awareness in any tool that reads agents.txt, and a wizard prompt in the CLI.
 
 ---
 

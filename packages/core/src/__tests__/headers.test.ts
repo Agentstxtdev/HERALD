@@ -5,6 +5,11 @@ import {
   vercelHeaderEntries,
   type VercelHeaderEntry,
 } from '../headers.js'
+import type { AgenticConfig } from '../types.js'
+
+const baseConfig: AgenticConfig = {
+  site: { name: 'Test', url: 'https://test.example' },
+}
 
 describe('generateHeadersFile', () => {
   it('emits a `_headers` file at the public dir for cloudflare', () => {
@@ -75,5 +80,86 @@ describe('mergeVercelHeaders', () => {
     expect(mergeVercelHeaders(undefined).map((e) => e.source).sort()).toEqual(['/agents.json', '/agents.txt'])
     expect(mergeVercelHeaders(null).map((e) => e.source).sort()).toEqual(['/agents.json', '/agents.txt'])
     expect(mergeVercelHeaders('garbage' as unknown).map((e) => e.source).sort()).toEqual(['/agents.json', '/agents.txt'])
+  })
+})
+
+describe('headers generators with A2A AgentCard config', () => {
+  it('adds an entry for a same-origin AgentCard path (_headers)', () => {
+    const config: AgenticConfig = {
+      ...baseConfig,
+      a2a: { cards: 'https://test.example/.well-known/agent-card.json' },
+    }
+    const f = generateHeadersFile('cloudflare', config)
+    expect(f.content).toContain('/.well-known/agent-card.json')
+    expect(f.content).toMatch(/\/\.well-known\/agent-card\.json\n\s*Content-Type: application\/json\n\s*Access-Control-Allow-Origin: \*/)
+  })
+
+  it('adds matching entries for every same-origin AgentCard in cards[]', () => {
+    const config: AgenticConfig = {
+      ...baseConfig,
+      a2a: {
+        cards: [
+          'https://test.example/.well-known/agent-card.json',
+          { url: 'https://test.example/agents/support/card.json', description: 'Support' },
+        ],
+      },
+    }
+    const entries = vercelHeaderEntries(config)
+    const sources = entries.map((e) => e.source).sort()
+    expect(sources).toEqual([
+      '/.well-known/agent-card.json',
+      '/agents.json',
+      '/agents.txt',
+      '/agents/support/card.json',
+    ])
+  })
+
+  it('skips AgentCards on a different origin from site.url', () => {
+    const config: AgenticConfig = {
+      ...baseConfig,
+      a2a: {
+        cards: [
+          'https://test.example/.well-known/agent-card.json',
+          'https://other.example/.well-known/agent-card.json',
+        ],
+      },
+    }
+    const entries = vercelHeaderEntries(config)
+    const sources = entries.map((e) => e.source)
+    expect(sources).toContain('/.well-known/agent-card.json')
+    expect(sources.filter((s) => s.endsWith('agent-card.json'))).toHaveLength(1)
+  })
+
+  it('deduplicates identical AgentCard paths', () => {
+    const config: AgenticConfig = {
+      ...baseConfig,
+      a2a: {
+        cards: [
+          'https://test.example/.well-known/agent-card.json',
+          { url: 'https://test.example/.well-known/agent-card.json' },
+        ],
+      },
+    }
+    const entries = vercelHeaderEntries(config)
+    expect(entries.filter((e) => e.source === '/.well-known/agent-card.json')).toHaveLength(1)
+  })
+
+  it('still emits the §4.5 base entries when no config is provided', () => {
+    const entries = vercelHeaderEntries()
+    expect(entries.map((e) => e.source).sort()).toEqual(['/agents.json', '/agents.txt'])
+  })
+
+  it('mergeVercelHeaders preserves unrelated entries when extra A2A entries are added', () => {
+    const userEntry: VercelHeaderEntry = {
+      source: '/api/(.*)',
+      headers: [{ key: 'X-Custom', value: 'yes' }],
+    }
+    const config: AgenticConfig = {
+      ...baseConfig,
+      a2a: { cards: 'https://test.example/.well-known/agent-card.json' },
+    }
+    const merged = mergeVercelHeaders([userEntry], config)
+    expect(merged).toContainEqual(userEntry)
+    expect(merged.map((e) => e.source)).toContain('/.well-known/agent-card.json')
   })
 })

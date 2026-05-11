@@ -41,9 +41,11 @@ Each file is its own open standard. AGENTIFY is the build/serve tooling for them
 | [sitemap.xml (sitemaps.org)](https://www.sitemaps.org/) | Content discovery |
 | [llms.txt (llmstxt.org)](https://llmstxt.org/) | LLM-optimized site index |
 | [x402 (x402.org)](https://x402.org/) | HTTP-native micropayments |
-| [agent-auth](https://agentstxt.dev) | Agent identity + authorization |
+| [MPP (mpp.dev, IETF draft)](https://mpp.dev/) | Session-based fiat + stablecoin payments |
+| [agent-auth](https://agentauthprotocol.com/) | Agent identity + authorization |
 | [MCP (modelcontextprotocol.io)](https://modelcontextprotocol.io/) | Tool/resource server discovery |
 | [Agent Skills (agentskills.io)](https://agentskills.io/) | Skill package discovery |
+| [A2A (a2a-protocol.org)](https://a2a-protocol.org/) | Agent-to-agent AgentCard discovery |
 | [Open Wallet Standard](https://openwallet.sh/) | Agent-side wallet (optional, for spending) |
 
 <details>
@@ -60,9 +62,9 @@ AGENTIFY implements the spec but does not own it. The spec lives at [agentstxt.d
 - **Minimal & human-readable** (`agents.txt`): plain text (UTF-8, RFC 3629), easy to serve and understand at a glance
 - **Rich & machine-first** (`agents.json`): structured JSON (UTF-8 per RFC 8259) optimized for autonomous agents
 - **Standard-aligned companions** (`llms.txt` / `llms-full.txt`): UTF-8 Markdown (RFC 3629) per the llmstxt.org spec; `robots.txt` UTF-8 plain text per RFC 9309; `sitemap.xml` UTF-8 with XML declaration per sitemaps.org
-- **Protocol & framework agnostic**: declares that a site *supports* a protocol (x402, MPP, agent-auth, MCP, etc.) without prescribing how that protocol works
-- **Non-duplicative**: implementation details, schemas, pricing, endpoints, and credentials live in the protocol's own mechanisms (402 responses, `/.well-known/agent-configuration`, MCP connection, etc.)
-- **Extensible**: new capability blocks can be added without breaking existing parsers
+- **Protocol & framework agnostic**: declares that a site *supports* a protocol (x402, MPP, agent-auth, MCP, A2A, etc.) without prescribing how that protocol works
+- **Non-duplicative**: implementation details, schemas, pricing, endpoints, and credentials live in the protocol's own mechanisms (402 responses, `/.well-known/agent-configuration`, AgentCard, MCP connection, etc.)
+- **Extensible**: new capability blocks can be added without breaking existing parsers. Experimental identifiers (`x-mypay`, `x-myauth`) are accepted everywhere parsers see registered ones, giving new protocols a runway before formal registration
 
 It is deliberately not a configuration file, not a full API spec, and not tied to any vendor. It is the neutral discovery layer for the entire agentic ecosystem.
 
@@ -416,8 +418,21 @@ export default {
       pricing: { amount: '0.001', token: 'USDC' },
     },
   },
+
+  // Optional: A2A AgentCard discovery (a2a-protocol.org).
+  // The well-known path /.well-known/agent-card.json is enough for a single
+  // agent at the canonical location. Declare A2A entries when you run
+  // multiple agents or serve AgentCards at non-canonical paths.
+  a2a: {
+    cards: [
+      'https://myblog.com/.well-known/agent-card.json',
+      { url: 'https://myblog.com/agents/support/card.json', description: 'Support agent' },
+    ],
+  },
 }
 ```
+
+**Experimental protocols (`x-` prefix).** Both `payments.protocols` and `authorization.protocols` accept identifiers prefixed with `x-` (for example `x-mypay`, `x-myauth`) per [agents.txt spec §3.1](https://agentstxt.dev). The generator emits them verbatim into `agents.txt` and as empty per-protocol objects in `agents.json` (`payments['x-mypay']: {}`). This is the runway for advertising a new protocol before it lands in the spec, without forking agentify.
 
 The **same file** is consumed by:
 
@@ -453,8 +468,12 @@ The agents.txt spec mandates four response headers on `/agents.txt` and `/agents
 |----------|--------------|-------|
 | **Cloudflare** (Workers / Pages) | `wrangler.json`, `wrangler.toml`, `@astrojs/cloudflare`, `@cloudflare/workers-types`, `wrangler` dep | `_headers` in `--out` |
 | **Netlify** | `netlify.toml`, `@netlify/plugin-*` | `_headers` in `--out` (same syntax as Cloudflare) |
-| **Vercel** | `vercel.json`, `.vercel/` | `vercel.json#headers` at the project root, **merged** with any existing entries (the `/agents.txt` and `/agents.json` sources are replaced; everything else is preserved verbatim) |
-| **Unknown** | nothing matched | `_headers` in `--out` as a best-effort default, plus a console warning. Translate to your platform's mechanism — see the per-platform table below. |
+| **Vercel** | `vercel.json`, `.vercel/` | `vercel.json#headers` at the project root, **merged** with any existing entries (the agentify-managed sources are replaced; everything else is preserved verbatim) |
+| **Unknown** | nothing matched | `_headers` in `--out` as a best-effort default, plus a console warning. Translate to your platform's mechanism. See the per-platform table below. |
+
+**A2A AgentCard paths included automatically.** When `a2a.cards` is set in `agentic.config.js`, the generator emits matching header entries for each same-origin AgentCard path alongside the `/agents.txt` and `/agents.json` entries. The headers used are `Content-Type: application/json`, `Access-Control-Allow-Origin: *`, `Cache-Control: public, max-age=3600`. AgentCards on a different origin from `site.url` are skipped because their headers are not the responsibility of this deployment. AgentCards (a2a-protocol.org) are not governed by agents.txt §4.5, but the CORS line is load-bearing for any browser-context A2A client probing the well-known path cross-origin, so it is included by default.
+
+**Static file vs dynamic handler.** Headers config files (`_headers`, `vercel.json#headers`) apply only to *static* files on the hosting platform's asset pipeline. They do not apply to *dynamic* routes served by a handler or worker (Express, Next.js App Router, Hono, Cloudflare Workers route handlers, etc.). If you serve `/agents.txt` or an AgentCard dynamically, the route handler must set the headers in code. `@agentify/web` does this for the routes it owns; if you hand-roll a route, follow the same shape. Agent-auth's `/.well-known/agent-configuration` endpoint is the canonical dynamic case: it is conventionally served by a handler and is therefore not emitted into the headers config.
 
 Override detection with `--platform <cloudflare\|netlify\|vercel\|unknown>` if needed. Skip the file with `--skip-headers`. Emit only the headers config with `--headers`.
 
@@ -885,6 +904,61 @@ npm install @agentify/web express mppx stripe  # + Stripe (full MPP)
 | `@agentify/core` | Pure generators: robots.txt, llms.txt, agents.txt, agents.json. No runtime deps. |
 | `@agentify/web` | Middleware for Express / Next.js / Hono + x402 protocol |
 | `agentify` (CLI) | `npx agentify init/generate/check` |
+
+---
+
+## Adding a new protocol
+
+Two paths exist depending on whether you want to ship the protocol experimentally or land it as a first-class agentify feature.
+
+### Path 1: experimental, in user space (`x-` prefix)
+
+Use this when the protocol is new, you want to advertise it on a live site, and you do not need agentify to know anything about it beyond its identifier. The spec reserves the `x-` prefix for exactly this case.
+
+```js
+// agentic.config.js
+export default {
+  site: { name: 'My Site', url: 'https://mysite.com' },
+  payments: {
+    protocols: ['x402', 'x-mypay'],
+    x402: { treasury: { evmAddress: process.env.EVM_ADDRESS } },
+  },
+}
+```
+
+What you get out of the box: the identifier appears verbatim in `agents.txt` (`Protocols: x402, x-mypay`); it shows up in `agents.json` as `payments['x-mypay']: {}`; validators do not warn on it; the gate middleware ignores it (you run your own protocol handler).
+
+No agentify code changes needed. The runtime contract for the experimental protocol is entirely your responsibility: response shape, settlement, headers, etc.
+
+### Path 2: register the protocol in agentify
+
+Use this when the protocol has settled enough that you want generators, validators, the CLI wizard, and (optionally) middleware to know about it. Adding a new payment or auth protocol is now a small, predictable diff thanks to the central registry.
+
+1. **Registry** ([`packages/core/src/protocols.ts`](packages/core/src/protocols.ts)). Add the identifier to `PAYMENT_PROTOCOLS` or `AUTH_PROTOCOLS`. That single edit propagates to validators, the CLI Zod schema, and the audit tool.
+
+2. **Types** ([`packages/core/src/types.ts`](packages/core/src/types.ts)). If the protocol has its own configuration block, add an interface (look at `X402Config` and `MppConfig` for shape). Hang it under `PaymentConfig` (or `AuthorizationConfig`) by the same name as the identifier.
+
+3. **Activity check** ([`packages/core/src/payments.ts`](packages/core/src/payments.ts), payments only). Add an `isXyzActive(payments)` function that returns true when the necessary credentials are present, and a branch in `resolveActiveProtocols` that consults it. This is the "honest declarations" rule: the block is emitted only when the protocol can actually run.
+
+4. **Generators** ([`packages/core/src/agents-txt.ts`](packages/core/src/agents-txt.ts), [`agents-json.ts`](packages/core/src/agents-json.ts)). The `Protocols:` line in `agents.txt` and the per-protocol object in `agents.json` are driven by `resolveActiveProtocols`, so payment protocols pick those up automatically once steps 1 and 3 are in place. If the protocol carries structured fields in `agents.json` (like `x402.chains` or `mpp.methods`), add a per-protocol emitter inside `generateAgentsJson` next to the existing ones.
+
+5. **Middleware** ([`packages/web/src/payment-gate.ts`](packages/web/src/payment-gate.ts), payments only, optional). Add a credential check before the existing protocol checks in the gate decision order, and a challenge emitter in the unauthenticated 402 path. The gate is the only place protocol routing lives; framework adapters do not need changes.
+
+6. **CLI wizard** ([`packages/cli/src/commands/init.ts`](packages/cli/src/commands/init.ts), optional). Add a prompt step inside the payments block if the new protocol needs credentials at init time.
+
+7. **Tests**. Add cases in [`packages/core/src/__tests__/agents-txt.test.ts`](packages/core/src/__tests__/agents-txt.test.ts) and [`agents-json.test.ts`](packages/core/src/__tests__/agents-json.test.ts) that exercise emission with and without credentials.
+
+For a brand-new block kind (not payment, not auth, not MCP, not Skills, not A2A), the same recipe extends to a new directive name. Add a parser case in the spec, plumb a new `XyzConfig` into `AgenticConfig`, and have the generators emit a fresh block separated by a blank line. The A2A block (added in v1.0) is the most recent worked example: look at the diff that introduced `A2AConfig`, the `A2A:` line emitter in `agents-txt.ts`, and the `a2a[]` array emitter in `agents-json.ts`.
+
+### Adding A2A AgentCards to your site
+
+A2A entries are optional. The well-known path `/.well-known/agent-card.json` is enough when you serve a single agent at the canonical location; AgentCard probing works without a `A2A:` directive. Declare the block when:
+
+- You run more than one A2A agent on the same origin.
+- You serve your AgentCard at a non-canonical path.
+- You want to surface a description on each card in `agents.json` (the description field is `agents.json`-only; `agents.txt` carries only the URL).
+
+The CLI wizard prompts for this after the payments block; the field is `a2a: { cards: <string | entry | array> }`.
 
 ---
 

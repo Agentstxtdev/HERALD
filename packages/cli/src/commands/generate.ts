@@ -126,9 +126,9 @@ function resolvePlatform(options: GenerateOptions): HostingPlatform {
   return detectProject().hostingPlatform
 }
 
-function writeHeadersFile(options: GenerateOptions, outDir: string): void {
+function writeHeadersFile(options: GenerateOptions, outDir: string, config: AgenticConfig): void {
   const platform = resolvePlatform(options)
-  const file = generateHeadersFile(platform)
+  const file = generateHeadersFile(platform, config)
 
   const targetPath = file.pathRelativeTo === 'out'
     ? join(outDir, file.filename)
@@ -144,9 +144,9 @@ function writeHeadersFile(options: GenerateOptions, outDir: string): void {
       console.warn(`   ⚠  Existing ${file.filename} is not valid JSON; not merging. (${String(err)})`)
       return
     }
-    const merged = { ...existing, headers: mergeVercelHeaders(existing.headers) }
+    const merged = { ...existing, headers: mergeVercelHeaders(existing.headers, config) }
     writeFileSync(targetPath, JSON.stringify(merged, null, 2) + '\n', 'utf-8')
-    console.log(`   ✔  ${file.filename} → ${targetPath}  (merged §4.5 entries; existing entries preserved)`)
+    console.log(`   ✔  ${file.filename} → ${targetPath}  (merged agentify-managed entries; existing entries preserved)`)
   } else {
     writeFileSync(targetPath, file.content, 'utf-8')
     console.log(`   ✔  ${file.filename} → ${targetPath}  (platform: ${platform})`)
@@ -303,7 +303,7 @@ export async function generateCommand(options: GenerateOptions): Promise<void> {
   // /agents.txt + /agents.json entries into vercel.json at project root.
   if (outputs.has('headers')) {
     try {
-      writeHeadersFile(options, outDir)
+      writeHeadersFile(options, outDir, config)
     } catch (err) {
       console.warn(`   ⚠  Headers config emission failed: ${String(err)}`)
     }

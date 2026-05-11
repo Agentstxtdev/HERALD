@@ -14,7 +14,7 @@ import { resolveActiveProtocols } from './payments.js'
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function generateAgentsTxt(config: AgenticConfig): string {
-  const { site, payments, authorization, mcp, skills } = config
+  const { site, payments, authorization, mcp, skills, a2a } = config
   const baseUrl = site.url.replace(/\/$/, '')
   const lines: string[] = [
     '# agents.txt',
@@ -64,6 +64,19 @@ export function generateAgentsTxt(config: AgenticConfig): string {
     lines.push('')
     for (const e of urls) {
       lines.push(`Skills: ${typeof e === 'string' ? e : e.url}`)
+    }
+  }
+
+  // ── A2A block ──────────────────────────────────────────────────────────────
+  // One line per AgentCard URL. The directive complements the canonical
+  // well-known path `/.well-known/agent-card.json` for multi-agent sites and
+  // non-canonical AgentCard locations (spec §9). Agent metadata stays in the
+  // AgentCard itself.
+  if (a2a) {
+    const cards = Array.isArray(a2a.cards) ? a2a.cards : [a2a.cards]
+    lines.push('')
+    for (const e of cards) {
+      lines.push(`A2A: ${typeof e === 'string' ? e : e.url}`)
     }
   }
 

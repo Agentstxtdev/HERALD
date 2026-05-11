@@ -401,3 +401,55 @@ describe('generateAgentsTxt — Skills block', () => {
     expect(output).toContain('Skills: https://example.com/skills/premium/SKILL.md')
   })
 })
+
+describe('generateAgentsTxt — A2A block', () => {
+  it('omits A2A block when a2a not configured', () => {
+    const output = generateAgentsTxt(baseConfig)
+    expect(output).not.toContain('A2A:')
+  })
+
+  it('emits a single A2A: line for a string URL', () => {
+    const config: AgenticConfig = {
+      site: baseConfig.site,
+      a2a: { cards: 'https://example.com/.well-known/agent-card.json' },
+    }
+    const output = generateAgentsTxt(config)
+    expect(output).toContain('A2A: https://example.com/.well-known/agent-card.json')
+  })
+
+  it('emits multiple A2A: lines in order for multiple URLs', () => {
+    const config: AgenticConfig = {
+      site: baseConfig.site,
+      a2a: {
+        cards: [
+          'https://example.com/agents/sales/card.json',
+          'https://example.com/agents/support/card.json',
+        ],
+      },
+    }
+    const output = generateAgentsTxt(config)
+    expect(output).toContain('A2A: https://example.com/agents/sales/card.json')
+    expect(output).toContain('A2A: https://example.com/agents/support/card.json')
+  })
+
+  it('accepts entry objects and ignores their description', () => {
+    const config: AgenticConfig = {
+      site: baseConfig.site,
+      a2a: { cards: { url: 'https://example.com/.well-known/agent-card.json', description: 'Support agent' } },
+    }
+    const output = generateAgentsTxt(config)
+    expect(output).toContain('A2A: https://example.com/.well-known/agent-card.json')
+    expect(output).not.toContain('Support agent')
+  })
+})
+
+describe('generateAgentsTxt — experimental x- protocols', () => {
+  it('emits an x- prefixed payment protocol verbatim', () => {
+    const config: AgenticConfig = {
+      site: baseConfig.site,
+      payments: { protocols: ['x-mypay'] },
+    }
+    const output = generateAgentsTxt(config)
+    expect(output).toContain('Protocols: x-mypay')
+  })
+})

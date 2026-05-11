@@ -1,4 +1,16 @@
 import { z } from 'zod'
+import { PAYMENT_PROTOCOLS, AUTH_PROTOCOLS } from '@agentify/core'
+
+// Registered identifiers plus an `x-` prefix escape hatch per spec §3.1.
+// Adding a registered protocol is one edit in @agentify/core/protocols.ts;
+// experimental protocols flow through automatically via the `x-` regex.
+const ProtocolIdentifierSchema = (registered: readonly string[]) =>
+  z.string().refine(
+    (v) => registered.includes(v) || /^x-.+/.test(v),
+    {
+      error: `expected one of: ${registered.join(', ')} (or an x- prefixed experimental identifier)`,
+    },
+  )
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Zod v4 schema for AgenticConfig — validates user-supplied config at load time.
@@ -127,7 +139,7 @@ const MppConfigSchema = z.object({
 })
 
 const PaymentConfigSchema = z.object({
-  protocols: z.array(z.enum(['x402', 'mpp'])).optional(),
+  protocols: z.array(ProtocolIdentifierSchema(PAYMENT_PROTOCOLS)).optional(),
   required: z.boolean().optional(),
   x402: X402ConfigSchema.optional(),
   mpp: MppConfigSchema.optional(),
@@ -136,7 +148,7 @@ const PaymentConfigSchema = z.object({
 
 const AuthorizationConfigSchema = z.object({
   enabled: z.boolean(),
-  protocols: z.array(z.string()).optional(),
+  protocols: z.array(ProtocolIdentifierSchema(AUTH_PROTOCOLS)).optional(),
   identityRequired: z.boolean().optional(),
 })
 
@@ -171,6 +183,21 @@ const SkillsConfigSchema = z.object({
   ]),
 })
 
+const A2AEntrySchema = z.union([
+  z.url('A2A AgentCard URL must be a valid URL'),
+  z.object({
+    url: z.url('A2A AgentCard URL must be a valid URL'),
+    description: z.string().optional(),
+  }),
+])
+
+const A2AConfigSchema = z.object({
+  cards: z.union([
+    A2AEntrySchema,
+    z.array(A2AEntrySchema).min(1, 'cards must contain at least one entry'),
+  ]),
+})
+
 export const AgenticConfigSchema = z.object({
   site: z.object({
     name: z.string().min(1, 'site.name must not be empty'),
@@ -183,6 +210,7 @@ export const AgenticConfigSchema = z.object({
   authorization: AuthorizationConfigSchema.optional(),
   mcp: McpConfigSchema.optional(),
   skills: SkillsConfigSchema.optional(),
+  a2a: A2AConfigSchema.optional(),
 })
 
 export type AgenticConfigInput = z.input<typeof AgenticConfigSchema>

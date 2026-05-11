@@ -167,6 +167,26 @@ export async function initCommand(options: InitOptions): Promise<void> {
     }
   }
 
+  // ── A2A AgentCard discovery ────────────────────────────────────────────────
+  // Optional. Sites running A2A agents declare their AgentCard URLs here so
+  // multi-agent or non-canonically-pathed setups stay discoverable.
+  let a2a: AgenticConfigChoices['a2a']
+  const enableA2A = await prompt('Declare A2A agents (a2a-protocol.org)? [y/N]: ', 'n')
+  if (enableA2A.toLowerCase().startsWith('y')) {
+    const a2aDefault = `${siteUrl.replace(/\/$/, '')}/.well-known/agent-card.json`
+    const cardLine = await prompt(
+      `AgentCard URL(s), comma-separated (default: ${a2aDefault}): `,
+      a2aDefault,
+    )
+    const cards = cardLine
+      .split(',')
+      .map((u) => u.trim())
+      .filter(Boolean)
+    if (cards.length > 0) {
+      a2a = { cards }
+    }
+  }
+
   rl?.close()
 
   // ── Write config ───────────────────────────────────────────────────────────
@@ -178,6 +198,7 @@ export async function initCommand(options: InitOptions): Promise<void> {
     framework: detected.framework,
     content: contentDriver,
     ...(payments !== undefined ? { payments } : {}),
+    ...(a2a !== undefined ? { a2a } : {}),
   }
 
   if (existsSync(configPath)) {

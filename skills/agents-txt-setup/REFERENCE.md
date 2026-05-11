@@ -41,7 +41,9 @@ export default {
   },
 
   payments: {
-    protocols: ['mpp', 'x402'],  // MPP verified first — agents see only one 402
+    // Registered identifiers ('x402', 'mpp') plus any 'x-' prefixed
+    // experimental identifier (e.g. 'x-mypay') per agents.txt spec §3.1.
+    protocols: ['mpp', 'x402'],  // MPP verified first; agents see only one 402
 
     x402: {
       treasury: {
@@ -58,15 +60,41 @@ export default {
 
     mpp: {
       // Stripe fiat (requires stripeSecretKey + stripeNetworkId)
-      stripeSecretKey: process.env.STRIPE_SECRET_KEY,   // sk_... — enables fiat cards
+      stripeSecretKey: process.env.STRIPE_SECRET_KEY,   // sk_..., enables fiat cards
       stripeNetworkId: process.env.STRIPE_NETWORK_ID,   // Stripe Business Network profile ID
       // Tempo stablecoin (requires tempoRecipient)
       tempoEnabled: true,                               // USDC on Tempo chain
       tempoRecipient: '0xYourEVMWallet',                // wallet address for Tempo payments
-      pricing: { amount: '0.001', token: 'USD' },       // major-unit decimal; converted per method (Stripe → cents, Tempo → atomic USDC)
+      pricing: { amount: '0.001', token: 'USD' },       // major-unit decimal; converted per method (Stripe to cents, Tempo to atomic USDC)
     },
 
     exemptUserAgents: [],  // user-agent strings that bypass payment entirely
+  },
+
+  authorization: {
+    enabled: true,
+    protocols: ['agent-auth'],  // 'agent-auth' or any 'x-' prefixed experimental identifier
+    identityRequired: false,    // true emits Identity: required + identity: 'required'
+  },
+
+  mcp: {
+    endpoints: 'https://mysite.com/mcp',
+    // or [{ url: 'https://mysite.com/mcp', description: 'Public API surface' }]
+  },
+
+  skills: {
+    urls: 'https://mysite.com/skills/main/SKILL.md',
+    // or array of strings or { url, description? } objects
+  },
+
+  // A2A AgentCard discovery (a2a-protocol.org). Optional. Useful for
+  // multi-agent sites or AgentCards served at non-canonical paths.
+  // Single-agent sites at /.well-known/agent-card.json do not need this block.
+  a2a: {
+    cards: [
+      'https://mysite.com/.well-known/agent-card.json',
+      { url: 'https://mysite.com/agents/support/card.json', description: 'Support agent' },
+    ],
   },
 }
 ```
@@ -199,10 +227,29 @@ npx agentify check <url>
 |---|---|---|---|
 | `cloudflare` | `_headers` | `--out` (typically `public/`) | overwrite |
 | `netlify` | `_headers` (same syntax) | `--out` | overwrite |
-| `vercel` | `vercel.json` | project root | merge `headers[]` (existing entries with a different `source` preserved verbatim; `/agents.txt` and `/agents.json` replaced) |
+| `vercel` | `vercel.json` | project root | merge `headers[]` (existing entries with a different `source` preserved verbatim; agentify-managed sources replaced) |
 | `unknown` | `_headers` (best-effort) | `--out` | overwrite + console warning |
 
 Detection (`detectProject().hostingPlatform`) goes file-presence first (`wrangler.json`/`wrangler.toml`/`netlify.toml`/`vercel.json`/`.vercel/`), dep-fallback second (`@astrojs/cloudflare`, `@cloudflare/workers-types`, `wrangler`, `@netlify/plugin-*`, `netlify-cli`).
+
+**Always emitted (spec §4.5):** `/agents.txt` and `/agents.json`.
+
+**Conditionally emitted from config:**
+
+- `a2a.cards`: every same-origin AgentCard URL gets a matching entry with `Content-Type: application/json`, `Access-Control-Allow-Origin: *`, `Cache-Control: public, max-age=3600`. AgentCards on a different origin from `site.url` are skipped (their headers are not this deployment's responsibility). Duplicate paths are de-duped. The agents.txt spec does not mandate these headers, but the CORS line is load-bearing for any browser-context A2A client probing cross-origin.
+
+`authorization.protocols: ['agent-auth']` is *not* auto-emitted. The agent-auth `/.well-known/agent-configuration` endpoint is conventionally served by a dynamic handler (a worker or route function) that sets response headers in code. `_headers` and `vercel.json#headers` apply only to static files; emitting an entry there would be silently ignored at request time. If the implementer serves the agent-configuration document as a static file (unusual), add the entry manually with the same shape as `/agents.json`.
+
+### Static file vs dynamic handler
+
+The headers config file applies only to static files on the hosting platform's asset pipeline. It does not apply to dynamic routes served by a handler or worker.
+
+| Scenario | Where the headers come from |
+|---|---|
+| File exists on disk in `--out` after build (e.g. `public/agents.json`, `public/.well-known/agent-card.json`) | `_headers` / `vercel.json#headers` |
+| URL responds without a file on disk (route handler, middleware, worker) | The handler must set headers in code before responding |
+
+Quick test: run the build, then `ls` the output. If you can see the file, headers config applies. If the URL works but the file is absent, you are serving dynamically and the handler is responsible. `@agentify/web` handles this for the routes it owns. If a developer hand-rolls a route handler for `/agents.txt`, they must set `Content-Type: text/plain; charset=utf-8`, `Access-Control-Allow-Origin: *`, and `Cache-Control: public, max-age=3600` themselves.
 
 ### §4.5 Headers — manual config for unsupported platforms
 
@@ -212,6 +259,8 @@ For nginx, Apache, Caddy, AWS S3+CloudFront, etc., the headers must be set in th
 /agents.txt  : Content-Type: text/plain; charset=utf-8 + ACAO: * + Cache-Control: public, max-age=3600
 /agents.json : Content-Type: application/json + ACAO: * + Cache-Control: public, max-age=3600
 ```
+
+Mirror the `/agents.json` shape for any additional same-origin static AgentCards declared in `a2a.cards`.
 
 ---
 
@@ -303,6 +352,64 @@ sitemapDriver(opts)    → ContentDriver
 firecrawlDriver(opts)  → ContentDriver
 staticDriver(pages)    → ContentDriver   // ← use this in tests; no network calls
 manualDriver(sections) → ContentDriver
+
+// Protocol registry (single source of truth for identifiers)
+PAYMENT_PROTOCOLS                       // readonly ['x402', 'mpp']
+AUTH_PROTOCOLS                          // readonly ['agent-auth']
+MPP_METHODS                             // readonly ['tempo', 'stripe']
+isExperimentalIdentifier(value)         // value.startsWith('x-') && value.length > 2
+isKnownPaymentProtocol(value)           // boolean
+isKnownAuthProtocol(value)              // boolean
+isAcceptedPaymentIdentifier(value)      // registered OR x- prefixed
+isAcceptedAuthIdentifier(value)         // registered OR x- prefixed
+
+// Types
+type PaymentProtocolId = 'x402' | 'mpp' | `x-${string}`
+type AuthProtocolId    = 'agent-auth'  | `x-${string}`
 ```
 
 Zero runtime dependencies, safe on Node.js, edge runtimes, Deno, Bun.
+
+---
+
+## Adding a New Protocol
+
+Two paths based on stability.
+
+### Path 1: experimental, no agentify changes (`x-` prefix)
+
+For protocols not yet in the registry, advertise them with an `x-` prefix in the user's config. Per agents.txt spec §3.1, parsers must accept these and validators must not warn.
+
+```js
+payments: {
+  protocols: ['x402', 'x-mypay'],   // 'x-mypay' is your experimental identifier
+  x402: { treasury: { evmAddress: process.env.EVM_ADDRESS } },
+}
+```
+
+Emission:
+
+- `agents.txt`: `Protocols: x402, x-mypay`
+- `agents.json`: `"payments": { "x402": { ... }, "x-mypay": {} }`
+
+The empty object is the support signal. The structured shape of an experimental protocol's per-protocol block in `agents.json` is the protocol author's responsibility; agentify does not enforce one. The gate middleware ignores `x-` identifiers; the user runs their own protocol handler.
+
+No agentify edits required.
+
+### Path 2: register the protocol in agentify
+
+When the protocol is stable and you want generators, validators, the wizard, and (for payments) the gate to know about it:
+
+1. **`packages/core/src/protocols.ts`**: append the identifier to `PAYMENT_PROTOCOLS` or `AUTH_PROTOCOLS`. One edit; validators and the CLI Zod schema follow.
+2. **`packages/core/src/types.ts`**: add an interface for the protocol's config block if it has one (mirror `X402Config` / `MppConfig`). Hang it under `PaymentConfig` (or `AuthorizationConfig`) with the same key as the identifier.
+3. **`packages/core/src/payments.ts`** (payments only): add `isXyzActive(payments)` and a branch in `resolveActiveProtocols`. The honest-declarations rule says the block is emitted only when the protocol can actually run.
+4. **`packages/core/src/agents-txt.ts`** + **`agents-json.ts`**: the `Protocols:` line and the per-protocol object follow from `resolveActiveProtocols`, so payment protocols pick those up automatically. If the protocol carries structured fields in `agents.json`, add a per-protocol emitter inside `generateAgentsJson` next to the x402 and MPP blocks.
+5. **`packages/web/src/payment-gate.ts`** (payments only, optional): add a credential check before the existing protocol checks, and a challenge emitter in the unauthenticated 402 path. The gate is the only place protocol routing lives; adapters never re-implement it.
+6. **`packages/cli/src/commands/init.ts`** (optional): add a prompt step inside the payments block if the protocol needs credentials at init.
+7. **Tests**: cases under `packages/core/src/__tests__/{agents-txt,agents-json}.test.ts`.
+
+For a brand-new block kind (not payment, not auth, not MCP, not Skills, not A2A), the A2A diff is the most recent worked example: a new `XyzConfig` interface in `types.ts`, an `Xyz:` line emitter in `agents-txt.ts`, an `xyz[]` array emitter in `agents-json.ts`, validator rules in `validate.ts`, a Zod schema entry in `config-schema.ts`, and a wizard prompt.
+
+### Decision
+
+When a user mentions a protocol not currently in the registry, default to Path 1. Suggest Path 2 only when the protocol has clearly settled and the user wants agentify-level support.
