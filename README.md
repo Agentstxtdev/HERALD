@@ -453,8 +453,16 @@ Both `init` and `generate` run a Zod schema (CLI-only, doesn't bloat `@agentify/
 ```
 ❌ Failed to load config: Invalid agentic.config.js:
   • site.url: must be a valid URL e.g. https://mysite.com
-  • payments.x402.treasury.evmAddress: must be a 40-char hex EVM address (0x...)
+  • payments.x402: treasury must include at least one of evmAddress or solanaAddress (after lenient validation)
 ```
+
+**Per-field lenient validation for optional wallet env vars.** The format checks for `evmAddress` (40-char `0x` hex), `solanaAddress` (32-char base58 minimum), and `stripeSecretKey` (`sk_` prefix) are still strict, but a malformed *optional* field no longer aborts the whole generate. Instead, the value is treated as `undefined` and the CLI prints a one-line warning:
+
+```
+agentify: ignoring malformed evmAddress (evmAddress must be a 40-char hex EVM address (0x...)); set EVM_ADDRESS to a valid 0x[40 hex] value or unset to skip EVM.
+```
+
+This means a typo in an unused wallet (`EVM_ADDRESS=garbage` in your `.env` when you only meant to wire up Solana) does not break the Solana side. The `TreasuryConfigSchema.refine` rule still fires after the lenient pass: if every wallet is dropped, x402 fails with `treasury must include at least one of evmAddress or solanaAddress (after lenient validation)`, because x402 with no recipient is meaningless.
 
 The `generate` step then runs the spec validators (RFC 9309 for robots.txt, llmstxt.org for llms.txt, agents.txt v1 for agents.txt/json, sitemaps.org 0.9 for sitemap.xml) on the *output* files and prints any compliance warnings, so a typo in your config can never silently produce a non-compliant file.
 
@@ -711,11 +719,17 @@ Migration v1→v2 reference: https://docs.x402.org/guides/migration-v1-to-v2
 </details>
 
 <details>
-<summary><b>What AGENTIFY actually does for x402 v2</b></summary>
+<summary><b>What AGENTIFY actually does for payment protocols</b></summary>
 
 <br>
 
-AGENTIFY implements the resource-server side of x402 v2 directly, not via the official `@x402/express|hono|next` SDKs. Cryptographic verification and on-chain settlement are delegated to the facilitator. The whole flow is roughly 250 lines in [`packages/web/src/x402.ts`](packages/web/src/x402.ts):
+The agents.txt standard treats payments as one of the capability blocks a site declares to agents (spec §5). AGENTIFY is the resource-server implementation that pairs with that declaration: a single config object drives both the announcement layer (the `payments` block in `agents.txt` and `agents.json`) and the wire layer (the actual 402 handler that gates protected routes). Both registered payment protocols are supported out of the box, behind one `gateRequest()` entry point that emits a combined 402 carrying every active protocol's challenge so an agent picks whichever it can satisfy.
+
+The two currently-registered protocols are implemented in [`packages/web/src/x402.ts`](packages/web/src/x402.ts) and [`packages/web/src/mpp.ts`](packages/web/src/mpp.ts); the shared gate that sequences them is in [`packages/web/src/payment-gate.ts`](packages/web/src/payment-gate.ts). Adding a third protocol is mostly a registry edit plus a new sibling file (see the "Adding a new protocol" section below).
+
+### x402 v2 (per-request crypto, on-chain settlement)
+
+Implemented directly, not via the official `@x402/express|hono|next` SDKs. Cryptographic verification and on-chain settlement are delegated to the facilitator. The whole flow is roughly 250 lines in [`packages/web/src/x402.ts`](packages/web/src/x402.ts):
 
 | Step | What AGENTIFY does | Where it lives |
 |---|---|---|
@@ -739,6 +753,27 @@ AGENTIFY implements the resource-server side of x402 v2 directly, not via the of
 For non-USDC tokens or other CAIP-2 networks, set `x402.assets[network] = '<contract>'`.
 
 **Security boundary.** AGENTIFY does not verify cryptographic signatures, hold private keys, replay-protect state, or submit on-chain transactions. The facilitator does. The trust assumption is "the facilitator at `facilitatorUrl` honestly verifies and settles", the same assumption every x402 server makes, including ones using the official SDK. Run your own facilitator if that trust isn't acceptable for your deployment.
+
+### MPP (session-based, via the `mppx` SDK)
+
+Implemented as a thin wrapper around `mppx@^0.6.x`, the IETF `draft-ryan-httpauth-payment` reference SDK co-authored by Stripe and Tempo. Tempo USDC and Stripe SPT are the two registered methods today; both can run simultaneously and appear in the same `WWW-Authenticate: Payment` challenge per RFC 7235 multi-scheme form. The full flow is in [`packages/web/src/mpp.ts`](packages/web/src/mpp.ts):
+
+| Step | What AGENTIFY does | Where it lives |
+|---|---|---|
+| 1. Lazy-initialise mppx | On first request, reads `MppConfig` and registers the active methods: `tempo.charge({ currency, recipient, testnet })` when `mpp.tempoRecipient` is set, `stripe.charge({ client, networkId, paymentMethodTypes })` when both Stripe credentials are present. Wraps the constructor in try/catch so a misconfigured init returns a clean 503 with `endpoint_inactive` rather than crashing. Caches the resulting instance per worker isolate. | `createMppxRuntime()` |
+| 2. Build the challenge | Calls `Mppx.compose(...charges)(request)`, where each entry in `charges` is the per-request invocation (`mppx.tempo.charge({ amount, description, recipient })` and / or `mppx.stripe.charge({ amount, description, currency, decimals })`). Compose returns a unified `result` object whose `challenge.headers` carries the multi-method `WWW-Authenticate: Payment ..., Payment ...` value. | `runtime.charge()` |
+| 3. Decode the agent's credential | Reads `Authorization: Payment <base64-credential>` from the retry request. The credential format is method-specific (Tempo carries a TIP-20 transfer proof; Stripe carries an SPT). `mppx` parses both transparently. | `Mppx.compose(...)(request)` |
+| 4. Match against the challenge | mppx routes the credential to the matching method's verify function based on the `method` field inside the credential. Mismatches return 402 with a fresh challenge rather than 400; the agent can re-attempt with the right method. | inside `mppx` |
+| 5. Settle via the method's rail | Tempo verifies the on-chain TIP-20 transfer proof against the Tempo chain. Stripe creates a PaymentIntent through the Stripe API using the customer-provided SPT, then confirms it. Neither path requires the resource server to hold private keys; mppx talks directly to the upstream rail. | `tempo.charge`, `stripe.charge` |
+| 6. Return the verified response | On success, mppx wraps the outgoing response via `result.withReceipt(response)` which attaches `Payment-Receipt: <base64 signed receipt>`. The receipt is HMAC-signed with `mpp.secretKey`; the agent persists it for audit and may reuse the same `Authorization: Payment` credential within the session window without renegotiating. | `result.withReceipt()` |
+
+**Activation rules.** Tempo activates when `mpp.tempoRecipient` is set (any 40-char `0x` EVM address). Stripe activates when both `mpp.stripeSecretKey` (`sk_test_...` or `sk_live_...`) and `mpp.stripeNetworkId` (Stripe Business Network profile ID) are set. Either path independently. `mpp.secretKey` is required by mppx to sign receipts and is therefore required for any MPP method to activate; a missing secret returns 503 with an actionable reason instead of crashing.
+
+**Security boundary.** AGENTIFY does not verify on-chain transfer proofs, hold Stripe API credentials, or sign receipts. mppx does the first two; the receipt HMAC is signed with the `mpp.secretKey` value AGENTIFY passes through to mppx at construction. Rotate `mpp.secretKey` like any other application secret; rotating it invalidates outstanding receipts (forces agents to renegotiate).
+
+### Combined 402 emission
+
+When both protocols are active, `gateRequest()` emits one 402 response whose body carries `accepts[]` (x402) and whose `WWW-Authenticate` header carries the multi-scheme MPP challenge. An agent reads whichever surface its SDK understands and ignores the other. The combined emit lets a site reach both wallet-native and customer-credential agent populations without ever having to choose one over the other or run two routes.
 
 </details>
 
@@ -828,6 +863,21 @@ Activate by setting the relevant credentials. Both can run simultaneously and wi
 | **Stripe** (fiat + Solana via SPT) | `mpp.stripeSecretKey` + `mpp.stripeNetworkId` (Stripe Business Network profile ID) | `usd` by default; override `mpp.stripeCurrency` to any ISO 4217 currency Stripe supports. Payment method types default to `['card', 'link']`; override via `mpp.stripePaymentMethodTypes`. Stripe SPT covers card networks **and** Solana USDC. |
 
 If `mppx` isn't installed (it's an optional peer dep), MPP is silently skipped and x402 still gates the route. If `stripe` isn't installed, only the Tempo leg of MPP is registered.
+
+### Trust model at a glance: x402 vs MPP
+
+The two protocols can both move USDC (and Stripe SPT can route Solana USDC under the hood), but they differ in who holds keys, who signs the transfer, and where settlement actually happens. Picking which protocols to enable is a trust-model decision, not just a payment-rail decision:
+
+| Protocol | Method | Who holds keys | Who signs the transfer | Where settlement happens |
+|---|---|---|---|---|
+| **x402 v2** | `solana` (or any EVM chain in `accepts[]`) | Agent holds its own private key | Agent signs the full transfer (SPL on Solana, EIP-3009 authorization on EVM) | Public facilitator submits the agent-signed payload (Solana RPC for SPL, EVM for `transferWithAuthorization`); on-chain |
+| **MPP** | `tempo` | Agent holds its own Tempo wallet key | Agent signs the TIP-20 transfer | On Tempo chain via `mppx` |
+| **MPP** | `stripe` | Stripe holds keys on both sides (custody) | Stripe internal | Stripe Payments Network; agent never signs an on-chain tx, even when SPT routes to Solana USDC |
+
+Two practical consequences for the gate decision in [`payment-gate.ts`](packages/web/src/payment-gate.ts):
+
+1. **Stripe SPT can settle in Solana USDC without involving any wallet on either side.** The agent presents a Stripe customer credential (no chain identity at all), Stripe processes the payment using its internal Solana USDC reserves, and the merchant receives a Stripe deposit. Same asset as x402-on-Solana, completely different trust model.
+2. **A site advertising both rails reaches strictly more agents than one advertising either alone.** Wallet-native agents pay x402 (they have keys, no Stripe customer). Customer-credential agents pay MPP/Stripe (they have a Stripe account, no chain identity). The two populations barely overlap. Emitting one combined 402 with `accepts[]` for x402 and `WWW-Authenticate: Payment` for MPP (which is what `gateRequest()` does by default) lets each agent class pick whichever it can satisfy without configuration.
 
 </details>
 

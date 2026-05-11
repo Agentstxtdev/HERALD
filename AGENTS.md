@@ -418,12 +418,18 @@ The `-y` flag skips all prompts and uses detected defaults.
 
 ### `generate` command
 
-Loads `agentic.config.js` via dynamic `import()`, then immediately validates it through `AgenticConfigSchema` (Zod v4, `config-schema.ts`). Validation errors are reported with field-level paths before any file is written:
+Loads `agentic.config.js` via dynamic `import()`, then immediately validates it through `AgenticConfigSchema` (Zod v4, `config-schema.ts`). Structural errors (missing site, wrong type, refine violations) are reported with field-level paths before any file is written:
 
 ```
 ❌ Failed to load config: Invalid agentic.config.js:
   • site.url: must be a valid URL e.g. https://mysite.com
-  • payments.x402.treasury.evmAddress: must be a 40-char hex EVM address (0x...)
+  • payments.x402: treasury must include at least one of evmAddress or solanaAddress (after lenient validation)
+```
+
+**Per-field lenient validation for wallet env vars.** The format checks for `evmAddress` (40-char `0x` hex), `solanaAddress` (32-char base58 minimum), and `stripeSecretKey` (`sk_` prefix) are still strict, but each uses `.catch()` so a malformed *optional* field warns and is treated as `undefined` rather than aborting the whole parse. A typo in `EVM_ADDRESS` no longer blocks the Solana side of a Solana-only deployment. The `TreasuryConfigSchema.refine` rule runs after the lenient pass; if every wallet is dropped, x402 still fails because a treasury with no recipient is meaningless. Warning shape:
+
+```
+agentify: ignoring malformed evmAddress (...); set EVM_ADDRESS to a valid 0x[40 hex] value or unset to skip EVM.
 ```
 
 On success, calls the generators from `@agentify/core`, writes files to `--out` (default `./public`), then runs the spec compliance validators (`validateRobotsTxt`, `validateLlmsTxt`, `validateAgentsTxt`, `validateAgentsJson` from core) and prints any warnings inline.

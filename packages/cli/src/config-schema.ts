@@ -91,22 +91,47 @@ const PricingConfigSchema = z.object({
   decimals: z.number().int().nonnegative().optional(),
 })
 
+// Lenient wallet validation. A malformed optional wallet logs a warning and
+// is treated as unset rather than aborting the whole generate. This keeps a
+// Solana-only deployment working when an unrelated EVM_ADDRESS happens to be
+// malformed in .env, and mirrors the gating in the generator (a wallet is
+// emitted only when its address parses cleanly). If every wallet ends up
+// undefined the `.refine` below still fails the whole treasury, since x402
+// with no recipient is not a valid configuration.
+const evmAddressSchema = z
+  .string()
+  .regex(/^0x[0-9a-fA-F]{40}$/, 'evmAddress must be a 40-char hex EVM address (0x...)')
+  .optional()
+  .catch(({ error, input }) => {
+    if (input !== undefined && input !== '') {
+      const msg = error.issues[0]?.message ?? 'invalid format'
+      console.warn(`agentify: ignoring malformed evmAddress (${msg}); set EVM_ADDRESS to a valid 0x[40 hex] value or unset to skip EVM.`)
+    }
+    return undefined
+  })
+
+const solanaAddressSchema = z
+  .string()
+  .min(32, 'solanaAddress must be a base58 Solana public key')
+  .optional()
+  .catch(({ error, input }) => {
+    if (input !== undefined && input !== '') {
+      const msg = error.issues[0]?.message ?? 'invalid format'
+      console.warn(`agentify: ignoring malformed solanaAddress (${msg}); set SOLANA_ADDRESS to a valid base58 public key or unset to skip Solana.`)
+    }
+    return undefined
+  })
+
 const TreasuryConfigSchema = z
   .object({
-    evmAddress: z
-      .string()
-      .regex(/^0x[0-9a-fA-F]{40}$/, 'evmAddress must be a 40-char hex EVM address (0x...)')
-      .optional(),
+    evmAddress: evmAddressSchema,
     evmChains: z.array(z.string()).optional(),
-    solanaAddress: z
-      .string()
-      .min(32, 'solanaAddress must be a base58 Solana public key')
-      .optional(),
+    solanaAddress: solanaAddressSchema,
     solanaNetwork: z.enum(['mainnet-beta', 'devnet']).optional(),
   })
   .refine(
     (t) => t.evmAddress !== undefined || t.solanaAddress !== undefined,
-    { error: 'treasury must include at least one of evmAddress or solanaAddress' },
+    { error: 'treasury must include at least one of evmAddress or solanaAddress (after lenient validation)' },
   )
 
 const X402ConfigSchema = z.object({
@@ -116,6 +141,7 @@ const X402ConfigSchema = z.object({
   facilitatorUrl: z.string().url().optional(),
   assets: z.record(z.string(), z.string()).optional(),
   maxTimeoutSeconds: z.number().int().positive().optional(),
+  description: z.string().optional(),
 })
 
 const MppConfigSchema = z.object({
@@ -129,7 +155,14 @@ const MppConfigSchema = z.object({
   stripeSecretKey: z
     .string()
     .startsWith('sk_', 'stripeSecretKey must start with sk_')
-    .optional(),
+    .optional()
+    .catch(({ error, input }) => {
+      if (input !== undefined && input !== '') {
+        const msg = error.issues[0]?.message ?? 'invalid format'
+        console.warn(`agentify: ignoring malformed stripeSecretKey (${msg}); set STRIPE_SECRET_KEY to a valid sk_... value or unset to skip Stripe.`)
+      }
+      return undefined
+    }),
   stripeNetworkId: z.string().optional(),
   stripeCurrency: z.string().optional(),
   stripePaymentMethodTypes: z.array(z.string()).optional(),

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { AgenticConfigSchema } from '../config-schema.js'
 
 const validMinimal = {
@@ -156,6 +156,52 @@ describe('AgenticConfigSchema', () => {
     expect(AgenticConfigSchema.safeParse(config).success).toBe(false)
   })
 
+  it('warns and skips malformed evmAddress while keeping a valid solanaAddress', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const config = {
+      ...validMinimal,
+      payments: {
+        x402: {
+          treasury: {
+            evmAddress: '0xnotvalid',
+            solanaAddress: 'So11111111111111111111111111111111111111112',
+          },
+        },
+      },
+    }
+    const result = AgenticConfigSchema.safeParse(config)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.payments?.x402?.treasury.evmAddress).toBeUndefined()
+      expect(result.data.payments?.x402?.treasury.solanaAddress).toBe('So11111111111111111111111111111111111111112')
+    }
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it('warns and skips malformed solanaAddress while keeping a valid evmAddress', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const config = {
+      ...validMinimal,
+      payments: {
+        x402: {
+          treasury: {
+            evmAddress: '0x1234567890123456789012345678901234567890',
+            solanaAddress: 'short',
+          },
+        },
+      },
+    }
+    const result = AgenticConfigSchema.safeParse(config)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.payments?.x402?.treasury.evmAddress).toBe('0x1234567890123456789012345678901234567890')
+      expect(result.data.payments?.x402?.treasury.solanaAddress).toBeUndefined()
+    }
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
   it('accepts treasury with only solanaAddress', () => {
     const config = {
       ...validMinimal,
@@ -238,12 +284,19 @@ describe('AgenticConfigSchema', () => {
 
   // ── MPP config ───────────────────────────────────────────────────────────────
 
-  it('rejects stripeSecretKey without sk_ prefix', () => {
+  it('warns and skips stripeSecretKey without sk_ prefix instead of failing the whole config', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const config = {
       ...validMinimal,
       payments: { mpp: { stripeSecretKey: 'pk_test_abc' } },
     }
-    expect(AgenticConfigSchema.safeParse(config).success).toBe(false)
+    const result = AgenticConfigSchema.safeParse(config)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.payments?.mpp?.stripeSecretKey).toBeUndefined()
+    }
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
   })
 
   it('accepts stripeSecretKey starting with sk_', () => {

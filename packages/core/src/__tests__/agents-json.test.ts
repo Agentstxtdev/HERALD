@@ -260,6 +260,34 @@ describe('generateAgentsJson — payments block', () => {
     const output = generateAgentsJson(config)
     expect(output).not.toContain('0x1234567890123456789012345678901234567890')
   })
+
+  it('does NOT emit eip155:8453 when only solanaAddress is set', () => {
+    const config: AgenticConfig = {
+      site: baseConfig.site,
+      payments: {
+        x402: { treasury: { solanaAddress: 'So11111111111111111111111111111111111111112' } },
+      },
+    }
+    const parsed = JSON.parse(generateAgentsJson(config))
+    expect(parsed.payments.x402.chains).toEqual(['solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'])
+    expect(parsed.payments.x402.chains).not.toContain('eip155:8453')
+  })
+
+  it('does NOT emit configured evmChains when evmAddress is absent', () => {
+    const config: AgenticConfig = {
+      site: baseConfig.site,
+      payments: {
+        x402: {
+          treasury: {
+            solanaAddress: 'So11111111111111111111111111111111111111112',
+            evmChains: ['eip155:1', 'eip155:8453'],
+          },
+        },
+      },
+    }
+    const parsed = JSON.parse(generateAgentsJson(config))
+    expect(parsed.payments.x402.chains).toEqual(['solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'])
+  })
 })
 
 // ─────────────────────────────────────────────────────────────────────────────

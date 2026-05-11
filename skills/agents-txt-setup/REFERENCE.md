@@ -99,6 +99,18 @@ export default {
 }
 ```
 
+### Wallet env vars: lenient per-field validation
+
+The wallet format checks in the CLI Zod schema (`evmAddress` must be `0x[40 hex]`, `solanaAddress` must be 32-char base58 minimum, `stripeSecretKey` must start with `sk_`) stay strict, but they are *per-field lenient*: a malformed optional field warns and is skipped, rather than aborting the entire generate. So `EVM_ADDRESS=garbage` in `.env` when only Solana is wired produces a warning and lets the Solana side through:
+
+```
+agentify: ignoring malformed evmAddress (...); set EVM_ADDRESS to a valid 0x[40 hex] value or unset to skip EVM.
+```
+
+The `TreasuryConfigSchema.refine` rule still applies after the lenient pass: if every wallet in `payments.x402.treasury` ends up dropped, x402 fails with `treasury must include at least one of evmAddress or solanaAddress (after lenient validation)`. The same lenient pattern applies to `stripeSecretKey` (warns and drops if the prefix check fails; MPP loses Stripe support but Tempo can still activate).
+
+Per-protocol activation is itself gated on the wallet survivors: `evmChains` only emit in `agents.json` when `evmAddress` is a valid string, and Solana chains only emit when `solanaAddress` is. So a Solana-only `.env` produces `payments.x402.chains: ["solana:..."]` exactly, no Base default leaked in.
+
 ---
 
 ## Middleware Snippets

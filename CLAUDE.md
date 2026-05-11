@@ -165,8 +165,8 @@ packages/cli/src/
 
 **`generate` flow:**
 1. Dynamic `import()` of `agentic.config.js`
-2. Zod validation with field-level error paths
-3. `generateRobotsTxt` / `generateLlmsTxt` / `generateAgentsTxt` / `generateAgentsJson` / `generateSitemapXml` (per the file's emission policy; see [README.md](README.md) for the sitemap rules) → writes to `--out` dir (default: `./public`)
+2. Zod validation with field-level error paths. Per-field lenient on optional wallets: `evmAddress`, `solanaAddress`, and `stripeSecretKey` keep their strict format checks (regex / min length / `sk_` prefix), but a malformed value `.catch()`es to `undefined` with a `console.warn` instead of aborting the whole parse. The `treasury` refine then ensures at least one wallet survived.
+3. `generateRobotsTxt` / `generateLlmsTxt` / `generateAgentsTxt` / `generateAgentsJson` / `generateSitemapXml` (per the file's emission policy; see [README.md](README.md) for the sitemap rules) → writes to `--out` dir (default: `./public`). Per-protocol chain emission in `agents.json` is gated on the surviving wallets: `evmChains` only when `evmAddress` is set, Solana chains only when `solanaAddress` is set.
 4. Runs spec validators inline, prints warnings but does not fail the build
 
 Per-file flags come in two symmetric sets. Default mode emits everything applicable to the config; pass any positive selector to narrow to that set; `--skip-*` subtracts from whichever set is selected.

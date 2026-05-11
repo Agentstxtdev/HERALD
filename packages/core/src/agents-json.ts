@@ -54,7 +54,10 @@ export function generateAgentsJson(config: AgenticConfig): string {
       // x402: accepted chains (CAIP-2 IDs) and an optional description of what
       // the agent is paying for. Only emitted when x402 is active.
       if (active.includes('x402') && payments.x402) {
-        const chains: string[] = payments.x402.treasury.evmChains ?? ['eip155:8453']
+        const chains: string[] = []
+        if (payments.x402.treasury.evmAddress) {
+          chains.push(...(payments.x402.treasury.evmChains ?? ['eip155:8453']))
+        }
         if (payments.x402.treasury.solanaAddress) {
           const network = payments.x402.treasury.solanaNetwork ?? 'mainnet-beta'
           chains.push(SOLANA_CHAIN_IDS[network] ?? `solana:${network}`)
