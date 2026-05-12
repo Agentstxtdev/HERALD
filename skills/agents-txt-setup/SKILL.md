@@ -1,6 +1,6 @@
 ---
 name: agents-txt-setup
-description: Guides Claude through setting up the `@herald/cli` CLI and `@herald/addon` middleware on a user's website. Covers the init wizard, agentsjson.config.js fields, file generation (robots.txt / sitemap.xml / llms.txt / agents.txt / agents.json), framework middleware wiring (Express / Next.js / Hono), and the optional payment middleware (x402 v2 + MPP). Use when the user wants to add herald to their project, generate the discovery files, accept x402 or MPP payments, or wire up `@herald/addon` route handlers and middleware.
+description: Guides Claude through setting up the `@herald/cli` CLI on a user's website. Covers the init wizard, agentsjson.config.js fields, and file generation (robots.txt / sitemap.xml / llms.txt / agents.txt / agents.json / security.txt / `_headers`). Herald only generates discovery files; the runtime 402 handler that implements payment protocols declared in those files is out of scope. Use when the user wants to add herald to their project, generate the discovery files, or advertise payment / auth / MCP / Skills / A2A / UCP capabilities to agents.
 ---
 
 # herald: setup
@@ -10,7 +10,7 @@ description: Guides Claude through setting up the `@herald/cli` CLI and `@herald
 Before giving any instructions, determine three things (infer from context or ask):
 
 1. **Framework**: Next.js / Express / Hono / Astro / static (no server) / other
-2. **Payments**: none / x402 (crypto USDC per-request) / MPP (fiat or USDC session) / both
+2. **Payments to advertise**: none / x402 (crypto USDC per-request) / MPP (fiat or USDC session) / AP2 / experimental (`x-` prefix). Remember: herald only *declares* the capability; the user (or someone else's package) implements the 402 handler.
 3. **Content source**: `sitemap` (site has sitemap.xml) / `firecrawl` (richer, free API key at firecrawl.dev) / `manual`
 
 Then follow the workflow below.
@@ -35,7 +35,7 @@ herald init -y               # skip all prompts, use auto-detected defaults
 --name <name>           site name
 --url <url>             site URL
 --sitemap <url>         sitemap URL
---wallet <0x...>        EVM treasury address
+--wallet <0x...>        EVM treasury address (embedded in agents.json declaration only)
 --firecrawl-key <key>   Firecrawl API key
 -y, --yes               skip everything
 ```
@@ -49,7 +49,7 @@ herald init -y               # skip all prompts, use auto-detected defaults
 
 See [REFERENCE.md](REFERENCE.md) for the full annotated schema.
 
-The single `AgenticConfig` object drives everything. Every generator and middleware adapter reads from it.
+The single `AgenticConfig` object drives everything. Every generator reads from it.
 
 **Key fields to explain to the user:**
 
@@ -58,12 +58,15 @@ The single `AgenticConfig` object drives everything. Every generator and middlew
 | `site.url` | Must be a valid URL. Used in every generated file. |
 | `content.driver.type` | `sitemap` = parse sitemap.xml; `firecrawl` = crawl + group pages (richer, free tier); `static` / `manual` = provide pages yourself |
 | `crawlers.blockFreeAiScrapers` | Blocks GPTBot, ClaudeBot, CCBot, Google-Extended in robots.txt |
-| `payments.protocols` | `['x402']` = crypto only; `['mpp']` = fiat/USDC session; `['mpp','x402']` = both (MPP checked first). Also accepts `x-` prefixed experimental identifiers (e.g. `'x-mypay'`) per spec §3.1; those flow through to agents.txt and agents.json verbatim, runtime handler is the user's responsibility. |
-| `payments.x402.treasury.evmAddress` | Their EVM wallet (40-char hex, 0x prefix). No private keys on server. |
-| `payments.mpp` | Requires `npm install mppx`. Stripe for fiat; `tempoEnabled: true` for USDC without Stripe. |
+| `payments.protocols` | `['x402']` / `['mpp']` / `['x402', 'mpp', 'ap2']`. Each identifier listed here is *advertised* in `agents.txt` / `agents.json`; herald does not implement the 402 handler. The list also accepts `x-` prefixed experimental identifiers (e.g. `'x-mypay'`) per spec §3.1; those flow through verbatim, runtime handler is the user's responsibility. |
+| `payments.x402.treasury.evmAddress` | Their EVM wallet (40-char hex, 0x prefix). Embedded in `agents.json` so agents discover where to pay. No private keys ever. |
+| `payments.mpp` | Same shape as `x402`: pricing + Tempo recipient + Stripe credentials are declared in the discovery files, never used by herald at runtime. |
 | `a2a.cards` | One or more A2A AgentCard URLs (a2a-protocol.org). Optional. Useful when the site runs multiple A2A agents or serves AgentCards at non-canonical paths. The well-known path `/.well-known/agent-card.json` is enough for a single agent at the canonical location. |
+| `security.contact` | RFC 9116 contact (`mailto:` / URL). Required for `/.well-known/security.txt` to be emitted. |
 
 **Gotcha:** If Firecrawl is chosen, tell them to set `FIRECRAWL_API_KEY` in `.env`. Free tier at firecrawl.dev, no credit card.
+
+**Honest declarations rule:** a per-protocol block in `agents.txt` / `agents.json` is emitted only when the necessary fields in `payments.<protocol>` are present. Listing `'mpp'` in `protocols` without setting `mpp.tempoRecipient` or Stripe credentials silently drops the protocol at generate time (with a console warning). This keeps the discovery files honest about what the site actually supports.
 
 ---
 
@@ -76,8 +79,8 @@ herald generate --out ./public
 **What `generate` does internally:**
 1. Dynamic `import()` of `agentsjson.config.js`
 2. Zod v4 validation: field-level errors printed before any file is written
-3. Calls `generateRobotsTxt`, `generateLlmsTxt`, `generateAgentsTxt`, `generateAgentsJson`, `generateSitemapXml` from `@herald/core`
-4. Writes to `--out` dir (default `./public`)
+3. Calls `generateRobotsTxt`, `generateLlmsTxt`, `generateAgentsTxt`, `generateAgentsJson`, `generateSitemapXml`, `generateSecurityTxt`, `generateHeadersFile` from `@herald/core` per the file's emission policy
+4. Writes to `--out` dir (default `./public`); `vercel.json` writes to the project root with merge semantics
 5. Runs spec validators inline, prints warnings, does not fail the build
 
 **Flags:**
@@ -91,6 +94,8 @@ herald generate --out ./public
 --llms-full            emit llms-full.txt (requires content.fullTxt)
 --agents               emit agents.txt + agents.json
 --sitemap              emit sitemap.xml (also forces firecrawl-driver emission)
+--security             emit /.well-known/security.txt (requires security.contact)
+--headers              emit the §4.5 platform headers config
 
 # Negative selectors — subtract from whichever set is selected:
 --skip-robots          skip robots.txt
@@ -98,13 +103,15 @@ herald generate --out ./public
 --skip-llms-full       skip the Firecrawl scrape; keep the cheap llms.txt index
 --skip-agents          skip agents.txt + agents.json
 --skip-sitemap         never emit sitemap.xml
+--skip-security        skip security.txt
+--skip-headers         skip the §4.5 platform headers config
 ```
 
 Default mode (no flags) emits everything applicable to the config. Pass any positive selector and only those files are emitted; pass `--skip-*` to subtract.
 
-**For Astro / 11ty / Hugo / Jamstack**: generation is all they need. Deploy the output files with their site. No middleware.
+**For Astro / 11ty / Hugo / Jamstack** (and any framework): generation is all herald does. Deploy the output files as static assets; the production host applies the headers config at its edge. There is no runtime piece to wire.
 
-**About the `_headers` / `vercel.json` file `generate` produces:** the agents.txt spec §4.5 mandates `Content-Type: text/plain; charset=utf-8` on `agents.txt`, `Content-Type: application/json` on `agents.json`, `Access-Control-Allow-Origin: *` on both, and recommends `Cache-Control: public, max-age=3600`. `herald generate` detects the user's hosting platform and emits the right config to satisfy this without manual work:
+**About the `_headers` / `vercel.json` file `generate` produces:** the agents.txt spec §4.5 mandates `Content-Type: text/plain; charset=utf-8` on `agents.txt`, `Content-Type: application/json` on `agents.json`, `Access-Control-Allow-Origin: *` on both, and recommends `Cache-Control: public, max-age=3600`. `herald generate --headers` detects the user's hosting platform and emits the right config to satisfy this without manual work:
 
 | Detected platform | Emits | Where |
 |---|---|---|
@@ -113,42 +120,19 @@ Default mode (no flags) emits everything applicable to the config. Pass any posi
 | Vercel | `vercel.json` with merge semantics | project root |
 | Unknown | `_headers` as a best-effort default + console warning | `--out` |
 
-For platforms herald doesn't write a config for (nginx, Apache, Caddy, S3+CloudFront, etc.), tell the user to translate the rules manually — the README has copy-paste server config snippets. They can also pass `--platform <name>` to force a specific generator, or `--skip-headers` if they handle headers in their server framework (Express/Hono/Next.js handlers via `@herald/addon` already set them programmatically).
+For platforms herald doesn't write a config for (nginx, Apache, Caddy, S3+CloudFront, etc.), tell the user to translate the rules manually — the README has copy-paste server config snippets. They can also pass `--platform <name>` to force a specific generator, or `--skip-headers` if they serve the files dynamically and set the headers themselves in the route handler.
+
+If the user serves `/agents.txt` or `/agents.json` from a server route rather than as a static file, the route handler must set `Content-Type` (with charset for the .txt), `Access-Control-Allow-Origin: *`, and `Cache-Control: public, max-age=3600` itself. Static-asset headers config does not reach dynamic routes.
 
 ---
 
-## Step 4: Wire middleware (server frameworks only)
-
-See [REFERENCE.md](REFERENCE.md#middleware-snippets) for full copy-paste code.
-
-**Express:**
-```ts
-import { createAgenticRouter, agenticPaymentMiddleware } from '@herald/addon/express'
-app.use(createAgenticRouter(config))
-app.use('/api', agenticPaymentMiddleware(config, '/api'))
-```
-> Gotcha: call `agenticPaymentMiddleware()` at **module load time**, never inside a request handler. The middleware caches the `Mppx.create({...})` instance per `AgenticConfig` (via WeakMap) so it's only built once.
-
-**Next.js (App Router):** Create route handlers for `robots.txt`, `llms.txt`, `agents.json`, and `middleware.ts` with `createPaymentProxy`. See REFERENCE.md.
-
-**Hono:**
-```ts
-import { createAgenticRoutes, agenticPaymentMiddleware } from '@herald/addon/hono'
-createAgenticRoutes(app, config)
-app.use('/api/*', agenticPaymentMiddleware(config, '/api'))
-```
-
-Install: `npm install @herald/addon`
-
----
-
-## Step 5: Verify compliance
+## Step 4: Verify compliance
 
 ```bash
 herald check https://mysite.com
 ```
 
-**What `check` does:** Fetches `robots.txt`, `llms.txt`, `agents.json`, `sitemap.xml` from the live URL and scores them using the same validators as `generate`, not ad-hoc string matching.
+**What `check` does:** Fetches `robots.txt`, `llms.txt`, `agents.txt`, `agents.json`, `sitemap.xml` from the live URL and scores them using the same validators as `generate`, not ad-hoc string matching.
 
 For deeper §4.5 verification (response headers + cross-file consistency between agents.txt and agents.json), point the user at the live `audit_site` MCP tool published by the agents.txt project at `https://agentstxt.dev/mcp`. It validates Content-Type / CORS / Cache-Control on both files, schema-validates `agents.json` per §5, scans for accidental treasury or secret leaks per §5.4 / §14, and cross-checks that `agents.txt` and `agents.json` declare the same capabilities. Run both `herald check` and `audit_site` after deploy.
 
@@ -167,11 +151,9 @@ For deeper §4.5 verification (response headers + cross-file consistency between
 
 ## Common pitfalls to flag proactively
 
-- MPP requires `npm install mppx` separately; warn before they hit a runtime error
-- `mppx` passes through if not installed (dev-safe), but logs a warning
-- x402 v2 is implemented directly against the public facilitator at `https://x402.org/facilitator` (no `@x402/*` SDK). MPP runs through the optional `mppx` peer dep (Tempo USDC + Stripe SPT).
-- `@herald/core` has zero runtime deps (edge-safe); payment code is in `@herald/addon`
-- `--skip-llms` is useful when Firecrawl is a separate CI step that takes too long; `--skip-llms-full` keeps the cheap `llms.txt` index but skips the Firecrawl-billed scrape
-- `pnpm` workspace required if contributing to the monorepo itself
+- `@herald/core` has zero runtime deps (edge-safe). The CLI is the only public surface; there is no runtime middleware shipped from herald.
+- Herald does not verify payments or run a 402 handler. If the user expects requests to actually be gated by x402 or MPP, they need their own middleware. The `payments` block in `agentsjson.config.js` is purely the discovery declaration.
+- `--skip-llms` is useful when Firecrawl is a separate CI step that takes too long; `--skip-llms-full` keeps the cheap `llms.txt` index but skips the Firecrawl-billed scrape.
+- `pnpm` workspace required if contributing to the monorepo itself.
 - `a2a` is optional. Most single-agent sites do not need it because A2A clients can probe `/.well-known/agent-card.json` directly. Suggest it only when the user has multiple A2A agents on one origin or serves an AgentCard at a non-canonical path.
-- For protocols not yet listed in `payments.protocols` / `authorization.protocols`, point users at the `x-` prefix (e.g. `'x-mypay'`). Herald accepts them verbatim, validators pass them through without warnings, and there is no need to patch herald. Only suggest a registry edit (`packages/core/src/protocols.ts`) when the protocol is stable and the user wants herald-level support (gate middleware, wizard prompt, structured fields in `agents.json`).
+- For protocols not yet listed in `payments.protocols` / `authorization.protocols`, point users at the `x-` prefix (e.g. `'x-mypay'`). Herald accepts them verbatim, validators pass them through without warnings, and there is no need to patch herald. Only suggest a registry edit (`packages/core/src/protocols.ts`) when the protocol is stable and the user wants herald-level support (wizard prompt, structured fields in `agents.json`).

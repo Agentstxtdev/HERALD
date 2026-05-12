@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
   generateHeadersFile,
-  headersDevSnippet,
   matchHeadersForPath,
   mergeVercelHeaders,
   parseHeadersFile,
@@ -467,42 +466,3 @@ describe('matchHeadersForPath', () => {
   })
 })
 
-describe('headersDevSnippet', () => {
-  it('returns an Astro snippet referencing the Vite plugin', () => {
-    const s = headersDevSnippet('astro')
-    expect(s).toContain('astro.config.mjs')
-    expect(s).toContain('heraldHeadersVitePlugin')
-    expect(s).toContain('@herald/addon/dev')
-  })
-
-  it('returns a Vite snippet for vite and sveltekit', () => {
-    expect(headersDevSnippet('vite')).toContain('vite.config.ts')
-    expect(headersDevSnippet('sveltekit')).toContain('vite.config.ts')
-  })
-
-  it('returns the Connect middleware for express', () => {
-    const s = headersDevSnippet('express')
-    expect(s).toContain('heraldHeadersConnect')
-    expect(s).toContain('app.use(')
-  })
-
-  it('returns the Hono middleware for hono', () => {
-    const s = headersDevSnippet('hono')
-    expect(s).toContain('heraldHeadersHono')
-    expect(s).toContain("app.use('*'")
-  })
-
-  it('points Next.js users at native headers() API, not a herald shim', () => {
-    const s = headersDevSnippet('nextjs')
-    expect(s).toContain('next.config.js')
-    expect(s).toContain('async headers()')
-    expect(s).not.toContain('heraldHeadersVitePlugin')
-  })
-
-  it('returns a generic guide for unknown frameworks', () => {
-    const s = headersDevSnippet('unknown')
-    expect(s).toContain('heraldHeadersVitePlugin')
-    expect(s).toContain('heraldHeadersConnect')
-    expect(s).toContain('heraldHeadersHono')
-  })
-})

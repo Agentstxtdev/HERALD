@@ -127,84 +127,16 @@ Per-protocol activation is itself gated on the wallet survivors: `evmChains` onl
 
 ---
 
-## Middleware Snippets
+## Serving the generated files
 
-### Express
+Herald only writes the files; deployment is the adopter's responsibility.
 
-```ts
-import express from 'express'
-import { createAgenticRouter, agenticPaymentMiddleware } from '@herald/addon/express'
-import config from './agentsjson.config.js'
+| Setup | How to serve the files |
+|---|---|
+| Static / Jamstack (Astro, Hugo, 11ty, Next.js export) | Build emits the files into `public/`; the hosting platform serves them as static assets with the §4.5 headers from `_headers` / `vercel.json`. |
+| Server framework (Express, Hono, Next.js App Router) | Run `herald generate` at build time and serve `public/` statically, or hand-roll routes that import `@herald/core` and call the generators on demand. If the route is dynamic, the handler must set `Content-Type` (with charset for the `.txt` files), `Access-Control-Allow-Origin: *`, and `Cache-Control: public, max-age=3600` itself; static-asset header config does not apply. |
 
-const app = express()
-
-// Serves /robots.txt, /llms.txt, /agents.json — no payment required
-app.use(createAgenticRouter(config))
-
-// Payment gate — MUST be called at module load time, never inside a request handler
-// The x402 SDK initializes internal state (facilitator connections, chain scheme
-// registrations) on construction. Calling this per-request is a bug.
-app.use('/api', agenticPaymentMiddleware(config, '/api'))
-
-app.get('/api/content', (req, res) => res.json({ data: 'paid content' }))
-app.listen(3000)
-```
-
-### Next.js (App Router)
-
-File structure required:
-```
-app/
-├── robots.txt/route.ts
-├── llms.txt/route.ts
-├── agents.json/route.ts
-└── api/content/route.ts
-middleware.ts         ← gates /api/* at the edge
-agentsjson.config.js     ← project root
-```
-
-```ts
-// app/robots.txt/route.ts
-import { robotsTxtHandler } from '@herald/addon/nextjs'
-import config from '@/agentsjson.config'
-export const GET = robotsTxtHandler(config)
-
-// app/llms.txt/route.ts
-import { llmsTxtHandler } from '@herald/addon/nextjs'
-import config from '@/agentsjson.config'
-export const GET = llmsTxtHandler(config)
-
-// app/agents.json/route.ts
-import { agentsJsonHandler } from '@herald/addon/nextjs'
-import config from '@/agentsjson.config'
-export const GET = agentsJsonHandler(config)
-
-// middleware.ts — runs at the edge before API routes
-import { createPaymentProxy } from '@herald/addon/nextjs'
-import agenticConfig from './agentsjson.config.js'
-export default createPaymentProxy(agenticConfig, '/api')
-export const config = { matcher: ['/api/:path*'] }
-
-// app/api/content/route.ts — no extra code; middleware handles 402
-export async function GET() {
-  return Response.json({ data: 'paid content' })
-}
-```
-
-### Hono
-
-```ts
-import { Hono } from 'hono'
-import { createAgenticRoutes, agenticPaymentMiddleware } from '@herald/addon/hono'
-import config from './agentsjson.config.js'
-
-const app = new Hono()
-createAgenticRoutes(app, config)
-app.use('/api/*', agenticPaymentMiddleware(config, '/api'))
-app.get('/api/content', (c) => c.json({ data: 'paid content' }))
-
-export default app
-```
+Herald does not ship a runtime middleware. The `payments` block in `agentsjson.config.js` flows into `agents.txt` and `agents.json` as a declaration of what the site supports; the 402 handler, signature verification, and on-chain or fiat settlement live entirely outside herald.
 
 ---
 
@@ -229,6 +161,7 @@ herald generate [options]
   --llms-full            Emit llms-full.txt (requires content.fullTxt)
   --agents               Emit agents.txt + agents.json
   --sitemap              Emit sitemap.xml (also forces emission for the firecrawl driver)
+  --security             Emit /.well-known/security.txt (requires security.contact)
   --headers              Emit §4.5 headers config (`_headers` for Cloudflare/Netlify,
                          `vercel.json` for Vercel, fallback `_headers` otherwise)
   --platform <name>      Override the detected platform: cloudflare|netlify|vercel|unknown
@@ -239,6 +172,7 @@ herald generate [options]
   --skip-llms-full       Skip the Firecrawl scrape; keep llms.txt
   --skip-agents          Skip agents.txt + agents.json
   --skip-sitemap         Never emit sitemap.xml
+  --skip-security        Skip security.txt
   --skip-headers         Skip the §4.5 headers config
 
 herald check <url>
@@ -275,37 +209,9 @@ The headers config file applies only to static files on the hosting platform's a
 | File exists on disk in `--out` after build (e.g. `public/agents.json`, `public/.well-known/agent-card.json`) | `_headers` / `vercel.json#headers` |
 | URL responds without a file on disk (route handler, middleware, worker) | The handler must set headers in code before responding |
 
-Quick test: run the build, then `ls` the output. If you can see the file, headers config applies. If the URL works but the file is absent, you are serving dynamically and the handler is responsible. `@herald/addon` handles this for the routes it owns. If a developer hand-rolls a route handler for `/agents.txt`, they must set `Content-Type: text/plain; charset=utf-8`, `Access-Control-Allow-Origin: *`, and `Cache-Control: public, max-age=3600` themselves.
+Quick test: run the build, then `ls` the output. If you can see the file, headers config applies. If the URL works but the file is absent, you are serving dynamically and the route handler must set `Content-Type` (with charset for the `.txt` files), `Access-Control-Allow-Origin: *`, and `Cache-Control: public, max-age=3600` itself.
 
-### §4.5 Headers — dev-server parity (`@herald/addon/dev`)
-
-Production hosts apply the generated `_headers` / `vercel.json` at the edge. Most dev servers do not, which means `audit_site http://localhost:…` reports §4.5 fails that the same site does not exhibit in production. CORS is the half that actually breaks: browser-context agent clients cannot fetch `/agents.txt` or `/agents.json` cross-origin on `localhost` without `Access-Control-Allow-Origin: *`.
-
-`@herald/addon/dev` is a sub-path that exports framework-specific shims. Each reads the generated headers file at request time and replays the rules on dev-server responses. The CLI prints the right snippet under `Dev parity (detected: <framework>)` after every `herald generate --headers`, sourced from the project probe.
-
-| Framework probe value | Shim | Wire it in |
-|---|---|---|
-| `astro` | `heraldHeadersVitePlugin()` | `astro.config.mjs` `vite.plugins[]` |
-| `astro` / `sveltekit` / Vite-based generally | `heraldHeadersVitePlugin()` | `vite.config.ts` `plugins[]` |
-| `express` | `heraldHeadersConnect()` | `app.use(heraldHeadersConnect())` before routes |
-| `hono` | `heraldHeadersHono()` | `app.use('*', heraldHeadersHono())` |
-| `nextjs` | None — use `next.config.js` `async headers()` (native API, works in both dev and prod) | n/a |
-| `unknown` | One of the three above, depending on the dev server | Generic guide printed by the CLI |
-
-Shared options across all three shims:
-
-| Option | Default | Meaning |
-|---|---|---|
-| `headersFile` | `./public/_headers` | Cloudflare / Netlify headers file path (relative to `cwd`) |
-| `vercelJson` | `./vercel.json` | Fallback when `headersFile` is not present |
-| `cwd` | `process.cwd()` | Project root for relative-path resolution |
-| `silent` | `false` | Suppress the one-shot "no headers file found" warning |
-
-The shims re-read the headers file on each request (cheap, dev-only), so `herald generate --headers` regenerations show up live without a dev-server restart. The Vite plugin is `apply: 'serve'`, so it has no effect during build. Production bundles never pull in `@herald/addon/dev` because no production entry point imports from it.
-
-If `loadDevHeaderRules()` finds neither `_headers` nor `vercel.json`, the shim emits a one-shot `console.warn` reminding the developer to run `herald generate --headers`. Pass `silent: true` to suppress that warning (useful in test setups where the project is intentionally headers-free).
-
-For Next.js specifically: the framework already supports `async headers()` in `next.config.js`, which applies in both `next dev` and production. Herald does not ship a Next.js dev shim because the native API already covers both surfaces. Mirror the rules from `_headers` into `next.config.js` if you also need them on Node-runtime routes; the Vercel `vercel.json#headers` file (emitted by `herald generate --headers --platform vercel`) still applies at the edge for Vercel deployments.
+Localhost dev-server parity is not herald's responsibility. Dev servers (Vite, Express, Hono, `vercel dev`, etc.) typically do not apply the production headers file at `localhost`, so `audit_site http://localhost:…` may report §4.5 fails that the same site does not exhibit in production. If you need cross-origin agent clients to reach `/agents.txt` or `/agents.json` from `localhost`, set the headers in your dev-server setup yourself (Vite plugin, Express middleware, etc.).
 
 ### §4.5 Headers — manual config for unsupported platforms
 
@@ -320,69 +226,41 @@ Mirror the `/agents.json` shape for any additional same-origin static AgentCards
 
 ---
 
-## Package Sub-paths
+## What the payment declarations look like in the discovery files
 
-```bash
-npm install @herald/addon
+Herald does not run a payment handler. The `payments` block in `agentsjson.config.js` is emitted into `agents.txt` (as the `Protocols:` line plus a per-protocol stanza) and `agents.json` (as a structured object per protocol) so agents can discover support before initiating a request. Example shapes:
 
-# Sub-path imports — only pull in what you use:
-@herald/addon            → core utils + x402 utils + MPP utils + payment-gate (no framework)
-@herald/addon/express    → Express adapter   (peer: express)
-@herald/addon/hono       → Hono adapter      (peer: hono)
-@herald/addon/nextjs     → Next.js adapter   (peer: next)
-@herald/addon/dev        → Dev-server §4.5 headers shim (Vite plugin, Connect middleware, Hono middleware). Reads `public/_headers` (or `vercel.json` as fallback) at request time so localhost honors the same rules production does.
-
-# MPP payment verification (optional — install when you want Stripe/Tempo)
-npm install mppx stripe
+**`agents.txt`** — plain-text declaration, agents pre-screen support from the `Protocols:` line:
+```
+Protocols: x402, mpp, ap2
+Payments-X402-Chains: eip155:8453, solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp
+Payments-X402-Pricing: 0.001 USDC
+Payments-MPP-Methods: tempo, stripe
+Payments-MPP-Pricing: 0.001 USD
 ```
 
-x402 v2 uses a hand-rolled facilitator client (default https://x402.org/facilitator). No `@x402/*` SDK is required.
-
----
-
-## Payment Protocol Flows
-
-### x402 v2 (crypto, per-request)
-
-```
-Agent → GET /api/content  (no header)
-      ← 402 {
-          x402Version: 2,
-          resource: { url, description, mimeType: 'application/json' },
-          accepts: [{ scheme: 'exact', network: 'eip155:8453', amount: '1000', asset: '0x833…', payTo: '0x…', maxTimeoutSeconds: 60, extra: { name: 'USDC', version: '2' } }]
-        }
-
-Agent signs an EIP-3009 authorization (EVM) or builds an SVM payload (Solana)
-
-Agent → GET /api/content  (PAYMENT-SIGNATURE: <base64 PaymentPayload>)
-      ← 200 OK  (PAYMENT-RESPONSE: <base64 SettlementResponse>)
-```
-
-Verification + settlement: server posts `{ x402Version: 2, paymentPayload, paymentRequirements }` to the facilitator's `/settle`. The free public facilitator at `x402.org` requires no API key.
-
-### MPP (fiat + stablecoins, session-based)
-
-```
-Agent → GET /api/content  (no auth header)
-      ← 402  WWW-Authenticate: Payment realm="mysite.com" challenge="<id>"
-            (body also carries x402 accepts[] — agent picks one protocol)
-
-Agent authorizes via Stripe checkout (fiat / Solana via Stripe) or Tempo wallet (USDC)
-
-Agent → GET /api/content  (Authorization: Payment <credential>)
-      ← 200 OK  (Payment-Receipt: { ... })
+**`agents.json`** — structured catalog, agents read per-protocol detail:
+```json
+{
+  "payments": {
+    "x402": {
+      "chains": ["eip155:8453"],
+      "pricing": { "amount": "0.001", "token": "USDC" },
+      "payTo": "0xYourTreasuryAddress"
+    },
+    "mpp": {
+      "methods": ["tempo", "stripe"],
+      "pricing": { "amount": "0.001", "token": "USD" }
+    },
+    "ap2": {
+      "presentations": ["sd-jwt-vc"],
+      "spec": "https://ap2-protocol.org"
+    }
+  }
+}
 ```
 
-Requires `npm install mppx`. Stripe leg additionally requires `npm install stripe`. If `mppx` is absent → warning logged → MPP path is skipped, x402 still works.
-
-### Gate decision order (all adapters)
-
-```
-1. Exempt user-agent? → allow through
-2. Authorization: Payment …?  → mppx verifies (Mppx.compose(tempo, stripe)(request))
-3. PAYMENT-SIGNATURE / X-Payment? → facilitator settle (x402 v2)
-4. No credential → emit a single 402 carrying both x402 accepts[] + MPP WWW-Authenticate
-```
+Secret keys, Stripe credentials, and HMAC keys never appear in either file; only the receiving wallet's public address and pricing make it into the declaration. The 402 response itself (issued by whatever middleware the adopter wires up) is where signatures, nonces, and settlement details live.
 
 ---
 
@@ -411,7 +289,7 @@ staticDriver(pages)    → ContentDriver   // ← use this in tests; no network 
 manualDriver(sections) → ContentDriver
 
 // Protocol registry (single source of truth for identifiers)
-PAYMENT_PROTOCOLS                       // readonly ['x402', 'mpp']
+PAYMENT_PROTOCOLS                       // readonly ['x402', 'mpp', 'ap2']
 AUTH_PROTOCOLS                          // readonly ['agent-auth']
 MPP_METHODS                             // readonly ['tempo', 'stripe']
 isExperimentalIdentifier(value)         // value.startsWith('x-') && value.length > 2
@@ -420,9 +298,22 @@ isKnownAuthProtocol(value)              // boolean
 isAcceptedPaymentIdentifier(value)      // registered OR x- prefixed
 isAcceptedAuthIdentifier(value)         // registered OR x- prefixed
 
+// Headers (§4.5 platform config)
+generateHeadersFile(platform)           // { filename, content } per hosting platform
+mergeVercelHeaders(existing, herald)    // merge semantics for vercel.json
+parseHeadersFile(content)               // round-trip parser; used by audit / live checks
+parseVercelHeaders(json)
+matchHeadersForPath(rules, pathname)    // resolve effective headers for a request path
+headersDeploymentNote(platform)         // human-readable post-write note
+
+// security.txt
+generateSecurityTxt(config)             // RFC 9116 body
+validateSecurityTxt(body)               // spec compliance check
+
 // Types
-type PaymentProtocolId = 'x402' | 'mpp' | `x-${string}`
+type PaymentProtocolId = 'x402' | 'mpp' | 'ap2' | `x-${string}`
 type AuthProtocolId    = 'agent-auth'  | `x-${string}`
+type HostingPlatform   = 'cloudflare' | 'netlify' | 'vercel' | 'unknown'
 ```
 
 Zero runtime dependencies, safe on Node.js, edge runtimes, Deno, Bun.
@@ -449,21 +340,20 @@ Emission:
 - `agents.txt`: `Protocols: x402, x-mypay`
 - `agents.json`: `"payments": { "x402": { ... }, "x-mypay": {} }`
 
-The empty object is the support signal. The structured shape of an experimental protocol's per-protocol block in `agents.json` is the protocol author's responsibility; herald does not enforce one. The gate middleware ignores `x-` identifiers; the user runs their own protocol handler.
+The empty object is the support signal. The structured shape of an experimental protocol's per-protocol block in `agents.json` is the protocol author's responsibility; herald does not enforce one. Validators pass `x-` identifiers through without warning. The runtime handler is the user's responsibility (herald never implements one).
 
 No herald edits required.
 
 ### Path 2: register the protocol in herald
 
-When the protocol is stable and you want generators, validators, the wizard, and (for payments) the gate to know about it:
+When the protocol is stable and you want generators, validators, and the wizard to know about it:
 
 1. **`packages/core/src/protocols.ts`**: append the identifier to `PAYMENT_PROTOCOLS` or `AUTH_PROTOCOLS`. One edit; validators and the CLI Zod schema follow.
 2. **`packages/core/src/types.ts`**: add an interface for the protocol's config block if it has one (mirror `X402Config` / `MppConfig`). Hang it under `PaymentConfig` (or `AuthorizationConfig`) with the same key as the identifier.
 3. **`packages/core/src/payments.ts`** (payments only): add `isXyzActive(payments)` and a branch in `resolveActiveProtocols`. The honest-declarations rule says the block is emitted only when the protocol can actually run.
 4. **`packages/core/src/agents-txt.ts`** + **`agents-json.ts`**: the `Protocols:` line and the per-protocol object follow from `resolveActiveProtocols`, so payment protocols pick those up automatically. If the protocol carries structured fields in `agents.json`, add a per-protocol emitter inside `generateAgentsJson` next to the x402 and MPP blocks.
-5. **`packages/web/src/payment-gate.ts`** (payments only, optional): add a credential check before the existing protocol checks, and a challenge emitter in the unauthenticated 402 path. The gate is the only place protocol routing lives; adapters never re-implement it.
-6. **`packages/cli/src/commands/init.ts`** (optional): add a prompt step inside the payments block if the protocol needs credentials at init.
-7. **Tests**: cases under `packages/core/src/__tests__/{agents-txt,agents-json}.test.ts`.
+5. **`packages/cli/src/commands/init.ts`** (optional): add a prompt step inside the payments block if the protocol needs credentials at init.
+6. **Tests**: cases under `packages/core/src/__tests__/{agents-txt,agents-json}.test.ts`.
 
 For a brand-new block kind (not payment, not auth, not MCP, not Skills, not A2A), the A2A diff is the most recent worked example: a new `XyzConfig` interface in `types.ts`, an `Xyz:` line emitter in `agents-txt.ts`, an `xyz[]` array emitter in `agents-json.ts`, validator rules in `validate.ts`, a Zod schema entry in `config-schema.ts`, and a wizard prompt.
 

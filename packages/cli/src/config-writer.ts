@@ -50,14 +50,11 @@ export interface AgenticConfigChoices {
 }
 
 const INTEGRATION_NOTES: Record<string, string> = {
-  nextjs: `// Next.js — add route handlers in app/robots.txt/route.ts, app/llms.txt/route.ts, app/agents.txt/route.ts
-// See: https://github.com/agentstxtdev/herald/tree/main/examples/nextjs`,
-  express: `// Express — app.use(createAgenticRouter(config)) + app.use('/api', agenticPaymentMiddleware(config))
-// See: https://github.com/agentstxtdev/herald/tree/main/examples/express`,
-  hono: `// Hono — createAgenticRoutes(app, config) + app.use('/api/*', agenticPaymentMiddleware(config))`,
+  nextjs: `// Next.js — add app/{robots.txt,llms.txt,agents.txt,agents.json}/route.ts that imports the generators from @herald/core and returns the rendered file. See: https://github.com/agentstxtdev/herald/tree/main/examples/nextjs`,
+  express: `// Express — see: https://github.com/agentstxtdev/herald/tree/main/examples/express`,
+  hono: `// Hono — register GET handlers for /robots.txt, /llms.txt, /agents.txt, /agents.json that call the matching @herald/core generator.`,
   astro: `// Astro / static — run: herald generate --out ./public`,
-  unknown: `// Static sites — run: herald generate --out ./public
-// Server — import { createAgenticRouter, agenticPaymentMiddleware } from '@herald/addon/express'`,
+  unknown: `// Run: herald generate --out ./public  (then deploy the files with your site)`,
 }
 
 function buildContentBlock(choice: ContentDriverChoice): string {

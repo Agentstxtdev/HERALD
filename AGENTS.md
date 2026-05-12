@@ -6,7 +6,7 @@ This document explains the architecture of the `herald` monorepo: what each pack
 
 ## What this project is
 
-A framework that makes any website readable and (optionally) monetizable by AI agents. It generates the discovery files of the agent-readiness stack from a single config object and ships an opt-in payment middleware on top:
+A file-generation framework that makes any website readable and agent-discoverable. It generates the discovery files of the agent-readiness stack from a single config object:
 
 | Standard | File / surface | Purpose |
 |---|---|---|
@@ -15,9 +15,11 @@ A framework that makes any website readable and (optionally) monetizable by AI a
 | llmstxt.org | `llms.txt` (+ optional `llms-full.txt`) | LLM-optimized site index |
 | `agents.txt` standard | `agents.txt` | Agent capabilities declaration (plain text) |
 | `agents.txt` standard | `agents.json` | Agent capabilities catalog (structured JSON companion) |
-| x402 v2 (own implementation) + MPP via `mppx` | HTTP 402 | Optional agent micropayments (crypto + fiat) |
+| RFC 9116 | `security.txt` (`/.well-known/security.txt`) | Vulnerability disclosure channel |
 
 The `agents.txt` standard is defined and maintained outside this repository; herald is an implementation of it. Anyone may write a different implementation; herald exists to make adoption trivial in JavaScript-/TypeScript-flavored projects.
+
+Herald is a generator only. Runtime concerns like the 402 handler that implements payment protocols declared in `agents.txt` / `agents.json` are out of scope and live in whatever middleware an adopter wires up.
 
 ---
 
@@ -27,14 +29,9 @@ The `agents.txt` standard is defined and maintained outside this repository; her
 herald/
 ├── packages/
 │   ├── core/          — shared types + pure generators (no framework deps)
-│   ├── web/           — Express / Hono / Next.js adapters + payment middleware
 │   └── cli/           — @herald/cli
-├── examples/
-│   ├── express/       — working Express server
-│   └── nextjs/        — working Next.js App Router app
 ├── docs/              — engineering decisions and changelog entries
 ├── skills/            — agent-installable skill packages (e.g. agents-txt-setup)
-├── ref/               — third-party protocol references for development (mppx, x402, machine-payments)
 └── tsconfig.base.json — shared TypeScript config (ES2022, NodeNext, strict)
 ```
 
@@ -98,11 +95,13 @@ interface AgenticConfig {
   site:           SiteConfig           // name, url, description
   content?:       ContentConfig        // how to discover pages (driver)
   crawlers?:      CrawlerConfig        // which bots to block/allow
-  payments?:      PaymentConfig        // x402 + MPP config
-  authorization?: AuthorizationConfig  // agent-auth protocol
+  payments?:      PaymentConfig        // declaration of supported payment protocols
+  authorization?: AuthorizationConfig  // declaration of supported auth protocols
   mcp?:           McpConfig            // MCP server endpoint URLs
   skills?:        SkillsConfig         // skill package URLs (agentskills.io)
   a2a?:           A2AConfig            // A2A AgentCard URLs (a2a-protocol.org)
+  ucp?:           UcpConfig            // UCP profile URLs (ucp.dev)
+  security?:      SecurityConfig       // RFC 9116 security.txt
 }
 ```
 
@@ -150,7 +149,7 @@ The `llms-full.txt` filename is community convention; the formal spec names the 
 
 ### Payment types (`types.ts`)
 
-Two payment protocols are modelled separately and cleanly:
+Three payment protocols are modelled in the config so the generators can declare them in `agents.txt` and `agents.json`. None of this is runtime: the types describe the *declaration* shape, not a 402 handler. Herald embeds receiving wallet addresses and pricing in the discovery files; it does not verify signatures or settle payments.
 
 ```ts
 interface PaymentConfig {
@@ -243,156 +242,6 @@ The `x-` prefix matches the agents.txt spec §3.1 convention for experimental id
 
 Adding a registered protocol is now a one-file edit: append to `PAYMENT_PROTOCOLS` or `AUTH_PROTOCOLS`. The full recipe is in [the README](README.md#adding-a-new-protocol). For payment protocols you also wire an activity check in `payments.ts` and (if the protocol carries structured fields) a per-protocol emitter in `agents-json.ts` alongside the existing x402 and MPP blocks. For a brand-new block kind, the A2A diff is the most recent worked example: a new `A2AConfig` type, an `A2A:` line emitter in `agents-txt.ts`, an `a2a[]` array emitter in `agents-json.ts`, parser awareness in any tool that reads agents.txt, and a wizard prompt in the CLI.
 
----
-
-## Package: `@herald/addon`
-
-**Framework adapters and payment middleware. All framework packages are optional peer dependencies.**
-
-```
-packages/web/src/
-├── x402.ts          — x402 v2 protocol helpers: buildAccepts(), settleX402(), header coding
-├── mpp.ts           — mppx runtime: createMppxRuntime() + per-request Mppx.compose()
-├── payment-gate.ts  — gateRequest(): the framework-neutral fetch-style decision logic
-├── express.ts       — Express adapter (≈100 lines — converts req → fetch Request)
-├── hono.ts          — Hono adapter
-├── nextjs.ts        — Next.js App Router adapter
-└── index.ts         — re-exports core + x402 + mpp + payment-gate (not adapters)
-```
-
-The package exports sub-paths so users only pull in what they use:
-
-```
-@herald/addon           → core + x402 utils + mpp utils + payment-gate
-@herald/addon/express   → express.ts (requires: express)
-@herald/addon/hono      → hono.ts    (requires: hono)
-@herald/addon/nextjs    → nextjs.ts  (requires: next)
-```
-
-`mppx` and `stripe` are optional peer deps regardless of framework.
-
-### `x402.ts`: direct v2 protocol implementation
-
-We implement x402 v2 ourselves against the public facilitator at
-`https://x402.org/facilitator` rather than depending on the `@x402/*` SDK
-family. This keeps the framework adapters thin and avoids tying us to v1↔v2
-SDK migrations.
-
-```
-AgenticConfig.payments.x402
-        │
-        ▼
-  buildAccepts(x402Cfg, pricing)            → PaymentRequirements[]
-        │                                      (atomic units, CAIP-2 networks, USDC asset addresses)
-        ▼
-  buildPaymentRequired({ resourceUrl, accepts, ... })   → 402 body
-        │
-        ▼
-  decodePaymentSignature(header)            → PaymentPayload | null
-        │
-        ▼
-  matchAccepts(payload, accepts)            → PaymentRequirements
-        │
-        ▼
-  settleX402({ paymentPayload, paymentRequirements }) → SettlementResponse
-        │
-        ▼
-  encodePaymentResponse(settlement)         → base64 → PAYMENT-RESPONSE header
-```
-
-USDC contract addresses default per-network for Base (eip155:8453), Base Sepolia
-(eip155:84532), Ethereum (eip155:1), Solana mainnet, and Solana devnet. Override
-via `x402.assets[network] = '<contract>'` for non-USDC tokens or other chains.
-
-Wire summary (v2):
-- Out: 402 with body containing `x402Version: 2`, `accepts[]`, `resource`
-- In: `PAYMENT-SIGNATURE: <base64 PaymentPayload>` (also accepts legacy `X-Payment` for v1 clients)
-- Out (verified): `PAYMENT-RESPONSE: <base64 SettlementResponse>` attached to the 200 response
-
-### `mpp.ts`: Machine Payments Protocol via mppx
-
-MPP (IETF `draft-ryan-httpauth-payment`) uses a challenge/credential flow.
-`createMppxRuntime(mppConfig, realm)` loads `mppx/server` dynamically, builds
-`Mppx.create({ methods: [tempo.charge(...), stripe.charge(...)], secretKey, realm })`
-once, and returns `{ ready, charge(request, { tempoAmount, stripeAmount, description }) }`.
-
-The runtime's `.charge()` rebuilds `Mppx.compose(...)` per request so both Tempo
-and Stripe are presented in a single 402 (the agent picks one). Pricing is
-converted per method: Tempo = `decimals` from `pricing` (default 6 for USDC),
-Stripe = always 2 (currency-minor units like cents).
-
-If `mppx` is not installed → `ready: false`, MPP path is skipped, x402 still
-serves the 402 alone.
-
-### `payment-gate.ts`: the shared decision
-
-`gateRequest(request: Request, opts: { config, pathPrefix }): Promise<GateResult>`
-is the *only* place the protocol decision lives. Result variants:
-
-```ts
-type GateResult =
-  | { kind: 'pass' }                                       // exempt UA or payments disabled
-  | { kind: 'pass-with-headers'; headers: Record<string, string> }  // verified — attach PAYMENT-RESPONSE / Payment-Receipt
-  | { kind: 'respond'; response: Response }                // 402 challenge or hard reject
-```
-
-Decision order:
-
-```
-1. Exempt UA → 'pass'
-2. Authorization: Payment …  + MPP configured → mppx.charge(request) (Mppx.compose)
-   - status 402 → 'respond' with the fresh challenge
-   - withReceipt   → 'pass-with-headers' with the `Payment-Receipt`
-3. PAYMENT-SIGNATURE / X-Payment + x402 configured → settle via facilitator
-   - failure → 'respond' with 402
-   - success → 'pass-with-headers' with `PAYMENT-RESPONSE`
-4. No credential → 'respond' with a single 402 carrying both
-   x402 accepts[] (body) and MPP WWW-Authenticate (header)
-```
-
-The runtime is cached in a `WeakMap` keyed by `AgenticConfig` so `Mppx.create`
-only fires once per config; never per request.
-
-### Framework adapters
-
-All three adapters do the same three things and nothing else:
-
-1. Convert their framework's request → Web `Request`
-2. `await gateRequest(request, { config, pathPrefix })`
-3. Translate the result back: `pass` → call next; `pass-with-headers` → call next + attach headers; `respond` → write the `Response`
-
-**Express** (`express.ts`):
-
-```ts
-app.use(createAgenticRouter(config))                       // robots.txt, llms.txt, agents.txt, agents.json
-app.use('/api', agenticPaymentMiddleware(config, '/api'))  // → gateRequest()
-```
-
-**Hono** (`hono.ts`):
-
-```ts
-createAgenticRoutes(app, config)
-app.use('/api/*', agenticPaymentMiddleware(config, '/api'))
-```
-
-**Next.js** (`nextjs.ts`):
-
-```ts
-// middleware.ts — Edge Middleware payment proxy
-export default createPaymentProxy(config, '/api')
-
-// App Router route handlers for discovery files
-export const GET = robotsTxtHandler(config)    // app/robots.txt/route.ts
-export const GET = llmsTxtHandler(config)      // app/llms.txt/route.ts
-export const GET = agentsTxtHandler(config)    // app/agents.txt/route.ts
-export const GET = agentsJsonHandler(config)   // app/agents.json/route.ts
-```
-
-There is no per-framework x402 SDK to wire; everything happens inside
-`gateRequest()`.
-
----
-
 ## Package: `@herald/cli`
 
 ```
@@ -450,7 +299,7 @@ Negative selectors (subtract from the selected set):
 - `--skip-llms-full`: skip llms-full.txt (keep llms.txt; useful when you only want to refresh the index without re-running the Firecrawl scrape)
 - `--skip-agents`: skip agents.txt + agents.json (treat HERALD as a robots.txt + llms.txt tool only)
 - `--skip-sitemap`: never emit sitemap.xml (use when your framework already emits one)
-- `--skip-headers`: skip the §4.5 headers config (use when your platform isn't auto-generated for and you've configured headers elsewhere — nginx, Apache, Caddy, S3+CloudFront, programmatic handler in `@herald/addon`, etc.)
+- `--skip-headers`: skip the §4.5 headers config (use when your platform isn't auto-generated for and you've configured headers elsewhere — nginx, Apache, Caddy, S3+CloudFront, programmatic handler in your own route, etc.)
 
 **sitemap.xml emission policy:** default behavior depends on `content.driver`:
 
@@ -466,96 +315,6 @@ Pages are deduplicated by URL and XML-escaped before serialization in `generateS
 ### `check` command
 
 Fetches `robots.txt`, `llms.txt`, `agents.txt`, `agents.json`, and `sitemap.xml` from a live URL and scores the site using the same `validateRobotsTxt`, `validateLlmsTxt`, `validateAgentsTxt`, and `validateAgentsJson` functions from `@herald/core` that `generate` uses, not ad-hoc string matching.
-
----
-
-## How payments flow end-to-end
-
-### x402 v2 (crypto, per-request)
-
-```
-Agent                                      Server (gateRequest)              x402.org facilitator
-  │                                              │                                   │
-  ├── GET /api/content (no header) ─────────────►│                                   │
-  │                                              │ buildAccepts() + 402 body         │
-  │◄── 402 { x402Version: 2, accepts: [...] } ───┤                                   │
-  │                                              │                                   │
-  │  [agent signs EIP-3009 / SVM payload]        │                                   │
-  │                                              │                                   │
-  ├── GET /api/content ─────────────────────────►│                                   │
-  │   PAYMENT-SIGNATURE: <base64 PaymentPayload> │                                   │
-  │                                              ├── POST /settle ──────────────────►│
-  │                                              │      (paymentPayload +            │
-  │                                              │       paymentRequirements)        │
-  │                                              │◄── { success, transaction, ... } ─┤
-  │◄── 200 + PAYMENT-RESPONSE ───────────────────┤                                   │
-```
-
-Verification + on-chain settlement are handled entirely by the public
-facilitator at `https://x402.org/facilitator` (free, no API key). Override via
-`x402.facilitatorUrl` when you run your own.
-
-### MPP (fiat + stablecoin, session-based)
-
-```
-Agent                                      Server (gateRequest)              mppx (Tempo + Stripe)
-  │                                              │                                   │
-  ├── GET /api/content (no auth) ───────────────►│                                   │
-  │                                              ├── Mppx.compose(tempo, stripe) ───►│
-  │                                              │                                   ├─► 402 + WWW-Authenticate
-  │◄── 402 + WWW-Authenticate + accepts[] ───────┤◄──────────────────────────────────┤
-  │                                              │  (single 402 carries both         │
-  │                                              │   x402 accepts AND MPP challenge) │
-  │                                              │                                   │
-  │  [agent authorizes via Stripe / Tempo]       │                                   │
-  │                                              │                                   │
-  ├── GET /api/content ─────────────────────────►│                                   │
-  │   Authorization: Payment <credential>        ├── Mppx.compose(...)(request) ────►│
-  │                                              │                                   ├─► verify + Payment-Receipt
-  │◄── 200 + Payment-Receipt ────────────────────┤◄──────────────────────────────────┤
-```
-
----
-
-## Adding a new framework adapter
-
-You don't need to know about x402 or mppx at all; adapters are pure
-request/response shape conversion. Mirror `express.ts`:
-
-```ts
-import { gateRequest } from './payment-gate.js'
-
-export function agenticPaymentMiddleware(config: AgenticConfig, pathPrefix = '') {
-  if (!config.payments?.enabled) return passThroughMiddleware
-
-  return async (frameworkReq, frameworkRes, next) => {
-    const request = toFetchRequest(frameworkReq)               // your conversion
-    const result = await gateRequest(request, { config, pathPrefix })
-
-    if (result.kind === 'pass') return next()
-    if (result.kind === 'pass-with-headers') {
-      for (const [k, v] of Object.entries(result.headers)) frameworkRes.setHeader(k, v)
-      return next()
-    }
-    // 'respond' — write the Response back to the framework
-    writeResponse(frameworkRes, result.response)               // your conversion
-  }
-}
-```
-
-The framework runtime is the only new peer dep; `mppx` and `stripe` already
-cover payments (added to peer deps when first introduced).
-
-Then add the sub-path export to `packages/web/package.json`:
-
-```json
-"./<framework>": {
-  "import": "./dist/<framework>.js",
-  "types":  "./dist/<framework>.d.ts"
-}
-```
-
----
 
 ## Adding a new content driver
 
@@ -606,17 +365,13 @@ if (hasFile('.myservice.json') || env.MY_SERVICE_API_KEY) {
 
 ## Key design decisions
 
-**One config object drives everything.** `AgenticConfig` is the single source of truth. Every generator and every middleware adapter reads from it. Users write the config once; the framework handles the rest.
+**One config object drives everything.** `AgenticConfig` is the single source of truth. Every generator reads from it. Users write the config once; the CLI emits every output from there.
 
-**`@herald/core` has zero runtime dependencies.** It can run anywhere: Node.js, edge runtimes, Deno, Bun. Framework-specific code lives in `@herald/addon` sub-paths behind optional peer deps.
+**`@herald/core` has zero runtime dependencies.** It can run anywhere: Node.js, edge runtimes, Deno, Bun. Edge-runtime compatibility is a hard boundary; any new code in `core` that touches `node:fs`, `node:path`, or platform-specific globals breaks the contract.
 
-**We hand-roll x402 v2 against the public facilitator.** The `@x402/*` SDK family exists but adds a v1↔v2-flavored decision flow that doesn't compose with our MPP-first ordering. Our `x402.ts` is ~250 lines (atomic-unit conversion, accepts builder, header coding, facilitator settle); cryptographic verification + on-chain settlement still happen in the facilitator. Override `x402.facilitatorUrl` to point at your own facilitator.
+**Declaration only.** Herald is a generator. It writes the discovery files that *announce* a site's agent-interaction capabilities (payments, auth, MCP, Skills, A2A, UCP); it does not implement the runtime handlers behind those declarations. The 402 handler, signature verification, and settlement live in whatever middleware the adopter wires up separately.
 
-**One gate, three thin adapters.** All payment logic lives in `payment-gate.ts`'s `gateRequest()`. Adapters are <100 lines each and only do framework↔fetch shape conversion. Adding a new framework never requires touching payment code.
-
-**MPP is layered before x402.** When `Authorization: Payment` is present we run mppx first; an agent that holds an MPP credential is never bounced through the x402 gate. The 402 challenge itself carries both protocols (x402 `accepts[]` body + MPP `WWW-Authenticate` header), so an agent only ever sees one 402.
-
-**Mppx instance is built once, then `Mppx.compose(...)` rebuilt per request.** The instance (with `secretKey`/`realm`/registered methods) is cached in a `WeakMap<AgenticConfig>`. Per-request we call `Mppx.compose(tempo.charge({amount, recipient}), stripe.charge({amount, currency}))(request)` so amounts can vary by route while construction is amortized.
+**Honest declarations.** A per-protocol block in `agents.txt` / `agents.json` is emitted only when the necessary fields in `AgenticConfig` are present. An adopter who lists `'mpp'` in `payments.protocols` but never sets `mpp.tempoRecipient` or Stripe credentials sees the protocol dropped at generate time, with a console warning. This rule is enforced by `resolveActiveProtocols` in `packages/core/src/payments.ts`.
 
 **Validation is split across two layers with different purposes.** `@herald/core` exports `validateRobotsTxt`, `validateLlmsTxt`, `validateAgentsTxt`, and `validateAgentsJson`; these are *semantic spec compliance* checks on generated outputs (does robots.txt block the right scrapers? does llms.txt start with `#`?). They run post-generation and live in core because they're useful to any caller. The CLI's `config-schema.ts` is a *Zod structural schema* for `AgenticConfig`; it validates user-supplied input before generation and lives in the CLI only to keep core's zero-runtime-dep guarantee intact. Adding Zod to core would break compatibility with edge runtimes and Deno/Bun deployments.
 

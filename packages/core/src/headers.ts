@@ -354,12 +354,6 @@ export function mergeVercelHeaders(existing: unknown, config?: AgenticConfig): V
 }
 
 // ── Parser (inverse of the generator) ───────────────────────────────────────
-//
-// The dev-mode shim in `@herald/addon/dev` reads the generated headers config
-// from disk and replays the headers on dev-server responses, so localhost
-// behaves like production for §4.5 checks. The parser lives here in core so
-// the round-trip stays inside the zero-dep generator package and the same
-// rule-matching logic is the single source of truth.
 
 /** A parsed header rule: a path pattern plus the headers to apply to it. */
 export interface HeaderRule {
@@ -461,81 +455,6 @@ export function matchHeadersForPath(rules: HeaderRule[], pathname: string): Reco
     }
   }
   return out
-}
-
-/**
- * Frameworks the dev-mode shim has first-class snippets for. Mirrors the
- * `framework` field of the CLI probe, minus the `unknown` fallback which is
- * handled by the snippet function directly.
- */
-export type DevFramework = 'astro' | 'vite' | 'sveltekit' | 'nextjs' | 'express' | 'hono' | 'unknown'
-
-/**
- * Return a copy-pasteable snippet that wires the §4.5 dev-headers shim into
- * the detected framework, plus a one-line "why this is needed in dev" hint.
- *
- * Production headers (the file emitted by `generateHeadersFile`) are platform-
- * agnostic via the hosting-platform probe. The dev story has to be framework-
- * specific because each dev server has a different plugin / middleware shape.
- * This helper centralises the per-framework wiring so the CLI can print the
- * right snippet after `herald generate --headers`.
- *
- * The shim itself lives in `@herald/addon/dev` (not core) because it touches
- * `node:fs`; core stays edge-runtime safe.
- */
-export function headersDevSnippet(framework: DevFramework): string {
-  switch (framework) {
-    case 'astro':
-      return [
-        'Astro dev does not apply `_headers` (Vite serves static files directly).',
-        'Add the herald dev shim to `astro.config.mjs`:',
-        '',
-        "  import { heraldHeadersVitePlugin } from '@herald/addon/dev'",
-        '  export default defineConfig({',
-        '    vite: { plugins: [heraldHeadersVitePlugin()] },',
-        '  })',
-      ].join('\n')
-    case 'vite':
-    case 'sveltekit':
-      return [
-        'Vite dev does not apply `_headers`. Add the herald dev shim to `vite.config.ts`:',
-        '',
-        "  import { heraldHeadersVitePlugin } from '@herald/addon/dev'",
-        '  export default defineConfig({',
-        '    plugins: [heraldHeadersVitePlugin()],',
-        '  })',
-      ].join('\n')
-    case 'express':
-      return [
-        'Express dev does not apply `_headers`. Add the herald dev middleware before your routes:',
-        '',
-        "  import { heraldHeadersConnect } from '@herald/addon/dev'",
-        '  app.use(heraldHeadersConnect())',
-      ].join('\n')
-    case 'hono':
-      return [
-        'Hono dev does not apply `_headers`. Add the herald dev middleware to your app:',
-        '',
-        "  import { heraldHeadersHono } from '@herald/addon/dev'",
-        "  app.use('*', heraldHeadersHono())",
-      ].join('\n')
-    case 'nextjs':
-      return [
-        'Next.js: no herald dev shim is needed. Next supports response headers natively',
-        'via `next.config.js` `async headers()`, which works in both `next dev` and prod.',
-        'Vercel deployments additionally apply `vercel.json#headers` at the edge.',
-        'Keep `herald generate --headers` for the Vercel/edge file; mirror the same',
-        'rules in `next.config.js` if you also need them on Node-runtime routes.',
-      ].join('\n')
-    case 'unknown':
-      return [
-        'Most dev servers do not apply the production headers file (`_headers` / `vercel.json`)',
-        'to requests at `localhost`. For Vite-based stacks (Astro, SvelteKit, Remix, Nuxt 3,',
-        'plain Vite), use `heraldHeadersVitePlugin()`. For Connect / Express, use',
-        '`heraldHeadersConnect()`. For Hono, use `heraldHeadersHono()`. All three are',
-        'exported from `@herald/addon/dev`.',
-      ].join('\n')
-  }
 }
 
 /** A short, human-readable explanation of where the file was written and why. */

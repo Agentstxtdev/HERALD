@@ -217,29 +217,13 @@ export async function initCommand(options: InitOptions): Promise<void> {
   writeAgenticConfig(configPath, choices)
   console.log(`\n✅ Created agentsjson.config.js\n`)
 
-  // ── Next steps tailored to detected framework ──────────────────────────────
+  // ── Next steps ──────────────────────────────────────────────────────────────
   console.log(`Next steps:`)
-
-  if (detected.framework === 'nextjs') {
-    console.log(`  1. npm install @herald/addon`)
-    console.log(`  2. Create app/robots.txt/route.ts  → export const GET = robotsTxtHandler(config)`)
-    console.log(`  3. Create app/llms.txt/route.ts    → export const GET = llmsTxtHandler(config)`)
-    console.log(`  4. Create app/agents.txt/route.ts → export const GET = agentsTxtHandler(config)`)
-  } else if (detected.framework === 'express' || detected.framework === 'hono') {
-    console.log(`  1. npm install @herald/addon`)
-    console.log(`  2. app.use(createAgenticRouter(config))`)
-    console.log(`  3. app.use('/api', agenticPaymentMiddleware(config))`)
-  } else {
-    console.log(`  1. herald generate --out ./public`)
-    console.log(`  2. Deploy the generated files with your site`)
-  }
+  console.log(`  1. herald generate --out ./public`)
+  console.log(`  2. Deploy the generated files with your site`)
 
   if (contentChoice === 'firecrawl') {
     console.log(`  • Set FIRECRAWL_API_KEY in .env (free at firecrawl.dev)`)
-  }
-
-  if (payments?.protocols?.includes('mpp')) {
-    console.log(`  • npm install mppx  (required for MPP payment verification)`)
   }
 
   console.log()
