@@ -379,6 +379,29 @@ export interface UcpConfig {
   profiles: string | UcpEntry | (string | UcpEntry)[]
 }
 
+export interface SecurityConfig {
+  /**
+   * Vulnerability disclosure contact. String or string[]; bare emails get a
+   * `mailto:` prefix added automatically. RFC 9116 §2.5.4 requires at least
+   * one Contact field for the file to be valid.
+   */
+  contact: string | string[]
+  /**
+   * ISO 8601 timestamp. When omitted, herald defaults to 365 days from
+   * generation time (UTC midnight) to satisfy RFC 9116 §2.5.5.
+   */
+  expires?: string
+  preferredLanguages?: string[]
+  /** Absolute URL of the canonical security.txt. Defaults to <site.url>/.well-known/security.txt. */
+  canonical?: string
+  /** Absolute URL to the disclosure policy (e.g. SECURITY.md on the repo). */
+  policy?: string
+  acknowledgments?: string
+  hiring?: string
+  /** Absolute URL of a PGP public key for encrypted reports. */
+  encryption?: string
+}
+
 export interface AgenticConfig {
   site: SiteConfig
   content?: ContentConfig
@@ -389,5 +412,6 @@ export interface AgenticConfig {
   skills?: SkillsConfig
   a2a?: A2AConfig
   ucp?: UcpConfig
+  security?: SecurityConfig
 }
 

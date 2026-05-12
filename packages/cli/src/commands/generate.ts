@@ -6,6 +6,7 @@ import {
   generateLlmsFullTxt,
   generateAgentsTxt,
   generateAgentsJson,
+  generateSecurityTxt,
   generateSitemapXml,
   generateHeadersFile,
   mergeVercelHeaders,
@@ -18,6 +19,7 @@ import {
   validateLlmsTxt,
   validateAgentsTxt,
   validateAgentsJson,
+  validateSecurityTxt,
   validateSitemapXml,
   ROBOTS_GENERATED_MARKER,
   resolveActiveProtocols,
@@ -38,6 +40,7 @@ interface GenerateOptions {
   agents?: boolean
   sitemap?: boolean
   headers?: boolean
+  security?: boolean
   // Negative selectors — subtracted from whatever the positive set resolves to.
   skipRobots?: boolean
   skipLlms?: boolean
@@ -45,11 +48,12 @@ interface GenerateOptions {
   skipAgents?: boolean
   skipSitemap?: boolean
   skipHeaders?: boolean
+  skipSecurity?: boolean
   /** Override the detected hosting platform (cloudflare|netlify|vercel|unknown). */
   platform?: string
 }
 
-type Output = 'robots' | 'llms' | 'llms-full' | 'agents' | 'sitemap' | 'headers'
+type Output = 'robots' | 'llms' | 'llms-full' | 'agents' | 'sitemap' | 'headers' | 'security'
 
 async function loadConfig(configPath: string): Promise<AgenticConfig> {
   const abs = resolve(configPath)
@@ -83,7 +87,7 @@ function resolveOutputs(options: GenerateOptions, config: AgenticConfig): Set<Ou
   // Positive selectors win when present: an explicit `--agents` means
   // "only agents", regardless of what would be emitted by default.
   const hasPositive =
-    options.robots || options.llms || options.llmsFull || options.agents || options.sitemap || options.headers
+    options.robots || options.llms || options.llmsFull || options.agents || options.sitemap || options.headers || options.security
 
   const enabled = new Set<Output>()
 
@@ -94,6 +98,7 @@ function resolveOutputs(options: GenerateOptions, config: AgenticConfig): Set<Ou
     if (options.agents)   enabled.add('agents')
     if (options.sitemap)  enabled.add('sitemap')
     if (options.headers)  enabled.add('headers')
+    if (options.security) enabled.add('security')
   } else {
     // Default: everything that makes sense for this config.
     enabled.add('robots')
@@ -103,6 +108,10 @@ function resolveOutputs(options: GenerateOptions, config: AgenticConfig): Set<Ou
     if (config.content?.fullTxt) enabled.add('llms-full')
     const driverType = config.content?.driver?.type
     if (driverType === 'static' || driverType === 'manual') enabled.add('sitemap')
+    // security.txt only when a security block exists. Honest defaults: we do not
+    // emit a placeholder file for sites that have not declared a disclosure
+    // contact, since an empty/expired security.txt is worse than none.
+    if (config.security?.contact) enabled.add('security')
   }
 
   // Negative selectors subtract — same semantics whether or not positive flags
@@ -113,6 +122,7 @@ function resolveOutputs(options: GenerateOptions, config: AgenticConfig): Set<Ou
   if (options.skipAgents)   enabled.delete('agents')
   if (options.skipSitemap)  enabled.delete('sitemap')
   if (options.skipHeaders)  enabled.delete('headers')
+  if (options.skipSecurity) enabled.delete('security')
 
   return enabled
 }
@@ -316,6 +326,31 @@ export async function generateCommand(options: GenerateOptions): Promise<void> {
     }
   }
 
+  // ── /.well-known/security.txt (RFC 9116) ──────────────────────────────────
+  // Written to <outDir>/.well-known/security.txt. The static asset pipeline of
+  // every supported host (Cloudflare, Netlify, Vercel) maps the on-disk path to
+  // the URL path, so no special config is needed for the file to land at the
+  // canonical location.
+  if (outputs.has('security')) {
+    try {
+      const body = generateSecurityTxt(config)
+      if (body) {
+        const wellKnownDir = join(outDir, '.well-known')
+        if (!existsSync(wellKnownDir)) mkdirSync(wellKnownDir, { recursive: true })
+        const securityPath = join(wellKnownDir, 'security.txt')
+        writeFileSync(securityPath, body, 'utf-8')
+        console.log(`   ✔  security.txt → ${securityPath}`)
+        for (const issue of validateSecurityTxt(body)) {
+          console.warn(`      ⚠  ${issue}`)
+        }
+      } else {
+        console.warn('   ⚠  security.txt skipped: no `security.contact` in config')
+      }
+    } catch (err) {
+      console.warn(`   ⚠  security.txt generation failed: ${String(err)}`)
+    }
+  }
+
   // ── §4.5 headers config (platform-specific) ───────────────────────────────
   // Cloudflare/Netlify: writes `_headers` into outDir; Vercel: merges
   // /agents.txt + /agents.json entries into vercel.json at project root.
@@ -336,6 +371,9 @@ export async function generateCommand(options: GenerateOptions): Promise<void> {
   if (outputs.has('agents')) {
     console.log(`   agents.txt:  ${baseUrl}/agents.txt`)
     console.log(`   agents.json: ${baseUrl}/agents.json`)
+  }
+  if (outputs.has('security') && config.security?.contact) {
+    console.log(`   security.txt: ${baseUrl}/.well-known/security.txt`)
   }
 
   const activeProtocols = config.payments ? resolveActiveProtocols(config.payments) : []

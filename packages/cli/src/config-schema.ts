@@ -253,6 +253,20 @@ const UcpConfigSchema = z.object({
   ]),
 })
 
+const SecurityConfigSchema = z.object({
+  contact: z.union([z.string().min(1, 'security.contact must not be empty'), z.array(z.string().min(1)).min(1)]),
+  expires: z.string().refine(
+    (v) => !Number.isNaN(Date.parse(v)),
+    'security.expires must be a valid ISO 8601 timestamp',
+  ).optional(),
+  preferredLanguages: z.array(z.string().min(1)).optional(),
+  canonical: z.url('security.canonical must be a valid URL').optional(),
+  policy: z.url('security.policy must be a valid URL').optional(),
+  acknowledgments: z.url('security.acknowledgments must be a valid URL').optional(),
+  hiring: z.url('security.hiring must be a valid URL').optional(),
+  encryption: z.url('security.encryption must be a valid URL').optional(),
+})
+
 export const AgenticConfigSchema = z.object({
   site: z.object({
     name: z.string().min(1, 'site.name must not be empty'),
@@ -267,6 +281,7 @@ export const AgenticConfigSchema = z.object({
   skills: SkillsConfigSchema.optional(),
   a2a: A2AConfigSchema.optional(),
   ucp: UcpConfigSchema.optional(),
+  security: SecurityConfigSchema.optional(),
 })
 
 export type AgenticConfigInput = z.input<typeof AgenticConfigSchema>

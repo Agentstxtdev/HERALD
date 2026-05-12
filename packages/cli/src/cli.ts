@@ -43,6 +43,7 @@ program
   .option('--agents', 'Emit only agents.txt and agents.json')
   .option('--sitemap', 'Emit only sitemap.xml (also forces emission for the firecrawl driver)')
   .option('--headers', 'Emit only the §4.5 headers config for the detected hosting platform (`_headers` for Cloudflare/Netlify, `vercel.json` for Vercel, fallback `_headers` otherwise)')
+  .option('--security', 'Emit only .well-known/security.txt (RFC 9116; requires a `security.contact` in config)')
   // Negative selectors: subtract from the selected set. Useful with the default
   // "emit everything" mode, or to drop one file from a positive selection.
   .option('--skip-robots', 'Skip robots.txt')
@@ -51,6 +52,7 @@ program
   .option('--skip-agents', 'Skip agents.txt and agents.json')
   .option('--skip-sitemap', 'Skip sitemap.xml')
   .option('--skip-headers', 'Skip the §4.5 headers config file')
+  .option('--skip-security', 'Skip .well-known/security.txt')
   .option('--platform <name>', 'Override the detected hosting platform for `--headers` (cloudflare|netlify|vercel|unknown)')
   .action(generateCommand)
 

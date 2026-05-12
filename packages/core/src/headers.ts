@@ -268,6 +268,15 @@ function entriesForConfig(config: AgenticConfig | undefined): VercelHeaderEntry[
   for (const glob of skillsGlobs(config)) {
     out.push(markdownStaticEntry(glob))
   }
+  // /.well-known/security.txt (RFC 9116). Honest-declarations rule: emit the
+  // entry only when the config actually declares a security.contact, so we
+  // never advertise a path the generator did not also write.
+  if (config.security?.contact) {
+    const contacts = Array.isArray(config.security.contact) ? config.security.contact : [config.security.contact]
+    if (contacts.some((c) => c && c.trim().length > 0)) {
+      out.push(textStaticEntry('/.well-known/security.txt'))
+    }
+  }
   return out
 }
 
