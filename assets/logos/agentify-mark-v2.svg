@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Agentify">
+  <rect width="120" height="120" rx="14" fill="#111"/>
+
+  <!-- TRUMPET (reads left-to-right: mouthpiece → tube → flared bell) -->
+  <!-- Mouthpiece -->
+  <circle cx="14" cy="42" r="5" fill="#fff"/>
+  <!-- Tube -->
+  <rect x="17" y="38" width="56" height="8" rx="1.5" fill="#fff"/>
+  <!-- Bell: large flared cone, opening right -->
+  <path d="M71 24 L71 60 L106 72 L106 12 Z" fill="#fff"/>
+
+  <!-- BANNER -->
+  <!-- Cords from tube -->
+  <path d="M28 46 V56 M62 46 V56" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Cloth: pennant with V-notch bottom -->
+  <path d="M22 56 L68 56 L68 98 L45 86 L22 98 Z" fill="#fff"/>
+  <!-- Broadcast wave (signal motif) -->
+  <path d="M29 74 Q37 65 45 74 T61 74" stroke="#111" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

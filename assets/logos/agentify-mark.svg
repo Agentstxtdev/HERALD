@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Agentify">
+  <rect width="120" height="120" rx="14" fill="#111"/>
+
+  <!-- Herald trumpet: mouthpiece (left) -> tapered tube -> flared bell (right) -->
+  <g fill="#fff">
+    <!-- Mouthpiece cup -->
+    <path d="M14 42 h6 a3 6 0 0 1 0 12 h-6 z"/>
+    <!-- Tube -->
+    <path d="M20 44 L72 38 L72 58 L20 52 Z"/>
+    <!-- Bell flare -->
+    <path d="M70 28 L104 18 Q108 48 104 78 L70 68 Z"/>
+  </g>
+  <!-- Bell inner shadow (negative space gives depth at small sizes) -->
+  <path d="M88 30 Q96 48 88 66 Q82 48 88 30 Z" fill="#111"/>
+
+  <!-- Banner cords -->
+  <path d="M30 50 V60 M64 44 V54" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Hanging banner with serrated/wave bottom (signal motif) -->
+  <path d="M26 60 L68 54 L68 88 L62 84 L56 88 L50 84 L44 88 L38 84 L32 88 L26 84 Z" fill="#fff"/>
+
+  <!-- Broadcast wave inside banner -->
+  <path d="M32 72 Q38 66 44 72 T56 72 T68 72" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Signal dot — emphasises the "announce" beat -->
+  <circle cx="66" cy="65" r="2" fill="#111"/>
+</svg>

@@ -1,6 +1,12 @@
-# AGENTIFY
+<div align="center">
 
-**Make any website LLM-ready and monetizable by AI agents in minutes.**
+<img src="assets/logos/agentify-mark-v2.svg" width="235" alt="AGENTIFY">
+
+<h1>HERALD</h1>
+
+**Make any website LLM-ready, discoverable and monetizable by AI agents in minutes.**
+
+<br>
 
 [![npm: agentify](https://img.shields.io/npm/v/agentify?label=agentify&style=flat-square&color=cb3837)](https://www.npmjs.com/package/agentify)
 [![Spec: agents.txt](https://img.shields.io/badge/spec-agents.txt-111?style=flat-square)](https://agentstxt.dev)
@@ -8,9 +14,73 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/agentstxt/agents.txt?style=flat-square&logo=github&logoColor=white&color=181717)](https://github.com/agentstxt/agents.txt)
 
+</div>
+
 AGENTIFY is an open-source framework + CLI that emits the standard discovery files agents need to read and (optionally) pay for your site. One config object drives all of it. Each file is an independent open standard; pick the layers you want and AGENTIFY generates only those.
 
 ---
+
+<div align="center">
+
+### Works out of the box
+
+<table>
+<tr>
+  <th align="left">Agentic clients</th>
+  <td align="center" width="60"><img src="assets/logos/claude-code-dark.svg"   width="32" alt="Claude Code"><br><sub>Claude</sub></td>
+  <td align="center" width="60"><img src="assets/logos/codex-dark.svg"     width="32" alt="Codex"><br><sub>Codex</sub></td>
+  <td align="center" width="60"><img src="assets/logos/gemini-dark.svg"      width="32" alt="Gemini"><br><sub>Gemini</sub></td>
+  <td align="center" width="60"><img src="assets/logos/cursor-dark.svg"     width="32" alt="Cursor"><br><sub>Cursor</sub></td>
+  <td align="center" width="60"><img src="assets/logos/openclaw.png"        width="32" alt="OpenClaw"><br><sub>OpenClaw</sub></td>
+  <td align="center" width="60"><img src="assets/logos/nous.png"       width="32" alt="Nous Research"><br><sub>Hermes</sub></td>
+  <td align="center" width="60"><img src="assets/logos/exy.png"       width="32" alt="Pi"><br><sub>Pi</sub></td>
+</tr>
+<tr>
+  <th align="left">Runtimes &amp; platforms</th>
+  <td align="center"><img src="assets/logos/nodejs.svg"     width="32" alt="Node.js"><br><sub>Node.js</sub></td>
+  <td align="center"><img src="assets/logos/express.svg"    width="32" alt="Express"><br><sub>Express</sub></td>
+  <td align="center"><img src="assets/logos/nextjs.svg"     width="32" alt="Next.js"><br><sub>Next.js</sub></td>
+  <td align="center"><img src="assets/logos/vercel.svg"     width="32" alt="Vercel"><br><sub>Vercel</sub></td>
+  <td align="center"><img src="assets/logos/cloudflare.svg" width="32" alt="Cloudflare"><br><sub>Cloudflare</sub></td>
+  <td align="center"><img src="assets/logos/railway.svg"    width="32" alt="Railway"><br><sub>Railway</sub></td>
+  <td align="center"><img src="assets/logos/docker.svg"     width="32" alt="Docker"><br><sub>Docker</sub></td>
+</tr>
+<tr>
+  <th align="left">Discovery files generated</th>
+  <td align="center"><img src="assets/logos/robots.svg"      width="32" alt="robots.txt"><br><sub>robots.txt</sub></td>
+  <td align="center"><img src="assets/logos/sitemap.svg"     width="32" alt="sitemap.xml"><br><sub>sitemap.xml</sub></td>
+  <td align="center"><img src="assets/logos/llms.svg"        width="32" alt="llms.txt"><br><sub>llms.txt</sub></td>
+  <td align="center"><img src="assets/logos/llms-full.svg"   width="32" alt="llms-full.txt"><br><sub>llms-full.txt</sub></td>
+  <td align="center"><img src="assets/logos/agents-txt.svg"  width="32" alt="agents.txt"><br><sub>agents.txt</sub></td>
+  <td align="center"><img src="assets/logos/agents-json.svg" width="32" alt="agents.json"><br><sub>agents.json</sub></td>
+  <td align="center"><img src="assets/logos/a2a-logo-black.svg"    width="32" alt="Agent2Agent"><br><sub>A2A</sub></td>
+</tr>
+<tr>
+  <th align="left">Payment protocols</th>
+  <td align="center"><img src="assets/logos/x402.jpeg"            width="32" alt="x402 v2"><br><sub>x402 v2</sub></td>
+  <td align="center"><img src="assets/logos/machine-payments.svg" width="32" alt="MPP"><br><sub>MPP</sub></td>
+  <td align="center"><img src="assets/logos/ap2-logo-black.svg"    width="32" alt="Agent Payments Protocol"><br><sub>AP2</sub></td>
+  <td align="center"><img src="assets/logos/ucp.svg"    width="32" alt="Universal Commerce Protocol"><br><sub>UCP</sub></td>
+  <td colspan="4"></td>
+</tr>
+<tr>
+  <th align="left">Chains</th>
+  <td align="center"><img src="assets/logos/base.svg"     width="32" alt="Base"><br><sub>Base</sub></td>
+  <td align="center"><img src="assets/logos/ethereum.svg" width="32" alt="Ethereum"><br><sub>Ethereum</sub></td>
+  <td align="center"><img src="assets/logos/solana.svg"   width="32" alt="Solana"><br><sub>Solana</sub></td>
+  <td align="center"><img src="assets/logos/tempo.png"    width="32" alt="Tempo"><br><sub>Tempo</sub></td>
+  <td colspan="3"><sub><i>Any other CAIP-2 network via <code>x402.assets[network]</code> override</i></sub></td>
+</tr>
+<tr>
+  <th align="left">Tokens &amp; rails</th>
+  <td align="center"><img src="assets/logos/usdc.svg"   width="32" alt="USDC"><br><sub>USDC</sub></td>
+  <td align="center"><img src="assets/logos/stripe.svg" width="32" alt="Stripe"><br><sub>Stripe</sub></td>
+  <td align="center"><img src="assets/logos/link_stripe.png" width="32" alt="Link Stripe"><br><sub>Link</sub></td>
+  <td colspan="4"><sub><i>Stripe SPT covers card networks + Solana USDC; any ISO 4217 currency via <code>mpp.stripeCurrency</code></i></sub></td>
+</tr>
+</table>
+
+</div>
 
 ## What this does
 
@@ -97,64 +167,7 @@ Layer 4: AGENT CAPABILITIES /agents.txt   (agents.txt spec)  "Here's what you ca
 ---
 
 
-<div align="center">
 
-### Works out of the box
-
-<table>
-<tr>
-  <th align="left">Agentic clients</th>
-  <td align="center" width="60"><img src="assets/logos/openclaw.svg"   width="32" alt="OpenClaw"><br><sub>OpenClaw</sub></td>
-  <td align="center" width="60"><img src="assets/logos/claude.svg"     width="32" alt="Claude Code"><br><sub>Claude</sub></td>
-  <td align="center" width="60"><img src="assets/logos/codex.svg"      width="32" alt="Codex"><br><sub>Codex</sub></td>
-  <td align="center" width="60"><img src="assets/logos/cursor.svg"     width="32" alt="Cursor"><br><sub>Cursor</sub></td>
-  <td align="center" width="60"><img src="assets/logos/exy.png"        width="32" alt="Pi"><br><sub>Pi</sub></td>
-  <td align="center" width="60"><img src="assets/logos/bash.svg"       width="32" alt="Bash"><br><sub>Bash</sub></td>
-  <td align="center" width="60"><img src="assets/logos/http.svg"       width="32" alt="HTTP"><br><sub>HTTP</sub></td>
-</tr>
-<tr>
-  <th align="left">Runtimes &amp; platforms</th>
-  <td align="center"><img src="assets/logos/nodejs.svg"     width="32" alt="Node.js"><br><sub>Node.js</sub></td>
-  <td align="center"><img src="assets/logos/express.svg"    width="32" alt="Express"><br><sub>Express</sub></td>
-  <td align="center"><img src="assets/logos/nextjs.svg"     width="32" alt="Next.js"><br><sub>Next.js</sub></td>
-  <td align="center"><img src="assets/logos/vercel.svg"     width="32" alt="Vercel"><br><sub>Vercel</sub></td>
-  <td align="center"><img src="assets/logos/cloudflare.svg" width="32" alt="Cloudflare"><br><sub>Cloudflare</sub></td>
-  <td align="center"><img src="assets/logos/railway.svg"    width="32" alt="Railway"><br><sub>Railway</sub></td>
-  <td align="center"><img src="assets/logos/docker.svg"     width="32" alt="Docker"><br><sub>Docker</sub></td>
-</tr>
-<tr>
-  <th align="left">Discovery files generated</th>
-  <td align="center"><img src="assets/logos/robots.svg"      width="32" alt="robots.txt"><br><sub>robots.txt</sub></td>
-  <td align="center"><img src="assets/logos/sitemap.svg"     width="32" alt="sitemap.xml"><br><sub>sitemap.xml</sub></td>
-  <td align="center"><img src="assets/logos/llms.svg"        width="32" alt="llms.txt"><br><sub>llms.txt</sub></td>
-  <td align="center"><img src="assets/logos/llms-full.svg"   width="32" alt="llms-full.txt"><br><sub>llms-full.txt</sub></td>
-  <td align="center"><img src="assets/logos/agents-txt.svg"  width="32" alt="agents.txt"><br><sub>agents.txt</sub></td>
-  <td align="center"><img src="assets/logos/agents-json.svg" width="32" alt="agents.json"><br><sub>agents.json</sub></td>
-  <td></td>
-</tr>
-<tr>
-  <th align="left">Payment protocols</th>
-  <td align="center"><img src="assets/logos/x402.jpeg"            width="32" alt="x402 v2"><br><sub>x402 v2</sub></td>
-  <td align="center"><img src="assets/logos/machine-payments.svg" width="32" alt="MPP"><br><sub>MPP</sub></td>
-  <td colspan="5"></td>
-</tr>
-<tr>
-  <th align="left">Chains</th>
-  <td align="center"><img src="assets/logos/base.svg"     width="32" alt="Base"><br><sub>Base</sub></td>
-  <td align="center"><img src="assets/logos/ethereum.svg" width="32" alt="Ethereum"><br><sub>Ethereum</sub></td>
-  <td align="center"><img src="assets/logos/solana.svg"   width="32" alt="Solana"><br><sub>Solana</sub></td>
-  <td align="center"><img src="assets/logos/tempo.png"    width="32" alt="Tempo"><br><sub>Tempo</sub></td>
-  <td colspan="3"><sub><i>Any other CAIP-2 network via <code>x402.assets[network]</code> override</i></sub></td>
-</tr>
-<tr>
-  <th align="left">Tokens &amp; rails</th>
-  <td align="center"><img src="assets/logos/usdc.svg"   width="32" alt="USDC"><br><sub>USDC</sub></td>
-  <td align="center"><img src="assets/logos/stripe.svg" width="32" alt="Stripe"><br><sub>Stripe</sub></td>
-  <td colspan="5"><sub><i>Stripe SPT covers card networks + Solana USDC; any ISO 4217 currency via <code>mpp.stripeCurrency</code></i></sub></td>
-</tr>
-</table>
-
-</div>
 
 
 
