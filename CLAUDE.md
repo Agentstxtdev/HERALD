@@ -166,6 +166,19 @@ Wallet addresses, API keys, and secret keys never appear in the discovery files.
 
 The "honest declarations" rule (`packages/core/src/payments.ts → resolveActiveProtocols`) governs emission: a per-protocol block is written only when the necessary fields in `AgenticConfig.payments.<protocol>` are present. An adopter who lists `'mpp'` in `protocols` but never sets `mpp.tempoRecipient` or Stripe credentials sees the protocol dropped from both files at generate time, with a console warning.
 
+### Protocol summary
+
+| Protocol | What it is | Spec link | What flows into `agents.json` |
+|---|---|---|---|
+| **x402 v2** | Per-request crypto, on-chain settlement via a public facilitator. Agent signs an EIP-3009 (EVM) or SVM payload after a 402 advertising `accepts[]`. | [x402.org](https://x402.org/) | `payments.x402` with `chains` (CAIP-2 from `evmChains` + Solana network), `pricing`, `payTo` (operator's public wallet address) |
+| **MPP** | Session-based fiat + stablecoins via `WWW-Authenticate: Payment` challenge / credential. Two methods: Tempo (USDC) and Stripe SPT (cards + Solana USDC). | [mpp.dev](https://mpp.dev/), IETF `draft-ryan-httpauth-payment` | `payments.mpp` with `methods` (`['tempo', 'stripe']`, gated on credentials) and `pricing` |
+| **AP2** | Mandate trust layer that *composes above* the rail. Agent presents signed `CheckoutMandate` + `PaymentMandate` as W3C VCs; settlement still runs over x402 / MPP. | [ap2-protocol.org](https://ap2-protocol.org/) | `payments.ap2` with `presentations` (e.g. `['sd-jwt-vc']`) and `spec` URL |
+| **UCP** | Profile-based commerce discovery. Site publishes a UCP profile (typically at `/.well-known/ucp`) describing services, capabilities, payment handlers, signing keys. | [ucp.dev](https://ucp.dev/) | `ucp[]` array of profile URLs; the profile document itself is authored separately |
+
+**Trust model**: x402-on-EVM/Solana keeps keys on the agent; MPP/Tempo same; MPP/Stripe is custodial (Stripe holds keys on both sides). Stripe SPT can settle Solana USDC without any wallet involvement, so a site advertising both rails reaches both wallet-native and customer-credential agent populations. The two populations barely overlap, which is why the gate emits one combined 402 carrying both protocols' challenges.
+
+**Built-in USDC defaults** (in `@herald/core`): Base mainnet `0x833…2913`, Base Sepolia `0x036…CF7e`, Ethereum mainnet `0xA0b…eB48`, Solana mainnet `EPjF…Dt1v`, Solana devnet `4zMM…ncDU`. Override per-network via `x402.assets[network]`.
+
 ## Code Conventions
 
 - Named exports throughout; no default exports except generated configs

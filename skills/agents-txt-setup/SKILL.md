@@ -149,6 +149,26 @@ For deeper §4.5 verification (response headers + cross-file consistency between
 
 ---
 
+## Payment protocol decision
+
+Each identifier the user adds to `payments.protocols` is *advertised* in `agents.txt` / `agents.json`. The user (or someone else's package) is responsible for the matching 402 handler at runtime. Use this when advising on which to declare:
+
+| Protocol | One-liner | Declare when… |
+|---|---|---|
+| **x402 v2** ([x402.org](https://x402.org/)) | Per-request crypto. Agent signs an EIP-3009 (EVM) or SVM payload after a 402; public facilitator settles on-chain. | They have a treasury wallet (EVM or Solana) and want micropayments per request. Set `x402.treasury` with `evmAddress` + `evmChains` and/or `solanaAddress` + `solanaNetwork`. |
+| **MPP** ([mpp.dev](https://mpp.dev/), IETF draft) | Session-based, fiat + stablecoins via `WWW-Authenticate: Payment`. Tempo (USDC) and Stripe SPT (cards + Solana USDC). | They want to accept fiat or session-bound payments. Tempo activates with `mpp.tempoRecipient`; Stripe activates with `mpp.stripeSecretKey` + `mpp.stripeNetworkId`. Either independently. |
+| **AP2** ([ap2-protocol.org](https://ap2-protocol.org/)) | Mandate trust layer that composes *above* the rail. Agent presents signed `CheckoutMandate` + `PaymentMandate` as W3C VCs; settlement still runs over x402 / MPP. | The business needs explicit, replayable user-authorization records for dispute resolution. Set alongside x402 or MPP, not as a replacement. |
+| **UCP** ([ucp.dev](https://ucp.dev/)) | Profile-based commerce discovery. Site publishes a UCP profile (typically at `/.well-known/ucp`) describing services, capabilities, payment handlers. | The site serves richer commerce flows (multi-step, multi-handler) and already has a UCP profile authored. Herald emits the discovery pointer; the profile document is served separately. |
+| **`x-` experimental** | Any identifier the user invents (`'x-mypay'`). Herald passes it through verbatim. | A protocol that has not been registered in the spec yet but they want to advertise it on a live site. The runtime contract is entirely the user's responsibility. |
+
+**Trust model.** x402-on-chain and MPP/Tempo are self-custodial (agent holds keys, signs the transfer). MPP/Stripe is custodial (Stripe holds keys on both sides). Stripe SPT can settle Solana USDC without involving any wallet on either side. Declaring both x402 and MPP reaches strictly more agents than either alone because wallet-native and customer-credential agent populations barely overlap.
+
+**Honest declarations.** A per-protocol block is emitted into `agents.txt` / `agents.json` only when its credentials are set. If they list `'mpp'` but never set `mpp.tempoRecipient` or Stripe credentials, the protocol drops at generate time with a console warning. Tell them to expect this.
+
+**Boundary reminder.** Wallet addresses (`evmAddress`, `solanaAddress`, `tempoRecipient`) are embedded in `agents.json` so agents discover where to pay. Stripe secret keys, Stripe network IDs, and `mpp.secretKey` never appear in any output, only in the operator's server environment.
+
+---
+
 ## Common pitfalls to flag proactively
 
 - `@herald/core` has zero runtime deps (edge-safe). The CLI is the only public surface; there is no runtime middleware shipped from herald.

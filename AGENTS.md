@@ -147,9 +147,47 @@ The `llms-full.txt` filename is community convention; the formal spec names the 
 
 `generateLlmsFullTxt(config, driver?)` resolves its source in this order: explicit `driver` arg → `config.content.fullTxt.driver` → `config.content.driver`. When the resolved source is a `firecrawl` driver, the generator calls `scrapeMarkdownWithFirecrawl(url, apiKey)` for each page (5 concurrent, [`/v2/scrape`](https://docs.firecrawl.dev/api-reference/endpoint/scrape), `formats: ['markdown']`, `onlyMainContent: true`) and inlines the markdown under `### [title](url)` headings. Other source types (sitemap/static/manual) get a link-list output without inlined content because core has zero runtime dependencies and an HTML→markdown converter would break that. Omit `content.fullTxt` to skip llms-full.txt generation entirely (CLI behaviour: writes the file only when the block is present).
 
+### Payment protocols at a glance
+
+Four registered protocols can appear in `payments.protocols` plus any `x-` prefixed experimental identifier per agents.txt spec §3.1. Herald only emits the declaration; the runtime handler is the adopter's responsibility.
+
+**x402 v2** ([x402.org](https://x402.org/)): per-request crypto, on-chain settlement. Agent hits a route → 402 with `accepts[]` → signs an EIP-3009 (EVM) or SVM payload → retries with `PAYMENT-SIGNATURE` → response carries `PAYMENT-RESPONSE` with the settled receipt. The 402 challenge advertises `network` (CAIP-2), `amount` (atomic units), `asset` (token contract), `payTo`, and `maxTimeoutSeconds`. Verification + on-chain settlement are typically delegated to a public facilitator (e.g. `https://x402.org/facilitator`, free, no API key); the facilitator does not custody funds. `@herald/core` ships default USDC contract addresses for Base, Base Sepolia, Ethereum, Solana mainnet, Solana devnet; override per-network via `x402.assets[network]`. The chains advertised in `agents.json` are exactly `x402.treasury.evmChains` plus the implied Solana network.
+
+**MPP** ([mpp.dev](https://mpp.dev/), IETF `draft-ryan-httpauth-payment`): session-based, fiat + stablecoins. 402 carries `WWW-Authenticate: Payment realm="…" challenge=<id>`; agent retries with `Authorization: Payment <credential>` and the response includes a signed `Payment-Receipt`. Two registered methods: Tempo (USDC) activates when `mpp.tempoRecipient` is set, Stripe SPT (card networks + Solana USDC) activates when both `mpp.stripeSecretKey` and `mpp.stripeNetworkId` are set. Either method may activate independently; both may coexist. `payments.mpp.methods` in `agents.json` lists whichever methods have credentials so an agent without a Tempo wallet learns Stripe is available without first hitting the challenge.
+
+**AP2** ([ap2-protocol.org](https://ap2-protocol.org/)): mandate trust layer that composes *above* the payment rail. The agent presents a signed `CheckoutMandate` (what's being bought, by whom, under what limits) and a `PaymentMandate` (which payment method, for how much) as W3C Verifiable Credentials. Settlement still runs over the underlying rail (x402 / MPP / other). Setting `payments.ap2` declares the site accepts mandate-bound transactions; the mandate exchange itself is the runtime contract. Use case: business needs the auditability of explicit user authorization replayable for dispute resolution.
+
+**UCP** ([ucp.dev](https://ucp.dev/)): profile-based commerce discovery. A site publishes a UCP profile (typically at `/.well-known/ucp`) describing its services, capabilities (e.g. `dev.ucp.shopping.ap2_mandate`), payment handlers (which rails it speaks), and signing keys. `ucp.profiles` flows into `agents.txt` (`UCP:` directive) and `agents.json` (`ucp[]` array) as the discovery *pointer*; the profile document itself is served separately (static JSON file the operator authors or generates themselves). Herald does not produce the profile body.
+
+#### Trust model: x402 vs MPP
+
+Both protocols can move USDC and Stripe SPT can route Solana USDC under the hood, but they differ in who holds keys, who signs the transfer, and where settlement happens. Picking which protocols to advertise is a trust-model decision, not just a payment-rail decision:
+
+| Protocol | Method | Who holds keys | Who signs the transfer | Where settlement happens |
+|---|---|---|---|---|
+| **x402 v2** | EVM or Solana | Agent holds its own private key | Agent signs the full transfer (EIP-3009 on EVM, SPL on Solana) | Public facilitator submits the agent-signed payload; on-chain |
+| **MPP** | `tempo` | Agent holds its own Tempo wallet key | Agent signs the TIP-20 transfer | On Tempo chain |
+| **MPP** | `stripe` | Stripe holds keys on both sides (custody) | Stripe internal | Stripe Payments Network; agent never signs an on-chain tx, even when SPT routes to Solana USDC |
+
+Stripe SPT can settle Solana USDC without involving any wallet on either side: the agent presents a Stripe customer credential, Stripe processes the payment using its internal Solana USDC reserves, and the merchant receives a Stripe deposit. Same asset as x402-on-Solana, completely different trust model. A site declaring both rails reaches strictly more agents than one declaring either alone because wallet-native agents pay x402 (keys, no Stripe customer) and customer-credential agents pay MPP/Stripe (Stripe account, no chain identity); the two populations barely overlap.
+
+#### Discovery boundary: `agents.json` vs `402` responses
+
+| Field | Where it lives | Why |
+|---|---|---|
+| `payments.{x402,mpp,ap2}` (object) | `agents.json` | Presence signals protocol support; agents pre-check before issuing a request |
+| `payments.x402.chains` | `agents.json` | Agents verify chain compatibility before paying |
+| `payments.mpp.methods` | `agents.json` | Configured methods (`tempo`, `stripe`); pre-screening without hitting the 402 |
+| `payments.pricing` | `agents.json` | Agents pre-screen affordability |
+| `payments.required` (optional) | `agents.json` + `agents.txt` | Site-level policy: every interaction requires payment, no free path |
+| Wallet addresses (`evmAddress`, `solanaAddress`, `tempoRecipient`) | `402` responses only | Security: never in discovery files |
+| Stripe keys, MPP `secretKey`, API keys | Server env only | Never in any output |
+
+The boundary rule is enforced by `resolveActiveProtocols` in [`packages/core/src/payments.ts`](../packages/core/src/payments.ts) plus the per-generator emit logic in `agents-txt.ts` and `agents-json.ts`.
+
 ### Payment types (`types.ts`)
 
-Three payment protocols are modelled in the config so the generators can declare them in `agents.txt` and `agents.json`. None of this is runtime: the types describe the *declaration* shape, not a 402 handler. Herald embeds receiving wallet addresses and pricing in the discovery files; it does not verify signatures or settle payments.
+Four payment protocols are modelled in the config so the generators can declare them in `agents.txt` and `agents.json`. None of this is runtime: the types describe the *declaration* shape, not a 402 handler. Herald embeds receiving wallet addresses and pricing in the discovery files; it does not verify signatures or settle payments.
 
 ```ts
 interface PaymentConfig {
