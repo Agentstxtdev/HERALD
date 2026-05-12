@@ -612,7 +612,7 @@ Use this when the protocol has settled enough that you want HERALD's generators,
 
 6. **Tests**. Add cases in [`packages/core/src/__tests__/agents-txt.test.ts`](packages/core/src/__tests__/agents-txt.test.ts) and [`agents-json.test.ts`](packages/core/src/__tests__/agents-json.test.ts) that exercise emission with and without credentials.
 
-For a brand-new block kind (not payment, not auth, not MCP, not Skills, not A2A), the same recipe extends to a new directive name. Add a parser case in the spec, plumb a new `XyzConfig` into `AgenticConfig`, and have the generators emit a fresh block separated by a blank line. The A2A block (added in v1.0) is the most recent worked example: look at the diff that introduced `A2AConfig`, the `A2A:` line emitter in `agents-txt.ts`, and the `a2a[]` array emitter in `agents-json.ts`.
+For a brand-new block kind (not payment, not auth, not MCP, not Skills, not A2A), the same recipe extends to a new directive name. Add a parser case in the spec, plumb a new `XyzConfig` into `AgenticConfig`, and have the generators emit a fresh block separated by a blank line. The A2A block is the most recent worked example: look at the diff that introduced `A2AConfig`, the `A2A:` line emitter in `agents-txt.ts`, and the `a2a[]` array emitter in `agents-json.ts`.
 
 ### Adding A2A AgentCards to your site
 
