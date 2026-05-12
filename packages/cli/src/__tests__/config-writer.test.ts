@@ -42,9 +42,9 @@ describe('s()', () => {
 // ── buildAgenticConfigContent ─────────────────────────────────────────────────
 
 describe('buildAgenticConfigContent', () => {
-  it('produces a valid JS file starting with // agentic.config.js', () => {
+  it('produces a valid JS file starting with // agentsjson.config.js', () => {
     const output = buildAgenticConfigContent(minimalChoices)
-    expect(output.startsWith('// agentic.config.js')).toBe(true)
+    expect(output.startsWith('// agentsjson.config.js')).toBe(true)
   })
 
   it('includes site name, url, and description', () => {

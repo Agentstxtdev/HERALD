@@ -47,10 +47,16 @@ export const SEARCH_ENGINE_BOTS: readonly string[] = [
   'facebot',
 ]
 
-// Standard user-agent for paid agentic crawlers using this framework
-export const PAID_AGENTIC_AGENTS: readonly string[] = [
-  'AgentstxtBot',
-]
+// Reserved for paid agentic crawlers using this framework. Empty by default:
+// when no real client UA exists in the wild, declaring one in every adopter's
+// robots.txt looks self-referential and confusing (the only thing previously
+// identifying as `AgentstxtBot` was herald's own `check` command). The
+// infrastructure stays in place: adopters who want to admit a specific paid
+// crawler can append to `crawlers.additionalAllowList` in their config, and
+// the emission path below picks it up unchanged. When a real ecosystem-wide
+// UA convention emerges, append the canonical identifier here.
+// Follow-up tracked in agentify/CLAUDE.md.
+export const PAID_AGENTIC_AGENTS: readonly string[] = []
 
 /**
  * Generate a robots.txt string following RFC 9309.
@@ -93,7 +99,7 @@ export function generateRobotsTxt(
   // ── Free AI scrapers (blocked) ─────────────────────────────────────────────
   if (blockFreeAiScrapers) {
     const blocklist = [...FREE_AI_SCRAPERS, ...additionalBlockList]
-    lines.push('# Free AI training scrapers — blocked (use x402 for paid access)')
+    lines.push('# Free AI training scrapers')
     for (const bot of blocklist) {
       lines.push(`User-agent: ${bot}`)
     }
@@ -104,12 +110,14 @@ export function generateRobotsTxt(
   // ── Paid agentic agents (allowed through to x402 paywall) ─────────────────
   if (allowPaidAgents) {
     const allowlist = [...PAID_AGENTIC_AGENTS, ...additionalAllowList]
-    lines.push('# Paid agentic agents — access gated by x402 payment protocol')
-    for (const bot of allowlist) {
-      lines.push(`User-agent: ${bot}`)
+    if (allowlist.length > 0) {
+      lines.push('# Paid agentic agents')
+      for (const bot of allowlist) {
+        lines.push(`User-agent: ${bot}`)
+      }
+      lines.push('Allow: /')
+      blank()
     }
-    lines.push('Allow: /')
-    blank()
   } else if (additionalAllowList.length > 0) {
     lines.push('# Custom allowed agents')
     for (const bot of additionalAllowList) {
@@ -135,7 +143,7 @@ export function generateRobotsTxt(
   }
 
   // ── Default wildcard rule ──────────────────────────────────────────────────
-  lines.push('# Default: allow everything (specific bots above override this)')
+  lines.push('# Default')
   lines.push('User-agent: *')
   lines.push('Allow: /llms.txt')
   lines.push('Allow: /agents.txt')

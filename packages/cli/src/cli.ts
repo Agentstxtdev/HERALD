@@ -15,7 +15,7 @@ program
 
 program
   .command('init')
-  .description('Interactive setup: creates agentic.config.js')
+  .description('Interactive setup: creates agentsjson.config.js')
   .option('--name <name>', 'Site name')
   .option('--url <url>', 'Site URL')
   .option('--sitemap <url>', 'Sitemap URL')
@@ -27,14 +27,14 @@ program
 program
   .command('generate')
   .description(
-    'Generate robots.txt, llms.txt, agents.txt, and agents.json from agentic.config.js.\n' +
+    'Generate robots.txt, llms.txt, agents.txt, and agents.json from agentsjson.config.js.\n' +
     'Outputs to --out directory (default: ./public).\n' +
     '\n' +
     'By default every applicable file is generated. Pass one or more positive flags\n' +
     '(--robots, --llms, --llms-full, --agents, --sitemap) to emit only those files.\n' +
     'Negative flags (--skip-*) subtract from whatever set is selected.',
   )
-  .option('-c, --config <path>', 'Path to config file', './agentic.config.js')
+  .option('-c, --config <path>', 'Path to config file', './agentsjson.config.js')
   .option('-o, --out <dir>', 'Output directory', './public')
   // Positive selectors: pass one or more to emit only those files.
   .option('--robots', 'Emit only robots.txt (combine with other positive flags to widen the set)')

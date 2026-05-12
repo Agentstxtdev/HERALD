@@ -4,7 +4,7 @@ A framework that makes any website readable and (optionally) monetizable by AI a
 
 ## Skills
 
-Use `/agents-txt-setup` when helping a user integrate `herald` into their own site. The skill walks Claude through diagnosing the user's framework, configuring `agentic.config.js`, running the CLI commands, and wiring the middleware, with inline gotchas.
+Use `/agents-txt-setup` when helping a user integrate `herald` into their own site. The skill walks Claude through diagnosing the user's framework, configuring `agentsjson.config.js`, running the CLI commands, and wiring the middleware, with inline gotchas.
 
 - [agents-txt-setup SKILL.md](skills/agents-txt-setup/SKILL.md): Claude's operating instructions for guiding setup
 - [agents-txt-setup REFERENCE.md](skills/agents-txt-setup/REFERENCE.md): full config schema, middleware snippets, CLI flags, package sub-paths, payment flows, core API
@@ -46,7 +46,7 @@ pnpm typecheck    # tsc --noEmit in every package
 pnpm clean        # rm -rf dist in every package
 
 # CLI — try without installing
-herald init               # interactive wizard → agentic.config.js
+herald init               # interactive wizard → agentsjson.config.js
 herald generate --out ./public   # writes robots.txt, sitemap.xml, llms.txt, agents.txt, agents.json
 herald check https://mysite.com  # live compliance audit
 ```
@@ -87,7 +87,7 @@ interface AgenticConfig {
 
 `payments.protocols` accepts the registered identifiers (`'x402'`, `'mpp'`) and any experimental identifier prefixed with `x-` (e.g. `'x-mypay'`) per agents.txt spec §3.1. Same convention for `authorization.protocols`. The set of identifiers comes from `@herald/core`'s `protocols.ts` registry, which is the single source of truth.
 
-Users write `agentic.config.js` once. Every generator and middleware adapter reads from it.
+Users write `agentsjson.config.js` once. Every generator and middleware adapter reads from it.
 
 ## Package: `@herald/core`
 
@@ -115,6 +115,7 @@ Framework adapters behind sub-path exports (only pull in what you use):
 @herald/addon/express  → Express adapter  (peer: express, mppx, stripe)
 @herald/addon/hono     → Hono adapter     (peer: hono,    mppx, stripe)
 @herald/addon/nextjs   → Next.js adapter  (peer: next,    mppx, stripe)
+@herald/addon/dev      → Dev-server §4.5 headers shim (Vite plugin, Connect, Hono)
 ```
 
 The three adapters are thin shells: they convert the framework-specific
@@ -161,10 +162,10 @@ packages/cli/src/
 **`init` wizard flow:**
 1. `detectProject()`: reads `package.json`, `.env*`, scans for `sitemap.xml`, detects framework
 2. readline prompts pre-filled with detected values (or `-y` to skip all)
-3. `writeAgenticConfig(path, choices)` → writes `agentic.config.js`
+3. `writeAgenticConfig(path, choices)` → writes `agentsjson.config.js`
 
 **`generate` flow:**
-1. Dynamic `import()` of `agentic.config.js`
+1. Dynamic `import()` of `agentsjson.config.js`
 2. Zod validation with field-level error paths. Per-field lenient on optional wallets: `evmAddress`, `solanaAddress`, and `stripeSecretKey` keep their strict format checks (regex / min length / `sk_` prefix), but a malformed value `.catch()`es to `undefined` with a `console.warn` instead of aborting the whole parse. The `treasury` refine then ensures at least one wallet survived.
 3. `generateRobotsTxt` / `generateLlmsTxt` / `generateAgentsTxt` / `generateAgentsJson` / `generateSitemapXml` (per the file's emission policy; see [README.md](README.md) for the sitemap rules) → writes to `--out` dir (default: `./public`). Per-protocol chain emission in `agents.json` is gated on the surviving wallets: `evmChains` only when `evmAddress` is set, Solana chains only when `solanaAddress` is set.
 4. Runs spec validators inline, prints warnings but does not fail the build
@@ -174,7 +175,7 @@ Per-file flags come in two symmetric sets. Default mode emits everything applica
 - Positive selectors: `--robots`, `--llms`, `--llms-full`, `--agents`, `--sitemap` (also forces emission for the `firecrawl` driver; warns + skips for the `sitemap` driver), `--headers` (emits the §4.5 deployment config for the detected hosting platform; `--platform <cloudflare|netlify|vercel|unknown>` overrides the probe)
 - Negative selectors: `--skip-robots`, `--skip-llms`, `--skip-llms-full`, `--skip-agents`, `--skip-sitemap`, `--skip-headers`
 
-The `--headers` flag delegates to `@herald/core/src/headers.ts` (`generateHeadersFile(platform)`, `mergeVercelHeaders()`); the platform comes from `detectProject().hostingPlatform`. Auto-generation is implemented for Cloudflare and Netlify (a `_headers` file in `--out`) and Vercel (a `vercel.json` at the project root with merge semantics). Other platforms (nginx, Apache, Caddy, S3+CloudFront, etc.) get the `unknown` fallback `_headers` plus a console note pointing at the README's per-platform table; herald deliberately does not write into `/etc/` or external IaC trees.
+The `--headers` flag delegates to `@herald/core/src/headers.ts` (`generateHeadersFile(platform)`, `mergeVercelHeaders()`); the platform comes from `detectProject().hostingPlatform`. After the file is written, the CLI also calls `headersDevSnippet(detectProject().framework)` from `@herald/core` and prints the framework-specific dev-parity snippet under `Dev parity (detected: <framework>)`. The shim itself lives in `@herald/addon/dev` (Vite plugin / Connect middleware / Hono middleware that read `public/_headers` or `vercel.json` at request time); Next.js is intentionally routed at the native `next.config.js` `async headers()` API rather than a herald shim. Auto-generation is implemented for Cloudflare and Netlify (a `_headers` file in `--out`) and Vercel (a `vercel.json` at the project root with merge semantics). Other platforms (nginx, Apache, Caddy, S3+CloudFront, etc.) get the `unknown` fallback `_headers` plus a console note pointing at the README's per-platform table; herald deliberately does not write into `/etc/` or external IaC trees.
 
 **`check` command:**
 ```bash
@@ -242,6 +243,10 @@ returning `{ kind: 'pass' }`, `{ kind: 'pass-with-headers', headers }`, or
 - Never commit `.env` files or wallet private keys
 - Run `pnpm typecheck` before committing; `strict: true` + `exactOptionalPropertyTypes` catches subtle bugs
 
+## Open follow-ups
+
+- **Paid agentic crawler UA convention.** `PAID_AGENTIC_AGENTS` in [`packages/core/src/robots.ts`](packages/core/src/robots.ts) is intentionally empty. The previous default (`AgentstxtBot`) was self-referential — the only client identifying with that UA was herald's own `check` command, and shipping an invented bot name in every adopter's `robots.txt` looked confusing. Adopters who want to admit a specific paid crawler can use `crawlers.additionalAllowList`. Re-add a canonical identifier here when an ecosystem-wide UA convention emerges in the wild (a real client crawling sites with that UA, not just a herald-side declaration). At that point, also restore the `herald-check` UA in `packages/cli/src/commands/check.ts` to whatever the canonical name becomes, so the audit tool's traffic looks like a real consumer rather than a tool with a private UA.
+
 ## Adding a New Framework Adapter
 
 1. Create `packages/web/src/<framework>.ts`
@@ -252,7 +257,7 @@ returning `{ kind: 'pass' }`, `{ kind: 'pass-with-headers', headers }`, or
 
 ## Adding a New Content Driver
 
-**Config-driven (visible in `agentic.config.js`):**
+**Config-driven (visible in `agentsjson.config.js`):**
 1. Add variant to `LlmsDriver` in `packages/core/src/types.ts`
 2. Handle the new `type` in `resolveContent()` in `packages/core/src/llms.ts`
 3. Export factory from `packages/core/src/sitemap.ts`
@@ -268,7 +273,7 @@ const llmsTxt = await generateLlmsTxt(config, myDriver)
 
 Two paths. Pick by stability.
 
-**Path 1: experimental (`x-` prefix), no herald changes.** When a user wants to advertise a protocol that has not been registered in the spec yet, they declare it with an `x-` prefix in `agentic.config.js`:
+**Path 1: experimental (`x-` prefix), no herald changes.** When a user wants to advertise a protocol that has not been registered in the spec yet, they declare it with an `x-` prefix in `agentsjson.config.js`:
 
 ```js
 payments: { protocols: ['x402', 'x-mypay'], x402: { /* ... */ } }

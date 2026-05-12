@@ -190,7 +190,7 @@ export async function initCommand(options: InitOptions): Promise<void> {
   rl?.close()
 
   // ── Write config ───────────────────────────────────────────────────────────
-  const configPath = resolve('agentic.config.js')
+  const configPath = resolve('agentsjson.config.js')
   const choices: AgenticConfigChoices = {
     siteName,
     siteUrl,
@@ -204,7 +204,7 @@ export async function initCommand(options: InitOptions): Promise<void> {
   if (existsSync(configPath)) {
     const rl2 = readline.createInterface({ input: stdin, output: stdout })
     const overwrite = await createPrompter(rl2, !!options.yes)(
-      'agentic.config.js already exists. Overwrite? [y/N]: ',
+      'agentsjson.config.js already exists. Overwrite? [y/N]: ',
       'n',
     )
     rl2.close()
@@ -215,7 +215,7 @@ export async function initCommand(options: InitOptions): Promise<void> {
   }
 
   writeAgenticConfig(configPath, choices)
-  console.log(`\n✅ Created agentic.config.js\n`)
+  console.log(`\n✅ Created agentsjson.config.js\n`)
 
   // ── Next steps tailored to detected framework ──────────────────────────────
   console.log(`Next steps:`)

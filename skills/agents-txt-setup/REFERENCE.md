@@ -1,6 +1,6 @@
 # herald: code reference
 
-## Full `agentic.config.js` Schema
+## Full `agentsjson.config.js` Schema
 
 ```js
 /** @type {import('@herald/core').AgenticConfig} */
@@ -41,16 +41,16 @@ export default {
   },
 
   payments: {
-    // Registered identifiers ('x402', 'mpp') plus any 'x-' prefixed
+    // Registered identifiers ('x402', 'mpp', 'ap2') plus any 'x-' prefixed
     // experimental identifier (e.g. 'x-mypay') per agents.txt spec §3.1.
-    protocols: ['mpp', 'x402'],  // MPP verified first; agents see only one 402
+    protocols: ['x402', 'mpp', 'ap2'],
 
     x402: {
       treasury: {
-        evmAddress: '0xYourEVMWallet',    // 40-char hex, 0x prefix (EVM)
-        evmChains: ['eip155:8453'],        // Base (cheap gas, USDC native)
-        // solanaAddress: 'YourBase58Key',
-        // solanaNetwork: 'mainnet-beta',
+        evmAddress: process.env.EVM_ADDRESS,   // 40-char hex, 0x prefix
+        evmChains: ['eip155:8453'],             // Base (cheap gas, USDC native)
+        solanaAddress: process.env.SOLANA_ADDRESS,
+        solanaNetwork: 'mainnet-beta',
       },
       pricing: { amount: '0.001', token: 'USDC' },     // default per-request price
       perPath: {
@@ -59,13 +59,17 @@ export default {
     },
 
     mpp: {
-      // Stripe fiat (requires stripeSecretKey + stripeNetworkId)
-      stripeSecretKey: process.env.STRIPE_SECRET_KEY,   // sk_..., enables fiat cards
-      stripeNetworkId: process.env.STRIPE_NETWORK_ID,   // Stripe Business Network profile ID
-      // Tempo stablecoin (requires tempoRecipient)
-      tempoEnabled: true,                               // USDC on Tempo chain
-      tempoRecipient: '0xYourEVMWallet',                // wallet address for Tempo payments
-      pricing: { amount: '0.001', token: 'USD' },       // major-unit decimal; converted per method (Stripe to cents, Tempo to atomic USDC)
+      tempoRecipient: process.env.TREASURY_TEMPO,        // USDC on Tempo chain
+      stripeSecretKey: process.env.STRIPE_SECRET_KEY,    // sk_..., enables fiat cards
+      stripeNetworkId: process.env.STRIPE_NETWORK_ID,    // Stripe Business Network profile ID
+      pricing: { amount: '0.001', token: 'USD' },        // major-unit decimal
+    },
+
+    // AP2 mandate layer (ap2-protocol.org, spec §5.3). Announces support;
+    // mandate exchange (CheckoutMandate / PaymentMandate) happens during checkout.
+    ap2: {
+      presentations: ['sd-jwt-vc'],
+      spec: 'https://ap2-protocol.org',
     },
 
     exemptUserAgents: [],  // user-agent strings that bypass payment entirely
@@ -78,23 +82,33 @@ export default {
   },
 
   mcp: {
-    endpoints: 'https://mysite.com/mcp',
-    // or [{ url: 'https://mysite.com/mcp', description: 'Public API surface' }]
+    endpoints: {
+      url: 'https://mysite.com/mcp',
+      description: 'Public API surface.',
+    },
   },
 
   skills: {
-    urls: 'https://mysite.com/skills/main/SKILL.md',
-    // or array of strings or { url, description? } objects
+    urls: {
+      url: 'https://mysite.com/skills/main/SKILL.md',
+      description: 'Teaches agents how to use this site.',
+    },
   },
 
-  // A2A AgentCard discovery (a2a-protocol.org). Optional. Useful for
-  // multi-agent sites or AgentCards served at non-canonical paths.
-  // Single-agent sites at /.well-known/agent-card.json do not need this block.
+  // A2A AgentCard discovery (a2a-protocol.org, spec §9).
   a2a: {
-    cards: [
-      'https://mysite.com/.well-known/agent-card.json',
-      { url: 'https://mysite.com/agents/support/card.json', description: 'Support agent' },
-    ],
+    cards: {
+      url: 'https://mysite.com/.well-known/agent-card.json',
+      description: 'Primary agent card.',
+    },
+  },
+
+  // UCP profile discovery (ucp.dev, spec §10).
+  ucp: {
+    profiles: {
+      url: 'https://mysite.com/.well-known/ucp',
+      description: 'UCP profile for commerce capabilities.',
+    },
   },
 }
 ```
@@ -120,7 +134,7 @@ Per-protocol activation is itself gated on the wallet survivors: `evmChains` onl
 ```ts
 import express from 'express'
 import { createAgenticRouter, agenticPaymentMiddleware } from '@herald/addon/express'
-import config from './agentic.config.js'
+import config from './agentsjson.config.js'
 
 const app = express()
 
@@ -146,28 +160,28 @@ app/
 ├── agents.json/route.ts
 └── api/content/route.ts
 middleware.ts         ← gates /api/* at the edge
-agentic.config.js     ← project root
+agentsjson.config.js     ← project root
 ```
 
 ```ts
 // app/robots.txt/route.ts
 import { robotsTxtHandler } from '@herald/addon/nextjs'
-import config from '@/agentic.config'
+import config from '@/agentsjson.config'
 export const GET = robotsTxtHandler(config)
 
 // app/llms.txt/route.ts
 import { llmsTxtHandler } from '@herald/addon/nextjs'
-import config from '@/agentic.config'
+import config from '@/agentsjson.config'
 export const GET = llmsTxtHandler(config)
 
 // app/agents.json/route.ts
 import { agentsJsonHandler } from '@herald/addon/nextjs'
-import config from '@/agentic.config'
+import config from '@/agentsjson.config'
 export const GET = agentsJsonHandler(config)
 
 // middleware.ts — runs at the edge before API routes
 import { createPaymentProxy } from '@herald/addon/nextjs'
-import agenticConfig from './agentic.config.js'
+import agenticConfig from './agentsjson.config.js'
 export default createPaymentProxy(agenticConfig, '/api')
 export const config = { matcher: ['/api/:path*'] }
 
@@ -182,7 +196,7 @@ export async function GET() {
 ```ts
 import { Hono } from 'hono'
 import { createAgenticRoutes, agenticPaymentMiddleware } from '@herald/addon/hono'
-import config from './agentic.config.js'
+import config from './agentsjson.config.js'
 
 const app = new Hono()
 createAgenticRoutes(app, config)
@@ -206,7 +220,7 @@ herald init [options]
   -y, --yes              Skip all prompts, use detected defaults
 
 herald generate [options]
-  -c, --config <path>    Config file path (default: ./agentic.config.js)
+  -c, --config <path>    Config file path (default: ./agentsjson.config.js)
   -o, --out <dir>        Output directory (default: ./public)
 
   # Positive selectors — pass any to emit only those files
@@ -263,6 +277,36 @@ The headers config file applies only to static files on the hosting platform's a
 
 Quick test: run the build, then `ls` the output. If you can see the file, headers config applies. If the URL works but the file is absent, you are serving dynamically and the handler is responsible. `@herald/addon` handles this for the routes it owns. If a developer hand-rolls a route handler for `/agents.txt`, they must set `Content-Type: text/plain; charset=utf-8`, `Access-Control-Allow-Origin: *`, and `Cache-Control: public, max-age=3600` themselves.
 
+### §4.5 Headers — dev-server parity (`@herald/addon/dev`)
+
+Production hosts apply the generated `_headers` / `vercel.json` at the edge. Most dev servers do not, which means `audit_site http://localhost:…` reports §4.5 fails that the same site does not exhibit in production. CORS is the half that actually breaks: browser-context agent clients cannot fetch `/agents.txt` or `/agents.json` cross-origin on `localhost` without `Access-Control-Allow-Origin: *`.
+
+`@herald/addon/dev` is a sub-path that exports framework-specific shims. Each reads the generated headers file at request time and replays the rules on dev-server responses. The CLI prints the right snippet under `Dev parity (detected: <framework>)` after every `herald generate --headers`, sourced from the project probe.
+
+| Framework probe value | Shim | Wire it in |
+|---|---|---|
+| `astro` | `heraldHeadersVitePlugin()` | `astro.config.mjs` `vite.plugins[]` |
+| `astro` / `sveltekit` / Vite-based generally | `heraldHeadersVitePlugin()` | `vite.config.ts` `plugins[]` |
+| `express` | `heraldHeadersConnect()` | `app.use(heraldHeadersConnect())` before routes |
+| `hono` | `heraldHeadersHono()` | `app.use('*', heraldHeadersHono())` |
+| `nextjs` | None — use `next.config.js` `async headers()` (native API, works in both dev and prod) | n/a |
+| `unknown` | One of the three above, depending on the dev server | Generic guide printed by the CLI |
+
+Shared options across all three shims:
+
+| Option | Default | Meaning |
+|---|---|---|
+| `headersFile` | `./public/_headers` | Cloudflare / Netlify headers file path (relative to `cwd`) |
+| `vercelJson` | `./vercel.json` | Fallback when `headersFile` is not present |
+| `cwd` | `process.cwd()` | Project root for relative-path resolution |
+| `silent` | `false` | Suppress the one-shot "no headers file found" warning |
+
+The shims re-read the headers file on each request (cheap, dev-only), so `herald generate --headers` regenerations show up live without a dev-server restart. The Vite plugin is `apply: 'serve'`, so it has no effect during build. Production bundles never pull in `@herald/addon/dev` because no production entry point imports from it.
+
+If `loadDevHeaderRules()` finds neither `_headers` nor `vercel.json`, the shim emits a one-shot `console.warn` reminding the developer to run `herald generate --headers`. Pass `silent: true` to suppress that warning (useful in test setups where the project is intentionally headers-free).
+
+For Next.js specifically: the framework already supports `async headers()` in `next.config.js`, which applies in both `next dev` and production. Herald does not ship a Next.js dev shim because the native API already covers both surfaces. Mirror the rules from `_headers` into `next.config.js` if you also need them on Node-runtime routes; the Vercel `vercel.json#headers` file (emitted by `herald generate --headers --platform vercel`) still applies at the edge for Vercel deployments.
+
 ### §4.5 Headers — manual config for unsupported platforms
 
 For nginx, Apache, Caddy, AWS S3+CloudFront, etc., the headers must be set in the platform's own configuration. Required values are the same:
@@ -286,6 +330,7 @@ npm install @herald/addon
 @herald/addon/express    → Express adapter   (peer: express)
 @herald/addon/hono       → Hono adapter      (peer: hono)
 @herald/addon/nextjs     → Next.js adapter   (peer: next)
+@herald/addon/dev        → Dev-server §4.5 headers shim (Vite plugin, Connect middleware, Hono middleware). Reads `public/_headers` (or `vercel.json` as fallback) at request time so localhost honors the same rules production does.
 
 # MPP payment verification (optional — install when you want Stripe/Tempo)
 npm install mppx stripe

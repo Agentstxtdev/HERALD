@@ -11,7 +11,7 @@ interface CheckResult {
 async function checkUrl(url: string): Promise<{ ok: boolean; status: number; body: string }> {
   try {
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'AgentstxtBot/1.0 (+https://github.com/agentstxt/agents.txt)' },
+      headers: { 'User-Agent': 'herald-check/1.0 (+https://github.com/agentstxtdev/herald)' },
     })
     const body = await res.text()
     return { ok: res.ok, status: res.status, body }

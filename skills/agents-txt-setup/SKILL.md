@@ -1,6 +1,6 @@
 ---
 name: agents-txt-setup
-description: Guides Claude through setting up the `@herald/cli` CLI and `@herald/addon` middleware on a user's website. Covers the init wizard, agentic.config.js fields, file generation (robots.txt / sitemap.xml / llms.txt / agents.txt / agents.json), framework middleware wiring (Express / Next.js / Hono), and the optional payment middleware (x402 v2 + MPP). Use when the user wants to add herald to their project, generate the discovery files, accept x402 or MPP payments, or wire up `@herald/addon` route handlers and middleware.
+description: Guides Claude through setting up the `@herald/cli` CLI and `@herald/addon` middleware on a user's website. Covers the init wizard, agentsjson.config.js fields, file generation (robots.txt / sitemap.xml / llms.txt / agents.txt / agents.json), framework middleware wiring (Express / Next.js / Hono), and the optional payment middleware (x402 v2 + MPP). Use when the user wants to add herald to their project, generate the discovery files, accept x402 or MPP payments, or wire up `@herald/addon` route handlers and middleware.
 ---
 
 # herald: setup
@@ -28,7 +28,7 @@ herald init -y               # skip all prompts, use auto-detected defaults
 **What `init` does internally:**
 1. `detectProject()` reads `package.json` deps (detects framework), scans for `sitemap.xml`, reads `.env*` for wallet addresses and API keys
 2. readline wizard prompts the user, all answers pre-filled from detection
-3. Writes `agentic.config.js` via `buildAgenticConfigContent(choices)`
+3. Writes `agentsjson.config.js` via `buildAgenticConfigContent(choices)`
 
 **Flag shortcuts** (skip individual prompts):
 ```
@@ -45,7 +45,7 @@ herald init -y               # skip all prompts, use auto-detected defaults
 
 ---
 
-## Step 2: Configure `agentic.config.js`
+## Step 2: Configure `agentsjson.config.js`
 
 See [REFERENCE.md](REFERENCE.md) for the full annotated schema.
 
@@ -74,7 +74,7 @@ herald generate --out ./public
 ```
 
 **What `generate` does internally:**
-1. Dynamic `import()` of `agentic.config.js`
+1. Dynamic `import()` of `agentsjson.config.js`
 2. Zod v4 validation: field-level errors printed before any file is written
 3. Calls `generateRobotsTxt`, `generateLlmsTxt`, `generateAgentsTxt`, `generateAgentsJson`, `generateSitemapXml` from `@herald/core`
 4. Writes to `--out` dir (default `./public`)
@@ -82,7 +82,7 @@ herald generate --out ./public
 
 **Flags:**
 ```
--c, --config <path>    config file path (default: ./agentic.config.js)
+-c, --config <path>    config file path (default: ./agentsjson.config.js)
 -o, --out <dir>        output directory (default: ./public)
 
 # Positive selectors — pass any to emit only those files:

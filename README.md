@@ -179,7 +179,7 @@ Layer 4: AGENT CAPABILITIES /agents.txt   (agents.txt spec)  "Here's what you ca
 
 ```bash
 npm install -D @herald/cli               # install as dev dependency
-herald init                              # interactive setup → writes agentic.config.js
+herald init                              # interactive setup → writes agentsjson.config.js
 herald generate                          # writes discovery files to ./public
 ```
 
@@ -208,7 +208,7 @@ herald generate --skip-llms-full          # skip the expensive Firecrawl scrape
 
 `robots.txt` is the Layer 1 *access control* file for your site. The format is defined by the [Robots Exclusion Protocol (RFC 9309)](https://www.rfc-editor.org/rfc/rfc9309) and is honored by every well-behaved crawler. It declares which user agents may visit which paths, and it is the right place to draw the line between visitors you welcome and ones you do not.
 
-Beyond the RFC, HERALD's generator does four things on top of a plain `robots.txt`. It explicitly allows the major search engine crawlers (Googlebot, Bingbot, and similar) so your SEO is unaffected. It blocks the well-known free AI training scrapers (GPTBot, ClaudeBot, CCBot, Google-Extended) when `crawlers.blockFreeAiScrapers` is enabled, since those crawls produce no value for the site owner. It allows the paid agentic agents (such as `AgentstxtBot`) through to the rest of the stack, where they can negotiate access via x402 or MPP through `agents.txt`. And it appends the `Sitemap:` and `Content-Signal:` directives that downstream tools rely on for sitemap discovery and for stating AI-usage preferences. The default wildcard block also `Allow: /agents.txt` and `Allow: /llms.txt`, which both grants explicit access and exposes those files to any crawler reading `robots.txt` (no separate discovery directive is needed; `agents.txt` is fixed at the canonical path).
+Beyond the RFC, HERALD's generator does three things on top of a plain `robots.txt`. It explicitly allows the major search engine crawlers (Googlebot, Bingbot, and similar) so your SEO is unaffected. It blocks the well-known free AI training scrapers (GPTBot, ClaudeBot, CCBot, Google-Extended) when `crawlers.blockFreeAiScrapers` is enabled, since those crawls produce no value for the site owner. And it appends the `Sitemap:` and `Content-Signal:` directives that downstream tools rely on for sitemap discovery and for stating AI-usage preferences. The default wildcard block also `Allow: /agents.txt` and `Allow: /llms.txt`, which both grants explicit access and exposes those files to any crawler reading `robots.txt` (no separate discovery directive is needed; `agents.txt` is fixed at the canonical path).
 
 The generator also merges intelligently with an existing `robots.txt` file. Anything below the `# ── Existing rules (preserved) ──` marker is kept verbatim across regenerations, so any project-specific rules you have authored survive every `herald generate` run.
 
@@ -221,16 +221,12 @@ User-agent: Googlebot
 User-agent: Bingbot
 Allow: /
 
-# Free AI training scrapers: blocked
+# Free AI training scrapers
 User-agent: GPTBot
 User-agent: ClaudeBot
 User-agent: Google-Extended
 User-agent: CCBot
 Disallow: /
-
-# Paid agentic agents: x402 payment gate applies
-User-agent: AgentstxtBot
-Allow: /
 
 # Default
 User-agent: *
@@ -242,7 +238,15 @@ Sitemap: https://mysite.com/sitemap.xml
 Content-Signal: search=yes, ai-train=no, ai-input=no
 ```
 
-`Sitemap:` is the long-standing widely-supported extension that points at your URL inventory; it appears whenever the content driver produces an authoritative URL list (`static`, `manual`, or `firecrawl` with `--sitemap`). `Content-Signal:` follows the IETF AIPREF draft (CC0) and lets you state AI-usage preferences in a machine-readable way alongside the access rules above. There is intentionally no `Agents-Txt:` directive: the agents.txt spec (§4.3) fixes the file at `<origin>/agents.txt`, so the `Allow: /agents.txt` line in the wildcard block is sufficient discovery and a separate directive would only duplicate that information.
+#### Reading each section
+
+The generated file is intentionally low on inline commentary so it stays easy to scan and audit. Here is what each block means in practice:
+
+- **Free AI training scrapers section.** These UAs are listed under a single `Disallow: /`. The intent is to keep free AI training crawls off your origin while leaving a structured path for *paying* agents to negotiate access through `agents.txt` and the x402 / MPP flows. The block is a soft signal (UA strings are advisory and trivially spoofable); the load-bearing enforcement for paid access lives in the 402 handler on your gated routes, not in `robots.txt`.
+- **Paid agentic agents section** (emitted only when `crawlers.additionalAllowList` is set, or when a canonical paid-crawler UA exists — currently neither is true by default). When present, this block names UAs that should be `Allow`-ed through to the rest of your stack, where they can hit `agents.txt`, discover the payments block, and negotiate access via x402 or MPP. There is no canonical ecosystem-wide UA for this class yet, so the section is suppressed by default; adopters who run their own crawler and want sites to recognize it can use `crawlers.additionalAllowList: ['MyCrawlerBot']` in their config.
+- **Default wildcard block.** Search engine and AI-scraper UAs above this block override it for those clients (RFC 9309 specificity). The wildcard exists so any other crawler reading `robots.txt` is explicitly told `/llms.txt` and `/agents.txt` are reachable, which doubles as discovery for those two files — no separate `Agents-Txt:` directive is needed because spec §4.3 fixes `agents.txt` at the canonical path.
+
+`Sitemap:` is the long-standing widely-supported extension that points at your URL inventory; it appears whenever the content driver produces an authoritative URL list (`static`, `manual`, or `firecrawl` with `--sitemap`). `Content-Signal:` follows the IETF AIPREF draft (CC0) and lets you state AI-usage preferences in a machine-readable way alongside the access rules above.
 
 ---
 
@@ -266,7 +270,7 @@ If your framework already generates a sitemap (Next.js `app/sitemap.ts`, `@astro
 
 `llms.txt` is the Layer 3 *content briefing* for your site: an LLM-optimized index that follows the [llmstxt.org](https://llmstxt.org/) spec. It tells an agent what your site is and points at the pages worth reading, in a structured plain-text format. Format is fixed: an H1 with the site name, an optional `>` blockquote summary, then `## Section` headings each containing a bullet list of `[Title](url): description` lines. A trailing `## Optional` section flags pages an agent can safely ignore on a first pass.
 
-The page list itself comes from `content.driver` in your `agentic.config.js`. The driver decides where the URLs originate (your existing `sitemap.xml`, a Firecrawl crawl, an explicit list of pages, or fully curated sections), and `@herald/core` renders them into the format above. Payment terms, authentication, MCP endpoints, and skill packages **do not** belong in `llms.txt`; those live one layer up in `agents.txt` / `agents.json`.
+The page list itself comes from `content.driver` in your `agentsjson.config.js`. The driver decides where the URLs originate (your existing `sitemap.xml`, a Firecrawl crawl, an explicit list of pages, or fully curated sections), and `@herald/core` renders them into the format above. Payment terms, authentication, MCP endpoints, and skill packages **do not** belong in `llms.txt`; those live one layer up in `agents.txt` / `agents.json`.
 
 ```markdown
 # My Site
@@ -352,17 +356,17 @@ Omit the `fullTxt` block to skip llms-full.txt generation entirely.
 
 ---
 
-### The `@herald/cli` and `agentic.config.js`
+### The `@herald/cli` and `agentsjson.config.js`
 
 
-HERALD is driven by a single file at your project root: **`agentic.config.js`**. It's the source of truth for every discovery file HERALD emits and (when enabled) the payment middleware. The CLI creates, validates, and re-renders from it.
+HERALD is driven by a single file at your project root: **`agentsjson.config.js`**. It's the source of truth for every discovery file HERALD emits and (when enabled) the payment middleware. The CLI creates, validates, and re-renders from it.
 
 ### Three commands
 
 | Command | What it does | Output |
 |---|---|---|
-| `herald init` | Interactive wizard. Detects framework / sitemap / `.env` and writes `agentic.config.js` at your project root (with sensible defaults you can edit later). Use `-y` to skip all prompts and accept detected values. | `./agentic.config.js` |
-| `herald generate` | Imports `agentic.config.js`, validates it, runs the generators (`@herald/core`), writes `robots.txt`, `llms.txt`, `agents.txt`, `agents.json`, and (when applicable) `sitemap.xml` to `--out` (default `./public`). Each file passes its spec validator inline; failures print as warnings. | files under `--out` |
+| `herald init` | Interactive wizard. Detects framework / sitemap / `.env` and writes `agentsjson.config.js` at your project root (with sensible defaults you can edit later). Use `-y` to skip all prompts and accept detected values. | `./agentsjson.config.js` |
+| `herald generate` | Imports `agentsjson.config.js`, validates it, runs the generators (`@herald/core`), writes `robots.txt`, `llms.txt`, `agents.txt`, `agents.json`, and (when applicable) `sitemap.xml` to `--out` (default `./public`). Each file passes its spec validator inline; failures print as warnings. | files under `--out` |
 | `herald check <url>` | Fetches the live discovery files from a public URL and scores them against the same validators that `generate` uses. Useful for CI or post-deploy smoke tests. | report on stdout |
 
 Per-file flags for `generate`:
@@ -387,12 +391,12 @@ Per-file flags for `generate`:
 
 See `herald generate --help` for the full list.
 
-### `agentic.config.js`: the file you create
+### `agentsjson.config.js`: the file you create
 
-You don't manually write this from scratch. Run **`herald init`** in your project root and the wizard writes it for you. The file shape:
+You don't manually write this from scratch. Run **`herald init`** or **`herald generate --agents`**in your project root and the wizard writes it for you. The file shape:
 
 ```js
-// agentic.config.js  (lives at your project root)
+// agentsjson.config.js  (lives at your project root)
 export default {
   // Site metadata — required. Drives robots.txt, llms.txt, agents.txt, agents.json
   site: {
@@ -403,14 +407,26 @@ export default {
 
   // Where llms.txt's page list comes from. Pick one driver:
   //   sitemap   — read your existing sitemap.xml
-  //   firecrawl — crawl the live site (richer, requires FIRECRAWL_API_KEY)
-  //   static    — supply pages[] inline
+  //   firecrawl — crawl the live site (richer titles, auto-grouping; needs FIRECRAWL_API_KEY)
+  //   static    — hand-curated sections, no crawl
   //   manual    — supply sections[] with full control
   content: {
     driver: {
-      type: 'firecrawl',
-      siteUrl: 'https://myblog.com',
-      apiKey: process.env.FIRECRAWL_API_KEY,
+      type: 'static',
+      pages: [],
+      sections: [
+        {
+          name: 'Docs',
+          pages: [
+            { url: 'https://myblog.com/intro', title: 'Intro',   description: 'Project overview.' },
+            { url: 'https://myblog.com/api',   title: 'API ref', description: 'Endpoint reference.' },
+          ],
+        },
+      ],
+      // Switch to firecrawl for an auto-crawled page list:
+      // type: 'firecrawl',
+      // siteUrl: 'https://myblog.com',
+      // apiKey: process.env.FIRECRAWL_API_KEY,
     },
   },
 
@@ -421,27 +437,67 @@ export default {
     allowPaidAgents: true,
   },
 
-  // Optional: payment middleware (only relevant if you also use @herald/addon)
+  // Optional: payment middleware
   payments: {
-    protocols: ['mpp', 'x402'],
+    protocols: ['x402', 'mpp', 'ap2'],
     x402: {
       treasury: {
-        evmAddress: '0xYourAddress',
+        evmAddress: process.env.EVM_ADDRESS,
         evmChains: ['eip155:8453'],
+        solanaAddress: process.env.SOLANA_ADDRESS,
+        solanaNetwork: 'mainnet-beta',
       },
-      pricing: { amount: '0.001', token: 'USDC' },
+      pricing: { amount: '0.01', token: 'USDC' },
+    },
+    mpp: {
+      tempoRecipient: process.env.TREASURY_TEMPO,
+      pricing: { amount: '0.01', token: 'USDC' },
+    },
+    // AP2 mandate layer (ap2-protocol.org). Announces support; the mandate
+    // exchange (CheckoutMandate / PaymentMandate) happens during checkout.
+    ap2: {
+      presentations: ['sd-jwt-vc'],
+      spec: 'https://ap2-protocol.org',
     },
   },
 
-  // Optional: A2A AgentCard discovery (a2a-protocol.org).
-  // The well-known path /.well-known/agent-card.json is enough for a single
-  // agent at the canonical location. Declare A2A entries when you run
-  // multiple agents or serve AgentCards at non-canonical paths.
+  // Optional: agent identity verification (agent-auth)
+  authorization: {
+    enabled: true,
+    protocols: ['agent-auth'],
+    identityRequired: false,
+  },
+
+  // Optional: MCP endpoint declaration
+  mcp: {
+    endpoints: {
+      url: 'https://myblog.com/mcp',
+      description: 'MCP server exposing blog content and search.',
+    },
+  },
+
+  // Optional: agent-installable skill packages (agentskills.io)
+  skills: {
+    urls: {
+      url: 'https://myblog.com/skills/my-skill/SKILL.md',
+      description: 'Teaches agents how to search and navigate this blog.',
+    },
+  },
+
+  // Optional: A2A AgentCard discovery (a2a-protocol.org)
   a2a: {
-    cards: [
-      'https://myblog.com/.well-known/agent-card.json',
-      { url: 'https://myblog.com/agents/support/card.json', description: 'Support agent' },
-    ],
+    cards: {
+      url: 'https://myblog.com/.well-known/agent-card.json',
+      description: 'Blog assistant agent card.',
+    },
+  },
+
+  // Optional: UCP profile discovery (ucp.dev)
+  ucp: {
+    profiles: {
+      url: 'https://myblog.com/.well-known/ucp',
+      description: 'UCP profile for commerce capabilities.',
+    },
   },
 }
 ```
@@ -451,7 +507,7 @@ export default {
 The **same file** is consumed by:
 
 - **CLI**: `herald generate` reads it to write static files into `--out`
-- **`@herald/addon` middleware**: `import config from './agentic.config.js'`, then `app.use(createAgenticRouter(config))` and `app.use('/api', agenticPaymentMiddleware(config, '/api'))`
+- **`@herald/addon` middleware**: `import config from './agentsjson.config.js'`, then `app.use(createAgenticRouter(config))` and `app.use('/api', agenticPaymentMiddleware(config, '/api'))`
 
 You write it once. There is no separate runtime config; nothing duplicates.
 
@@ -465,7 +521,7 @@ You write it once. There is no separate runtime config; nothing duplicates.
 Both `init` and `generate` run a Zod schema (CLI-only, doesn't bloat `@herald/core`). Errors print field-level paths so misconfiguration surfaces early:
 
 ```
-❌ Failed to load config: Invalid agentic.config.js:
+❌ Failed to load config: Invalid agentsjson.config.js:
   • site.url: must be a valid URL e.g. https://mysite.com
   • payments.x402: treasury must include at least one of evmAddress or solanaAddress (after lenient validation)
 ```
@@ -493,11 +549,35 @@ The agents.txt spec mandates four response headers on `/agents.txt` and `/agents
 | **Vercel** | `vercel.json`, `.vercel/` | `vercel.json#headers` at the project root, **merged** with any existing entries (the herald-managed sources are replaced; everything else is preserved verbatim) |
 | **Unknown** | nothing matched | `_headers` in `--out` as a best-effort default, plus a console warning. Translate to your platform's mechanism. See the per-platform table below. |
 
-**A2A AgentCard paths included automatically.** When `a2a.cards` is set in `agentic.config.js`, the generator emits matching header entries for each same-origin AgentCard path alongside the `/agents.txt` and `/agents.json` entries. The headers used are `Content-Type: application/json`, `Access-Control-Allow-Origin: *`, `Cache-Control: public, max-age=3600`. AgentCards on a different origin from `site.url` are skipped because their headers are not the responsibility of this deployment. AgentCards (a2a-protocol.org) are not governed by agents.txt §4.5, but the CORS line is load-bearing for any browser-context A2A client probing the well-known path cross-origin, so it is included by default.
+**A2A AgentCard paths included automatically.** When `a2a.cards` is set in `agentsjson.config.js`, the generator emits matching header entries for each same-origin AgentCard path alongside the `/agents.txt` and `/agents.json` entries. The headers used are `Content-Type: application/json`, `Access-Control-Allow-Origin: *`, `Cache-Control: public, max-age=3600`. AgentCards on a different origin from `site.url` are skipped because their headers are not the responsibility of this deployment. AgentCards (a2a-protocol.org) are not governed by agents.txt §4.5, but the CORS line is load-bearing for any browser-context A2A client probing the well-known path cross-origin, so it is included by default.
 
 **Static file vs dynamic handler.** Headers config files (`_headers`, `vercel.json#headers`) apply only to *static* files on the hosting platform's asset pipeline. They do not apply to *dynamic* routes served by a handler or worker (Express, Next.js App Router, Hono, Cloudflare Workers route handlers, etc.). If you serve `/agents.txt` or an AgentCard dynamically, the route handler must set the headers in code. `@herald/addon` does this for the routes it owns; if you hand-roll a route, follow the same shape. Agent-auth's `/.well-known/agent-configuration` endpoint is the canonical dynamic case: it is conventionally served by a handler and is therefore not emitted into the headers config.
 
 Override detection with `--platform <cloudflare\|netlify\|vercel\|unknown>` if needed. Skip the file with `--skip-headers`. Emit only the headers config with `--headers`.
+
+**Dev-server parity (`@herald/addon/dev`).** Production hosts (Cloudflare, Netlify, Vercel) apply the generated headers file at their edge, but most dev servers do not. Vite (Astro, SvelteKit, Remix, Nuxt 3, plain Vite) ignores `public/_headers`; `vercel dev` does not honor `vercel.json#headers` for every request; Express and Hono dev servers do nothing on their own. The result: `audit_site http://localhost:…` reports §4.5 fails that the same site does not exhibit in production, and browser-context agent clients fail CORS preflights on `localhost`.
+
+The `@herald/addon/dev` sub-path exports framework-specific shims that read the generated headers file at request time and replay the rules on dev-server responses. The CLI prints a copy-pasteable snippet under `Dev parity (detected: <framework>)` after every `herald generate --headers`, so you usually do not need to look this up. The shims:
+
+| Framework | Shim | Wire it in |
+|-----------|------|-----------|
+| Astro / SvelteKit / Remix / Nuxt 3 / plain Vite | `heraldHeadersVitePlugin()` | `astro.config.mjs` `vite.plugins[]`, or `vite.config.ts` `plugins[]` |
+| Express | `heraldHeadersConnect()` | `app.use(heraldHeadersConnect())` before your routes |
+| Hono | `heraldHeadersHono()` | `app.use('*', heraldHeadersHono())` |
+| Next.js | None — use `next.config.js` `async headers()` (native API works in both dev and prod) | n/a |
+
+```ts
+// astro.config.mjs
+import { heraldHeadersVitePlugin } from '@herald/addon/dev'
+
+export default defineConfig({
+  vite: { plugins: [heraldHeadersVitePlugin()] },
+})
+```
+
+The Vite plugin is `apply: 'serve'` so it runs only during `vite dev`, never on build. All three shims re-read the headers file (`./public/_headers` first, then `./vercel.json#headers` as a fallback) on each request so `herald generate --headers` regenerations apply live without a server restart. Production bundles do not pull in the disk-reading code because none of the production entry points (`@herald/addon`, `@herald/addon/express`, etc.) import from `./dev`.
+
+Options accepted by all three shims: `headersFile?: string` (default `./public/_headers`), `vercelJson?: string` (default `./vercel.json`), `cwd?: string` (default `process.cwd()`), `silent?: boolean` (suppress the one-shot warning fired when no headers file is found — emitted once so adopters notice they wired the shim without having run `herald generate --headers`).
 
 For platforms the CLI does not generate for, configure the four headers yourself. Required values are the same regardless of mechanism:
 
@@ -613,34 +693,34 @@ Create four route files:
 **`app/robots.txt/route.ts`**
 ```ts
 import { robotsTxtHandler } from '@herald/addon/nextjs'
-import config from '@/agentic.config'
+import config from '@/agentsjson.config'
 export const GET = robotsTxtHandler(config)
 ```
 
 **`app/llms.txt/route.ts`**
 ```ts
 import { llmsTxtHandler } from '@herald/addon/nextjs'
-import config from '@/agentic.config'
+import config from '@/agentsjson.config'
 export const GET = llmsTxtHandler(config)
 ```
 
 **`app/agents.txt/route.ts`**
 ```ts
 import { agentsTxtHandler } from '@herald/addon/nextjs'
-import config from '@/agentic.config'
+import config from '@/agentsjson.config'
 export const GET = agentsTxtHandler(config)
 ```
 
 **`app/agents.json/route.ts`**
 ```ts
 import { agentsJsonHandler } from '@herald/addon/nextjs'
-import config from '@/agentic.config'
+import config from '@/agentsjson.config'
 export const GET = agentsJsonHandler(config)
 ```
 
 **`middleware.ts`: gates API routes at the edge:**
 ```ts
-import agenticConfig from './agentic.config.js'
+import agenticConfig from './agentsjson.config.js'
 import { createPaymentProxy } from '@herald/addon/nextjs'
 
 export default createPaymentProxy(agenticConfig, '/api')
@@ -904,7 +984,7 @@ Two practical consequences for the gate decision in [`payment-gate.ts`](packages
 
 <br>
 
-> This is the `payments.*` slice of `AgenticConfig` shown exhaustively. The full file in your project also carries `site`, `content`, and `crawlers` blocks. See [The `@herald/cli` and `agentic.config.js`](#the-heraldcli-and-agenticconfigjs) for the complete shape and how the file is created.
+> This is the `payments.*` slice of `AgenticConfig` shown exhaustively. The full file in your project also carries `site`, `content`, and `crawlers` blocks. See [The `@herald/cli` and `agentsjson.config.js`](#the-heraldcli-and-agentsjsonconfigjs) for the complete shape and how the file is created.
 
 ```ts
 import type { AgenticConfig } from '@herald/core'
@@ -984,7 +1064,7 @@ Two paths exist depending on whether you want to ship the protocol experimentall
 Use this when the protocol is new, you want to advertise it on a live site, and you do not need herald to know anything about it beyond its identifier. The spec reserves the `x-` prefix for exactly this case.
 
 ```js
-// agentic.config.js
+// agentsjson.config.js
 export default {
   site: { name: 'My Site', url: 'https://mysite.com' },
   payments: {

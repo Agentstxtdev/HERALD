@@ -150,7 +150,7 @@ Open a GitHub issue. Include:
 
 - Node + pnpm version (`node -v`, `pnpm -v`)
 - Operating system
-- A minimal reproduction (a small `agentic.config.js` plus the command that fails)
+- A minimal reproduction (a small `agentsjson.config.js` plus the command that fails)
 - Full stack trace if there is one
 - What you expected versus what happened
 

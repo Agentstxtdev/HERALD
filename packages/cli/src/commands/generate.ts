@@ -10,6 +10,8 @@ import {
   generateHeadersFile,
   mergeVercelHeaders,
   headersDeploymentNote,
+  headersDevSnippet,
+  type DevFramework,
   parseSitemap,
   crawlWithFirecrawl,
   validateRobotsTxt,
@@ -68,7 +70,7 @@ async function loadConfig(configPath: string): Promise<AgenticConfig> {
       const issues = result.error.issues
         .map((i) => `  • ${i.path.join('.') || '(root)'}: ${i.message}`)
         .join('\n')
-      throw new Error(`Invalid agentic.config.js:\n${issues}`)
+      throw new Error(`Invalid agentsjson.config.js:\n${issues}`)
     }
 
     return result.data as AgenticConfig
@@ -153,6 +155,22 @@ function writeHeadersFile(options: GenerateOptions, outDir: string, config: Agen
   }
 
   console.log(`      ${headersDeploymentNote(platform)}`)
+
+  // Dev-parity hint: the production file we just wrote is not applied by most
+  // dev servers (Vite, Express, Hono, etc.). Print a per-framework snippet so
+  // the user can wire the `@herald/addon/dev` shim into their dev environment
+  // and get §4.5 parity on `localhost`.
+  const detectedFramework = detectProject().framework
+  const devFramework: DevFramework = detectedFramework === 'unknown' ? 'unknown' : detectedFramework
+  const snippet = headersDevSnippet(devFramework)
+  const labelled = devFramework === 'unknown'
+    ? '      Dev parity (no framework detected):'
+    : `      Dev parity (detected: ${devFramework}):`
+  console.log()
+  console.log(labelled)
+  for (const line of snippet.split('\n')) {
+    console.log(`      ${line}`)
+  }
 }
 
 export async function generateCommand(options: GenerateOptions): Promise<void> {

@@ -412,16 +412,16 @@ packages/cli/src/
 Orchestrates three concerns that are now separated into distinct modules:
 1. **`project-probe.ts`**: `detectProject()` reads `package.json`, scans common paths for `sitemap.xml`, reads `.env` files for wallet addresses and API keys, and detects the hosting platform (`hostingPlatform: 'cloudflare' | 'netlify' | 'vercel' | 'unknown'`) from file presence (`wrangler.json`/`wrangler.toml`/`netlify.toml`/`vercel.json`/`.vercel/`) with a dep-based fallback (`@astrojs/cloudflare`, `@cloudflare/workers-types`, `wrangler`, `@netlify/plugin-*`). Pure reads, no side effects.
 2. **`commands/init.ts`**: readline wizard that prompts the user and assembles an `AgenticConfigChoices` object from answers.
-3. **`config-writer.ts`**: `buildAgenticConfigContent(choices)` converts structured choices into the `agentic.config.js` string; `writeAgenticConfig(path, choices)` writes it. The `s()` helper (JSON.stringify-based injection prevention) lives here.
+3. **`config-writer.ts`**: `buildAgenticConfigContent(choices)` converts structured choices into the `agentsjson.config.js` string; `writeAgenticConfig(path, choices)` writes it. The `s()` helper (JSON.stringify-based injection prevention) lives here.
 
 The `-y` flag skips all prompts and uses detected defaults.
 
 ### `generate` command
 
-Loads `agentic.config.js` via dynamic `import()`, then immediately validates it through `AgenticConfigSchema` (Zod v4, `config-schema.ts`). Structural errors (missing site, wrong type, refine violations) are reported with field-level paths before any file is written:
+Loads `agentsjson.config.js` via dynamic `import()`, then immediately validates it through `AgenticConfigSchema` (Zod v4, `config-schema.ts`). Structural errors (missing site, wrong type, refine violations) are reported with field-level paths before any file is written:
 
 ```
-❌ Failed to load config: Invalid agentic.config.js:
+❌ Failed to load config: Invalid agentsjson.config.js:
   • site.url: must be a valid URL e.g. https://mysite.com
   • payments.x402: treasury must include at least one of evmAddress or solanaAddress (after lenient validation)
 ```
@@ -575,7 +575,7 @@ export function myDriver(opts: MyDriverOpts): ContentDriver {
 }
 ```
 
-**2. Add to the `LlmsDriver` union** (`packages/core/src/types.ts`) so users can declare it in `agentic.config.js`:
+**2. Add to the `LlmsDriver` union** (`packages/core/src/types.ts`) so users can declare it in `agentsjson.config.js`:
 
 ```ts
 type LlmsDriver =

@@ -132,20 +132,32 @@ describe('generateRobotsTxt', () => {
     expect(output).not.toContain('Bingbot')
   })
 
-  it('allows paid agentic agents by default', () => {
+  it('PAID_AGENTIC_AGENTS is empty by default — no canonical paid-crawler UA exists yet', () => {
+    expect(PAID_AGENTIC_AGENTS).toEqual([])
+  })
+
+  it('does not emit a paid-agents section when the allowlist is empty', () => {
     const output = generateRobotsTxt(baseConfig)
-    for (const bot of PAID_AGENTIC_AGENTS) {
-      expect(output).toContain(`User-agent: ${bot}`)
+    expect(output).not.toContain('# Paid agentic agents')
+  })
+
+  it('emits any additionalAllowList entries under the paid-agents section', () => {
+    const config: AgenticConfig = {
+      site: baseConfig.site,
+      crawlers: { additionalAllowList: ['MyCrawlerBot'] },
     }
+    const output = generateRobotsTxt(config)
+    expect(output).toContain('# Paid agentic agents')
+    expect(output).toContain('User-agent: MyCrawlerBot')
   })
 
   it('omits paid agent section when allowPaidAgents is false', () => {
     const config: AgenticConfig = {
       site: baseConfig.site,
-      crawlers: { allowPaidAgents: false },
+      crawlers: { allowPaidAgents: false, additionalAllowList: ['MyCrawlerBot'] },
     }
     const output = generateRobotsTxt(config)
-    expect(output).not.toContain('AgentstxtBot')
+    expect(output).not.toContain('# Paid agentic agents')
   })
 
   it('includes additionalBlockList bots in the block section', () => {

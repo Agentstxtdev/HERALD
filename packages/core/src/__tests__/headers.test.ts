@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import {
   generateHeadersFile,
+  headersDevSnippet,
+  matchHeadersForPath,
   mergeVercelHeaders,
+  parseHeadersFile,
+  parseVercelHeaders,
   vercelHeaderEntries,
   type VercelHeaderEntry,
 } from '../headers.js'
@@ -241,6 +245,106 @@ describe('headers generators with UCP profile config', () => {
     ])
   })
 
+  it('emits /llms.txt entry when config.content is set, with text/plain + charset', () => {
+    const config: AgenticConfig = {
+      ...baseConfig,
+      content: { driver: { type: 'sitemap', sitemapUrl: 'https://test.example/sitemap.xml' } },
+    }
+    const entries = vercelHeaderEntries(config)
+    const llms = entries.find((e) => e.source === '/llms.txt')
+    expect(llms).toBeDefined()
+    expect(llms!.headers).toEqual([
+      { key: 'Content-Type', value: 'text/plain; charset=utf-8' },
+      { key: 'Access-Control-Allow-Origin', value: '*' },
+      { key: 'Cache-Control', value: 'public, max-age=3600' },
+    ])
+    expect(entries.find((e) => e.source === '/llms-full.txt')).toBeUndefined()
+  })
+
+  it('emits /llms-full.txt entry only when content.fullTxt is set', () => {
+    const config: AgenticConfig = {
+      ...baseConfig,
+      content: {
+        driver: { type: 'sitemap', sitemapUrl: 'https://test.example/sitemap.xml' },
+        fullTxt: { driver: { type: 'sitemap', sitemapUrl: 'https://test.example/sitemap.xml' } },
+      },
+    }
+    const sources = vercelHeaderEntries(config).map((e) => e.source)
+    expect(sources).toContain('/llms.txt')
+    expect(sources).toContain('/llms-full.txt')
+  })
+
+  it('does NOT emit llms.txt entries when config.content is absent', () => {
+    const entries = vercelHeaderEntries(baseConfig)
+    const sources = entries.map((e) => e.source)
+    expect(sources).not.toContain('/llms.txt')
+    expect(sources).not.toContain('/llms-full.txt')
+  })
+
+  it('emits a /skills/* glob for same-origin skill URLs, with text/markdown + charset', () => {
+    const config: AgenticConfig = {
+      ...baseConfig,
+      skills: { urls: 'https://test.example/skills/adopt-agents-txt/SKILL.md' },
+    }
+    const entries = vercelHeaderEntries(config)
+    const skills = entries.find((e) => e.source === '/skills/*')
+    expect(skills).toBeDefined()
+    expect(skills!.headers).toEqual([
+      { key: 'Content-Type', value: 'text/markdown; charset=utf-8' },
+      { key: 'Access-Control-Allow-Origin', value: '*' },
+      { key: 'Cache-Control', value: 'public, max-age=3600' },
+    ])
+  })
+
+  it('collapses multiple same-origin skills under the same first segment to one glob', () => {
+    const config: AgenticConfig = {
+      ...baseConfig,
+      skills: { urls: [
+        'https://test.example/skills/foo/SKILL.md',
+        'https://test.example/skills/bar/SKILL.md',
+      ] },
+    }
+    const entries = vercelHeaderEntries(config)
+    expect(entries.filter((e) => e.source === '/skills/*')).toHaveLength(1)
+  })
+
+  it('skips cross-origin skill URLs', () => {
+    const config: AgenticConfig = {
+      ...baseConfig,
+      skills: { urls: 'https://other.example/skills/foo/SKILL.md' },
+    }
+    const entries = vercelHeaderEntries(config)
+    expect(entries.find((e) => e.source.startsWith('/skills'))).toBeUndefined()
+  })
+
+  it('derives the glob from the URL\'s first path segment (not hardcoded /skills/)', () => {
+    const config: AgenticConfig = {
+      ...baseConfig,
+      skills: { urls: 'https://test.example/help/foo/SKILL.md' },
+    }
+    const entries = vercelHeaderEntries(config)
+    expect(entries.find((e) => e.source === '/help/*')).toBeDefined()
+  })
+
+  it('emits llms + skills + A2A + UCP entries together with the §4.5 base', () => {
+    const config: AgenticConfig = {
+      ...baseConfig,
+      content: { driver: { type: 'sitemap', sitemapUrl: 'https://test.example/sitemap.xml' } },
+      a2a: { cards: 'https://test.example/.well-known/agent-card.json' },
+      ucp: { profiles: 'https://test.example/.well-known/ucp' },
+      skills: { urls: 'https://test.example/skills/foo/SKILL.md' },
+    }
+    const sources = vercelHeaderEntries(config).map((e) => e.source).sort()
+    expect(sources).toEqual([
+      '/.well-known/agent-card.json',
+      '/.well-known/ucp',
+      '/agents.json',
+      '/agents.txt',
+      '/llms.txt',
+      '/skills/*',
+    ])
+  })
+
   it('mergeVercelHeaders preserves unrelated entries when extra UCP entries are added', () => {
     const userEntry: VercelHeaderEntry = {
       source: '/api/(.*)',
@@ -253,5 +357,152 @@ describe('headers generators with UCP profile config', () => {
     const merged = mergeVercelHeaders([userEntry], config)
     expect(merged).toContainEqual(userEntry)
     expect(merged.map((e) => e.source)).toContain('/.well-known/ucp')
+  })
+})
+
+describe('parseHeadersFile', () => {
+  it('round-trips against generateHeadersFile output', () => {
+    const generated = generateHeadersFile('cloudflare').content
+    const rules = parseHeadersFile(generated)
+    const sources = rules.map((r) => r.source)
+    expect(sources).toEqual(['/agents.txt', '/agents.json'])
+    const agentsTxt = rules[0]!
+    expect(agentsTxt.headers).toEqual([
+      { key: 'Content-Type', value: 'text/plain; charset=utf-8' },
+      { key: 'Access-Control-Allow-Origin', value: '*' },
+      { key: 'Cache-Control', value: 'public, max-age=3600' },
+    ])
+  })
+
+  it('ignores comment and blank lines', () => {
+    const rules = parseHeadersFile(
+      '# comment\n\n/foo\n  X-A: 1\n\n# another\n/bar\n  X-B: 2\n',
+    )
+    expect(rules).toHaveLength(2)
+    expect(rules[0]!.source).toBe('/foo')
+    expect(rules[1]!.headers[0]).toEqual({ key: 'X-B', value: '2' })
+  })
+
+  it('drops rules with no headers', () => {
+    const rules = parseHeadersFile('/orphan\n\n/real\n  X: y\n')
+    expect(rules.map((r) => r.source)).toEqual(['/real'])
+  })
+
+  it('returns an empty array for empty input', () => {
+    expect(parseHeadersFile('')).toEqual([])
+  })
+})
+
+describe('parseVercelHeaders', () => {
+  it('parses a vercel.json object with headers[]', () => {
+    const rules = parseVercelHeaders({
+      headers: [
+        { source: '/agents.txt', headers: [{ key: 'Content-Type', value: 'text/plain' }] },
+      ],
+    })
+    expect(rules).toEqual([
+      { source: '/agents.txt', headers: [{ key: 'Content-Type', value: 'text/plain' }] },
+    ])
+  })
+
+  it('parses a raw JSON string', () => {
+    const rules = parseVercelHeaders(
+      JSON.stringify({ headers: [{ source: '/x', headers: [{ key: 'A', value: 'b' }] }] }),
+    )
+    expect(rules).toHaveLength(1)
+  })
+
+  it('returns [] for malformed JSON, missing headers, or non-object input', () => {
+    expect(parseVercelHeaders('not json')).toEqual([])
+    expect(parseVercelHeaders({})).toEqual([])
+    expect(parseVercelHeaders(null)).toEqual([])
+    expect(parseVercelHeaders({ headers: 'oops' })).toEqual([])
+  })
+
+  it('skips entries with no valid key/value pairs', () => {
+    const rules = parseVercelHeaders({
+      headers: [
+        { source: '/a', headers: [{ key: 'X', value: 'y' }] },
+        { source: '/b', headers: [{ key: 1, value: 2 }] },
+        { source: '/c' },
+      ],
+    })
+    expect(rules.map((r) => r.source)).toEqual(['/a'])
+  })
+})
+
+describe('matchHeadersForPath', () => {
+  const rules = [
+    { source: '/agents.txt', headers: [{ key: 'Content-Type', value: 'text/plain' }] },
+    { source: '/agents.json', headers: [
+      { key: 'Content-Type', value: 'application/json' },
+      { key: 'Access-Control-Allow-Origin', value: '*' },
+    ] },
+    { source: '/blog/*', headers: [{ key: 'X-Blog', value: '1' }] },
+  ]
+
+  it('matches exact paths and returns lowercased keys', () => {
+    expect(matchHeadersForPath(rules, '/agents.txt')).toEqual({ 'content-type': 'text/plain' })
+    expect(matchHeadersForPath(rules, '/agents.json')).toEqual({
+      'content-type': 'application/json',
+      'access-control-allow-origin': '*',
+    })
+  })
+
+  it('matches wildcard sources', () => {
+    expect(matchHeadersForPath(rules, '/blog/hello')).toEqual({ 'x-blog': '1' })
+    expect(matchHeadersForPath(rules, '/blog/deep/path')).toEqual({ 'x-blog': '1' })
+  })
+
+  it('returns {} for non-matching paths', () => {
+    expect(matchHeadersForPath(rules, '/other')).toEqual({})
+  })
+
+  it('later rules override earlier ones on key collision', () => {
+    const overlap = [
+      { source: '/x', headers: [{ key: 'A', value: 'first' }] },
+      { source: '/x', headers: [{ key: 'A', value: 'second' }] },
+    ]
+    expect(matchHeadersForPath(overlap, '/x')).toEqual({ a: 'second' })
+  })
+})
+
+describe('headersDevSnippet', () => {
+  it('returns an Astro snippet referencing the Vite plugin', () => {
+    const s = headersDevSnippet('astro')
+    expect(s).toContain('astro.config.mjs')
+    expect(s).toContain('heraldHeadersVitePlugin')
+    expect(s).toContain('@herald/addon/dev')
+  })
+
+  it('returns a Vite snippet for vite and sveltekit', () => {
+    expect(headersDevSnippet('vite')).toContain('vite.config.ts')
+    expect(headersDevSnippet('sveltekit')).toContain('vite.config.ts')
+  })
+
+  it('returns the Connect middleware for express', () => {
+    const s = headersDevSnippet('express')
+    expect(s).toContain('heraldHeadersConnect')
+    expect(s).toContain('app.use(')
+  })
+
+  it('returns the Hono middleware for hono', () => {
+    const s = headersDevSnippet('hono')
+    expect(s).toContain('heraldHeadersHono')
+    expect(s).toContain("app.use('*'")
+  })
+
+  it('points Next.js users at native headers() API, not a herald shim', () => {
+    const s = headersDevSnippet('nextjs')
+    expect(s).toContain('next.config.js')
+    expect(s).toContain('async headers()')
+    expect(s).not.toContain('heraldHeadersVitePlugin')
+  })
+
+  it('returns a generic guide for unknown frameworks', () => {
+    const s = headersDevSnippet('unknown')
+    expect(s).toContain('heraldHeadersVitePlugin')
+    expect(s).toContain('heraldHeadersConnect')
+    expect(s).toContain('heraldHeadersHono')
   })
 })

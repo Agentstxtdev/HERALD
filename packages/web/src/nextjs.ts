@@ -4,7 +4,7 @@
  * Two usage patterns:
  *
  * 1. middleware.ts — Edge Middleware payment proxy:
- *      import config from './agentic.config.js'
+ *      import config from './agentsjson.config.js'
  *      import { createPaymentProxy } from '@herald/addon/nextjs'
  *      export default createPaymentProxy(config, '/api')
  *      export const config = { matcher: ['/api/:path*'] }
