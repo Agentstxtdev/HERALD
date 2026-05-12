@@ -65,7 +65,7 @@ export default {
       pricing: { amount: '0.001', token: 'USD' },        // major-unit decimal
     },
 
-    // AP2 mandate layer (ap2-protocol.org, spec §5.3). Announces support;
+    // AP2 mandate layer (ap2-protocol.org, spec §8.3). Announces support;
     // mandate exchange (CheckoutMandate / PaymentMandate) happens during checkout.
     ap2: {
       presentations: ['sd-jwt-vc'],

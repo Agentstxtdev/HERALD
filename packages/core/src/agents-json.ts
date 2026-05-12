@@ -174,7 +174,7 @@ export function generateAgentsJson(config: AgenticConfig): string {
   }
 
   // ── A2A ────────────────────────────────────────────────────────────────────
-  // One entry per AgentCard URL (spec §9, §12.2). Symmetric with mcp[] and
+  // One entry per AgentCard URL (spec §9, §5.2). Symmetric with mcp[] and
   // skills[]: agents.txt carries only the URL; the description field is
   // agents.json-only. Per-agent metadata (capabilities, extensions, transport,
   // security schemes) lives in the AgentCard itself.
@@ -188,7 +188,7 @@ export function generateAgentsJson(config: AgenticConfig): string {
   }
 
   // ── UCP ────────────────────────────────────────────────────────────────────
-  // One entry per UCP profile URL (spec §10, §12.2). Symmetric with mcp[],
+  // One entry per UCP profile URL (spec §10, §5.2). Symmetric with mcp[],
   // skills[], and a2a[]: agents.txt carries only the URL; the description
   // field is agents.json-only. Per-profile metadata (services, capabilities,
   // payment handlers, signing keys) lives in the UCP profile itself.

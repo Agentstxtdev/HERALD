@@ -821,7 +821,7 @@ Migration v1→v2 reference: https://docs.x402.org/guides/migration-v1-to-v2
 
 <br>
 
-The agents.txt standard treats payments as one of the capability blocks a site declares to agents (spec §5). HERALD is the resource-server implementation that pairs with that declaration: a single config object drives both the announcement layer (the `payments` block in `agents.txt` and `agents.json`) and the wire layer (the actual 402 handler that gates protected routes). Both registered payment protocols are supported out of the box, behind one `gateRequest()` entry point that emits a combined 402 carrying every active protocol's challenge so an agent picks whichever it can satisfy.
+The agents.txt standard treats payments as one of the capability blocks a site declares to agents (spec §8). HERALD is the resource-server implementation that pairs with that declaration: a single config object drives both the announcement layer (the `payments` block in `agents.txt` and `agents.json`) and the wire layer (the actual 402 handler that gates protected routes). Both registered payment protocols are supported out of the box, behind one `gateRequest()` entry point that emits a combined 402 carrying every active protocol's challenge so an agent picks whichever it can satisfy.
 
 The two currently-registered protocols are implemented in [`packages/web/src/x402.ts`](packages/web/src/x402.ts) and [`packages/web/src/mpp.ts`](packages/web/src/mpp.ts); the shared gate that sequences them is in [`packages/web/src/payment-gate.ts`](packages/web/src/payment-gate.ts). Adding a third protocol is mostly a registry edit plus a new sibling file (see the "Adding a new protocol" section below).
 

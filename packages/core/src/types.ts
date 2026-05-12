@@ -195,7 +195,7 @@ export interface MppConfig {
  * agent-initiated payments have non-repudiable proof of user intent. herald
  * does not implement the mandate exchange itself; this config exists so the
  * `ap2` identifier can be declared in `agents.txt` and a `payments.ap2` block
- * can surface in `agents.json` for pre-screening (spec §5.3 and §12.3).
+ * can surface in `agents.json` for pre-screening (spec §8.3 and §5.3).
  */
 export interface Ap2Config {
   /**
