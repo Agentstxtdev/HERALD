@@ -2,7 +2,7 @@
   "name": "herald",
   "private": true,
   "version": "0.1.0",
-  "description": "Monorepo for the Herald standard — make any website LLM-ready and monetizable by AI agents",
+  "description": "herald: a toolkit for adopting the agents.txt standard. Generates robots.txt, sitemap.xml, llms.txt, agents.txt, and agents.json, with optional x402 + MPP payment middleware.",
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",

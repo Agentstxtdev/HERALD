@@ -1,7 +1,7 @@
 {
   "name": "@herald/cli",
   "version": "0.1.0",
-  "description": "CLI to make any website agent-ready: robots.txt, llms.txt, agents.txt, x402 payments",
+  "description": "CLI to make any website agent-ready: robots.txt, llms.txt, agents.txt, agents.json, x402 + MPP payments",
   "type": "module",
   "bin": {
     "herald": "./dist/cli.js"
@@ -31,13 +31,24 @@
     "herald",
     "llms-txt",
     "agents-txt",
+    "agents-json",
     "ai-crawler",
     "x402",
+    "mpp",
     "cli"
   ],
   "license": "Apache-2.0",
+  "homepage": "https://agentstxt.dev",
+  "bugs": { "url": "https://github.com/agentstxtdev/herald/issues" },
   "repository": {
     "type": "git",
-    "url": "https://github.com/agentstxtdev/herald"
+    "url": "git+https://github.com/agentstxtdev/herald.git",
+    "directory": "packages/cli"
+  },
+  "engines": {
+    "node": ">=20.12.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

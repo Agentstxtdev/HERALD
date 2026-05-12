@@ -1,7 +1,7 @@
 {
   "name": "@herald/addon",
   "version": "0.1.0",
-  "description": "Drop-in middleware to make any website LLM-ready and monetizable by AI agents via x402",
+  "description": "Drop-in middleware to make any website LLM-ready and monetizable by AI agents via x402 and MPP",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -68,18 +68,30 @@
   },
   "keywords": [
     "x402",
+    "mpp",
     "llms-txt",
     "robots-txt",
     "agents-txt",
+    "agents-json",
     "ai-payment",
     "http-402",
     "open-standard",
     "express-middleware",
-    "nextjs"
+    "nextjs",
+    "hono"
   ],
   "license": "Apache-2.0",
+  "homepage": "https://agentstxt.dev",
+  "bugs": { "url": "https://github.com/agentstxtdev/herald/issues" },
   "repository": {
     "type": "git",
-    "url": "https://github.com/agentstxtdev/herald"
+    "url": "git+https://github.com/agentstxtdev/herald.git",
+    "directory": "packages/web"
+  },
+  "engines": {
+    "node": ">=20.12.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
