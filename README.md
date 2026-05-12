@@ -12,7 +12,7 @@
 [![Spec: agents.txt](https://img.shields.io/badge/spec-agents.txt-111?style=flat-square)](https://agentstxt.dev)
 [![Payments: x402 v2 + MPP](https://img.shields.io/badge/payments-x402%20v2%20%2B%20MPP-7c3aed?style=flat-square)](#optional-add-on-payment-middleware)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/agentstxt/agents.txt?style=flat-square&logo=github&logoColor=white&color=181717)](https://github.com/agentstxt/agents.txt)
+[![GitHub stars](https://img.shields.io/github/stars/agentstxtdev/herald?style=flat-square&logo=github&logoColor=white&color=181717)](https://github.com/agentstxtdev/herald)
 
 </div>
 
@@ -1120,7 +1120,7 @@ The CLI wizard prompts for this after the payments block; the field is `a2a: { c
 ### Setup
 
 ```bash
-git clone https://github.com/agentstxt/agents.txt
+git clone https://github.com/agentstxtdev/herald
 cd agents.txt/herald
 pnpm install
 pnpm build       # builds core → web → cli in dependency order

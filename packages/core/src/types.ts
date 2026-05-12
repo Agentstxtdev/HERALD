@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Agentic Web Standard — shared types
-// Spec: https://github.com/agentstxt/agents.txt/blob/main/spec/AGENTS-TXT-STANDARD.md
+// Spec: https://github.com/agentstxtdev/herald/blob/main/spec/AGENTS-TXT-STANDARD.md
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { PaymentProtocolId, AuthProtocolId } from './protocols.js'

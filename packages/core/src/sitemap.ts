@@ -52,7 +52,7 @@ function urlToTitle(url: string): string {
 async function fetchXml(url: string): Promise<string> {
   const res = await fetch(url, {
     signal: AbortSignal.timeout(15_000),
-    headers: { 'User-Agent': 'AgentstxtBot/1.0 (+https://github.com/agentstxt/agents.txt)' },
+    headers: { 'User-Agent': 'AgentstxtBot/1.0 (+https://github.com/agentstxtdev/herald)' },
   })
   if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`)
   return res.text()

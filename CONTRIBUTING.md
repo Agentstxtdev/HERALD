@@ -17,7 +17,7 @@ This guide covers what's specific to this repository. For overall code conventio
 ## Setup
 
 ```bash
-git clone https://github.com/agentstxt/agents.txt
+git clone https://github.com/agentstxtdev/herald
 cd agents.txt/herald
 
 nvm use 24
