@@ -188,6 +188,34 @@ export interface MppConfig {
   stripePaymentMethodTypes?: string[]
 }
 
+/**
+ * AP2 (Agent Payments Protocol) mandate-layer config. AP2 is a trust layer that
+ * composes with x402 / MPP / UCP rather than replacing them: it carries signed
+ * `CheckoutMandate` and `PaymentMandate` Verifiable Digital Credentials so that
+ * agent-initiated payments have non-repudiable proof of user intent. herald
+ * does not implement the mandate exchange itself; this config exists so the
+ * `ap2` identifier can be declared in `agents.txt` and a `payments.ap2` block
+ * can surface in `agents.json` for pre-screening (spec §5.3 and §12.3).
+ */
+export interface Ap2Config {
+  /**
+   * Accepted Verifiable Digital Credential presentation formats for AP2 mandates
+   * (e.g. ['sd-jwt-vc']). Pre-screening signal only; the authoritative list is
+   * negotiated in the checkout flow per the AP2 specification.
+   */
+  presentations?: string[]
+  /**
+   * URL of the AP2 specification version the site implements (e.g.
+   * `https://ap2-protocol.org/specification/v0.1`). Lets agents pin a revision.
+   */
+  spec?: string
+  /**
+   * Human-readable description of what the AP2 mandate layer covers on this
+   * site. Surfaced as `payments.ap2.description` in `agents.json`.
+   */
+  description?: string
+}
+
 export interface PaymentConfig {
   /**
    * Which payment protocols to accept. Agents pick what they support.
@@ -216,6 +244,12 @@ export interface PaymentConfig {
   x402?: X402Config
   /** MPP config (Stripe — fiat + stablecoins, session-based) */
   mpp?: MppConfig
+  /**
+   * AP2 mandate layer config. Presence of this object signals AP2 mandate
+   * support; it composes with the underlying rail (x402 or MPP) and does not
+   * stand on its own.
+   */
+  ap2?: Ap2Config
   /** User-agents that bypass payment entirely */
   exemptUserAgents?: string[]
 }
@@ -318,6 +352,33 @@ export interface A2AConfig {
   cards: string | A2AEntry | (string | A2AEntry)[]
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// UCP types — Universal Commerce Protocol profile discoverability (ucp.dev)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface UcpEntry {
+  url: string
+  /** Short description of what this UCP profile covers. Appears in agents.json only. */
+  description?: string
+}
+
+export interface UcpConfig {
+  /**
+   * One or more UCP profile URLs (ucp.dev). Each URL points to a profile JSON
+   * document declaring services, capabilities (including the AP2 mandate
+   * extension), supported transport bindings, payment handlers, and signing
+   * keys.
+   *
+   * The well-known path `/.well-known/ucp` remains the primary discovery
+   * surface for single-profile sites; this directive covers sites with
+   * multiple profiles or profiles served at non-canonical paths.
+   *
+   * agents.txt carries only URLs; profile metadata stays in the profile.
+   * Pass a string for URL-only, or an object to include a description in agents.json.
+   */
+  profiles: string | UcpEntry | (string | UcpEntry)[]
+}
+
 export interface AgenticConfig {
   site: SiteConfig
   content?: ContentConfig
@@ -327,5 +388,6 @@ export interface AgenticConfig {
   mcp?: McpConfig
   skills?: SkillsConfig
   a2a?: A2AConfig
+  ucp?: UcpConfig
 }
 

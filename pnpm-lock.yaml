@@ -38,12 +38,12 @@ importers:
 
   examples/express:
     dependencies:
-      '@agentify/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@agentify/web':
+      '@herald/addon':
         specifier: workspace:*
         version: link:../../packages/web
+      '@herald/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       express:
         specifier: ^5.2.1
         version: 5.2.1
@@ -60,12 +60,12 @@ importers:
 
   examples/nextjs:
     dependencies:
-      '@agentify/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@agentify/web':
+      '@herald/addon':
         specifier: workspace:*
         version: link:../../packages/web
+      '@herald/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       next:
         specifier: ^16.2.5
         version: 16.2.6(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -88,7 +88,7 @@ importers:
 
   packages/cli:
     dependencies:
-      '@agentify/core':
+      '@herald/core':
         specifier: workspace:*
         version: link:../core
       commander:
@@ -113,7 +113,7 @@ importers:
 
   packages/web:
     dependencies:
-      '@agentify/core':
+      '@herald/core':
         specifier: workspace:*
         version: link:../core
       express:

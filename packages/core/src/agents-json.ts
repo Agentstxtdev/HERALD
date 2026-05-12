@@ -28,7 +28,7 @@ const SOLANA_CHAIN_IDS: Record<string, string> = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function generateAgentsJson(config: AgenticConfig): string {
-  const { site, payments, authorization, mcp, skills, a2a } = config
+  const { site, payments, authorization, mcp, skills, a2a, ucp } = config
 
   const obj: Record<string, unknown> = {
     version: '1.0',
@@ -66,6 +66,20 @@ export function generateAgentsJson(config: AgenticConfig): string {
           chains,
           ...(payments.x402.description ? { description: payments.x402.description } : {}),
         }
+      }
+
+      // ap2: mandate-layer support. Presence of the per-protocol object IS the
+      // support signal; fields (presentations, spec, description) are all
+      // optional pre-screening hints. The mandate exchange itself happens out
+      // of band per the AP2 specification.
+      if (active.includes('ap2') && payments.ap2) {
+        const ap2: Record<string, unknown> = {}
+        if (payments.ap2.presentations && payments.ap2.presentations.length > 0) {
+          ap2.presentations = payments.ap2.presentations
+        }
+        if (payments.ap2.spec) ap2.spec = payments.ap2.spec
+        if (payments.ap2.description) ap2.description = payments.ap2.description
+        p.ap2 = ap2
       }
 
       // mpp: configured method identifiers, plus an optional description of
@@ -111,7 +125,7 @@ export function generateAgentsJson(config: AgenticConfig): string {
 
       // Only attach the payments block when at least one per-protocol key
       // exists. A configured-but-empty record would lie about capabilities.
-      if (Object.keys(p).some((k) => k === 'x402' || k === 'mpp' || isExperimentalIdentifier(k))) {
+      if (Object.keys(p).some((k) => k === 'x402' || k === 'mpp' || k === 'ap2' || isExperimentalIdentifier(k))) {
         obj.payments = p
       }
     }
@@ -160,13 +174,27 @@ export function generateAgentsJson(config: AgenticConfig): string {
   }
 
   // ── A2A ────────────────────────────────────────────────────────────────────
-  // One entry per AgentCard URL (spec §9, §11.2). Symmetric with mcp[] and
+  // One entry per AgentCard URL (spec §9, §12.2). Symmetric with mcp[] and
   // skills[]: agents.txt carries only the URL; the description field is
   // agents.json-only. Per-agent metadata (capabilities, extensions, transport,
   // security schemes) lives in the AgentCard itself.
   if (a2a) {
     const cards = Array.isArray(a2a.cards) ? a2a.cards : [a2a.cards]
     obj.a2a = cards.map((e) => {
+      const url = typeof e === 'string' ? e : e.url
+      const description = typeof e === 'string' ? undefined : e.description
+      return { url, ...(description && { description }) }
+    })
+  }
+
+  // ── UCP ────────────────────────────────────────────────────────────────────
+  // One entry per UCP profile URL (spec §10, §12.2). Symmetric with mcp[],
+  // skills[], and a2a[]: agents.txt carries only the URL; the description
+  // field is agents.json-only. Per-profile metadata (services, capabilities,
+  // payment handlers, signing keys) lives in the UCP profile itself.
+  if (ucp) {
+    const profiles = Array.isArray(ucp.profiles) ? ucp.profiles : [ucp.profiles]
+    obj.ucp = profiles.map((e) => {
       const url = typeof e === 'string' ? e : e.url
       const description = typeof e === 'string' ? undefined : e.description
       return { url, ...(description && { description }) }

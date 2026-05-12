@@ -171,11 +171,18 @@ const MppConfigSchema = z.object({
   description: z.string().optional(),
 })
 
+const Ap2ConfigSchema = z.object({
+  presentations: z.array(z.string()).optional(),
+  spec: z.string().url().optional(),
+  description: z.string().optional(),
+})
+
 const PaymentConfigSchema = z.object({
   protocols: z.array(ProtocolIdentifierSchema(PAYMENT_PROTOCOLS)).optional(),
   required: z.boolean().optional(),
   x402: X402ConfigSchema.optional(),
   mpp: MppConfigSchema.optional(),
+  ap2: Ap2ConfigSchema.optional(),
   exemptUserAgents: z.array(z.string()).optional(),
 })
 
@@ -231,6 +238,21 @@ const A2AConfigSchema = z.object({
   ]),
 })
 
+const UcpEntrySchema = z.union([
+  z.url('UCP profile URL must be a valid URL'),
+  z.object({
+    url: z.url('UCP profile URL must be a valid URL'),
+    description: z.string().optional(),
+  }),
+])
+
+const UcpConfigSchema = z.object({
+  profiles: z.union([
+    UcpEntrySchema,
+    z.array(UcpEntrySchema).min(1, 'profiles must contain at least one entry'),
+  ]),
+})
+
 export const AgenticConfigSchema = z.object({
   site: z.object({
     name: z.string().min(1, 'site.name must not be empty'),
@@ -244,6 +266,7 @@ export const AgenticConfigSchema = z.object({
   mcp: McpConfigSchema.optional(),
   skills: SkillsConfigSchema.optional(),
   a2a: A2AConfigSchema.optional(),
+  ucp: UcpConfigSchema.optional(),
 })
 
 export type AgenticConfigInput = z.input<typeof AgenticConfigSchema>

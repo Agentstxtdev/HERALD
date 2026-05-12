@@ -14,7 +14,7 @@ import { resolveActiveProtocols } from './payments.js'
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function generateAgentsTxt(config: AgenticConfig): string {
-  const { site, payments, authorization, mcp, skills, a2a } = config
+  const { site, payments, authorization, mcp, skills, a2a, ucp } = config
   const baseUrl = site.url.replace(/\/$/, '')
   const lines: string[] = [
     '# agents.txt',
@@ -77,6 +77,20 @@ export function generateAgentsTxt(config: AgenticConfig): string {
     lines.push('')
     for (const e of cards) {
       lines.push(`A2A: ${typeof e === 'string' ? e : e.url}`)
+    }
+  }
+
+  // ── UCP block ──────────────────────────────────────────────────────────────
+  // One line per UCP profile URL. The directive complements the canonical
+  // well-known path `/.well-known/ucp` for multi-profile sites and
+  // non-canonical UCP profile locations (spec §10). Profile metadata
+  // (services, capabilities, payment handlers, signing keys) stays in the
+  // profile itself.
+  if (ucp) {
+    const profiles = Array.isArray(ucp.profiles) ? ucp.profiles : [ucp.profiles]
+    lines.push('')
+    for (const e of profiles) {
+      lines.push(`UCP: ${typeof e === 'string' ? e : e.url}`)
     }
   }
 

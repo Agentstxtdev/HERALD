@@ -187,6 +187,24 @@ export function validateAgentsTxt(content: string): ValidationResult[] {
     }
   }
 
+  // ── UCP block ──────────────────────────────────────────────────────────────
+  const ucpMatches = [...content.matchAll(/^UCP:\s*(.+)$/gm)]
+
+  for (const match of ucpMatches) {
+    const url = (match[1] ?? '').trim()
+    let isValid = false
+    try { isValid = Boolean(new URL(url)) } catch { /* invalid */ }
+
+    if (!isValid) {
+      results.push({ rule: 'ucp-url-valid', status: 'fail', message: `UCP: value is not a valid URL: '${url}'` })
+    } else {
+      results.push({ rule: 'ucp-url-valid', status: 'pass', message: `Valid UCP profile URL: ${url}` })
+      if (!url.startsWith('https://')) {
+        results.push({ rule: 'ucp-https', status: 'warn', message: `UCP URL should use HTTPS: ${url}` })
+      }
+    }
+  }
+
   // ── A2A block ──────────────────────────────────────────────────────────────
   const a2aMatches = [...content.matchAll(/^A2A:\s*(.+)$/gm)]
 
@@ -496,6 +514,27 @@ export function validateAgentsJson(content: string): ValidationResult[] {
         results.push({ rule: 'json-skills-url-valid', status: 'pass', message: `Valid Skills url: ${url}` })
         if (!url.startsWith('https://')) {
           results.push({ rule: 'json-skills-https', status: 'warn', message: `Skills url should use HTTPS: ${url}` })
+        }
+      }
+    }
+  }
+
+  // ── UCP ────────────────────────────────────────────────────────────────────
+  if (Array.isArray(parsed.ucp)) {
+    for (const entry of parsed.ucp as Record<string, unknown>[]) {
+      const url = entry.url as string | undefined
+      if (!url) {
+        results.push({ rule: 'json-ucp-url-valid', status: 'fail', message: 'UCP entry missing url field' })
+        continue
+      }
+      let isValid = false
+      try { isValid = Boolean(new URL(url)) } catch { /* invalid */ }
+      if (!isValid) {
+        results.push({ rule: 'json-ucp-url-valid', status: 'fail', message: `UCP url is not a valid URL: '${url}'` })
+      } else {
+        results.push({ rule: 'json-ucp-url-valid', status: 'pass', message: `Valid UCP url: ${url}` })
+        if (!url.startsWith('https://')) {
+          results.push({ rule: 'json-ucp-https', status: 'warn', message: `UCP url should use HTTPS: ${url}` })
         }
       }
     }

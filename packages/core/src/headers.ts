@@ -17,6 +17,11 @@
 //     §4.5, but the CORS line is load-bearing for any browser-context A2A
 //     client probing the well-known path cross-origin.
 //
+//   - UCP profiles (config.ucp.profiles): same rule and same headers as A2A
+//     AgentCards. The profile is governed by the UCP specification but the
+//     CORS line is load-bearing for browser-context clients fetching the
+//     profile cross-origin.
+//
 // The agent-auth `/.well-known/agent-configuration` endpoint is intentionally
 // NOT auto-emitted. It is conventionally served by a worker/handler that sets
 // response headers programmatically; a static `_headers` entry would not apply
@@ -29,7 +34,7 @@
 // guidance the CLI can print after writing.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { AgenticConfig, A2AEntry } from './types.js'
+import type { AgenticConfig, A2AEntry, UcpEntry } from './types.js'
 
 export type HostingPlatform = 'cloudflare' | 'netlify' | 'vercel' | 'unknown'
 
@@ -121,6 +126,36 @@ function a2aPaths(config: AgenticConfig): string[] {
 }
 
 /**
+ * Same shape as `a2aPaths` but for UCP profile URLs declared in
+ * `config.ucp.profiles`. Cross-origin profile URLs are skipped: those are
+ * served from another deployment whose headers are not our responsibility.
+ */
+function ucpPaths(config: AgenticConfig): string[] {
+  if (!config.ucp) return []
+  const siteOrigin = (() => {
+    try { return new URL(config.site.url).origin } catch { return null }
+  })()
+  if (!siteOrigin) return []
+
+  const profiles = Array.isArray(config.ucp.profiles) ? config.ucp.profiles : [config.ucp.profiles]
+  const seen = new Set<string>()
+  const paths: string[] = []
+  for (const entry of profiles) {
+    const rawUrl = typeof entry === 'string' ? entry : (entry as UcpEntry).url
+    try {
+      const u = new URL(rawUrl)
+      if (u.origin !== siteOrigin) continue
+      if (seen.has(u.pathname)) continue
+      seen.add(u.pathname)
+      paths.push(u.pathname)
+    } catch {
+      // skip malformed entries; the config validator handles user-facing errors
+    }
+  }
+  return paths
+}
+
+/**
  * Build the full list of header entries this config implies: the §4.5 base
  * (`/agents.txt`, `/agents.json`) plus one entry per same-origin A2A AgentCard
  * path. Used by both the `_headers` plain-text generator and the Vercel JSON
@@ -130,6 +165,9 @@ function entriesForConfig(config: AgenticConfig | undefined): VercelHeaderEntry[
   const out = BASE_VERCEL_ENTRIES.map((e) => ({ source: e.source, headers: e.headers.map((h) => ({ ...h })) }))
   if (!config) return out
   for (const path of a2aPaths(config)) {
+    out.push(jsonStaticEntry(path))
+  }
+  for (const path of ucpPaths(config)) {
     out.push(jsonStaticEntry(path))
   }
   return out
@@ -217,7 +255,7 @@ export function headersDeploymentNote(platform: HostingPlatform): string {
     case 'netlify':
       return 'Netlify: `_headers` is read at deploy time from the publish root. No further wiring needed.'
     case 'vercel':
-      return 'Vercel: `vercel.json#headers` is applied at the edge. Existing entries are preserved; only the herald-managed paths (§4.5 plus declared A2A AgentCards) were touched.'
+      return 'Vercel: `vercel.json#headers` is applied at the edge. Existing entries are preserved; only the herald-managed paths (§4.5 plus declared A2A AgentCards and UCP profiles) were touched.'
     case 'unknown':
       return (
         'Hosting platform not detected. Emitted `_headers` (Cloudflare / Netlify syntax) as a best-effort default. ' +

@@ -449,6 +449,99 @@ describe('generateAgentsJson — a2a block', () => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
+// AP2 mandate layer
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('generateAgentsJson — ap2 block', () => {
+  it('emits payments.ap2 when ap2 config is present, even with no other rail', () => {
+    const config: AgenticConfig = {
+      site: baseConfig.site,
+      payments: { ap2: {} },
+    }
+    const parsed = JSON.parse(generateAgentsJson(config))
+    expect(parsed.payments).toHaveProperty('ap2')
+    expect(parsed.payments.ap2).toEqual({})
+  })
+
+  it('emits presentations, spec, and description when set', () => {
+    const config: AgenticConfig = {
+      site: baseConfig.site,
+      payments: {
+        ap2: {
+          presentations: ['sd-jwt-vc'],
+          spec: 'https://ap2-protocol.org/specification/v0.1',
+          description: 'AP2 mandates accepted alongside x402.',
+        },
+      },
+    }
+    const parsed = JSON.parse(generateAgentsJson(config))
+    expect(parsed.payments.ap2.presentations).toEqual(['sd-jwt-vc'])
+    expect(parsed.payments.ap2.spec).toBe('https://ap2-protocol.org/specification/v0.1')
+    expect(parsed.payments.ap2.description).toBe('AP2 mandates accepted alongside x402.')
+  })
+
+  it('composes ap2 alongside x402 when both are configured', () => {
+    const config: AgenticConfig = {
+      site: baseConfig.site,
+      payments: { ...x402Backing, ap2: { presentations: ['sd-jwt-vc'] } },
+    }
+    const parsed = JSON.parse(generateAgentsJson(config))
+    expect(parsed.payments).toHaveProperty('x402')
+    expect(parsed.payments).toHaveProperty('ap2')
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UCP block
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('generateAgentsJson — ucp block', () => {
+  it('omits ucp when not configured', () => {
+    const parsed = JSON.parse(generateAgentsJson(baseConfig))
+    expect(parsed).not.toHaveProperty('ucp')
+  })
+
+  it('normalizes a single string URL to { url }', () => {
+    const config: AgenticConfig = {
+      site: baseConfig.site,
+      ucp: { profiles: 'https://example.com/.well-known/ucp' },
+    }
+    const parsed = JSON.parse(generateAgentsJson(config))
+    expect(parsed.ucp).toEqual([{ url: 'https://example.com/.well-known/ucp' }])
+  })
+
+  it('preserves description when entry object is provided', () => {
+    const config: AgenticConfig = {
+      site: baseConfig.site,
+      ucp: {
+        profiles: { url: 'https://example.com/.well-known/ucp', description: 'B2C shopping' },
+      },
+    }
+    const parsed = JSON.parse(generateAgentsJson(config))
+    expect(parsed.ucp).toEqual([
+      { url: 'https://example.com/.well-known/ucp', description: 'B2C shopping' },
+    ])
+  })
+
+  it('emits multiple UCP profile entries in order', () => {
+    const config: AgenticConfig = {
+      site: baseConfig.site,
+      ucp: {
+        profiles: [
+          'https://example.com/.well-known/ucp',
+          { url: 'https://example.com/profiles/b2b.json', description: 'B2B' },
+        ],
+      },
+    }
+    const parsed = JSON.parse(generateAgentsJson(config))
+    expect(parsed.ucp).toEqual([
+      { url: 'https://example.com/.well-known/ucp' },
+      { url: 'https://example.com/profiles/b2b.json', description: 'B2B' },
+    ])
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Experimental x- protocols
 // ─────────────────────────────────────────────────────────────────────────────
 

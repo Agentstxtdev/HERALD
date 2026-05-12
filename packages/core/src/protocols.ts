@@ -18,7 +18,7 @@
 // Standard: https://agentstxt.dev
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const PAYMENT_PROTOCOLS = ['x402', 'mpp'] as const
+export const PAYMENT_PROTOCOLS = ['x402', 'mpp', 'ap2'] as const
 export type PaymentProtocol = (typeof PAYMENT_PROTOCOLS)[number]
 
 export const AUTH_PROTOCOLS = ['agent-auth'] as const

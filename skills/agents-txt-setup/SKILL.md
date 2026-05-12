@@ -150,7 +150,7 @@ herald check https://mysite.com
 
 **What `check` does:** Fetches `robots.txt`, `llms.txt`, `agents.json`, `sitemap.xml` from the live URL and scores them using the same validators as `generate`, not ad-hoc string matching.
 
-For deeper §4.5 verification (response headers + cross-file consistency between agents.txt and agents.json), point the user at the live `audit_site` MCP tool published by the agents.txt project at `https://agentstxt.dev/mcp`. It validates Content-Type / CORS / Cache-Control on both files, schema-validates `agents.json` per §10, scans for accidental treasury or secret leaks per §10.4 / §12, and cross-checks that `agents.txt` and `agents.json` declare the same capabilities. Run both `herald check` and `audit_site` after deploy.
+For deeper §4.5 verification (response headers + cross-file consistency between agents.txt and agents.json), point the user at the live `audit_site` MCP tool published by the agents.txt project at `https://agentstxt.dev/mcp`. It validates Content-Type / CORS / Cache-Control on both files, schema-validates `agents.json` per §12, scans for accidental treasury or secret leaks per §12.4 / §14, and cross-checks that `agents.txt` and `agents.json` declare the same capabilities. Run both `herald check` and `audit_site` after deploy.
 
 ---
 

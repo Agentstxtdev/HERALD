@@ -163,3 +163,95 @@ describe('headers generators with A2A AgentCard config', () => {
     expect(merged.map((e) => e.source)).toContain('/.well-known/agent-card.json')
   })
 })
+
+describe('headers generators with UCP profile config', () => {
+  it('adds an entry for a same-origin UCP profile path (_headers)', () => {
+    const config: AgenticConfig = {
+      ...baseConfig,
+      ucp: { profiles: 'https://test.example/.well-known/ucp' },
+    }
+    const f = generateHeadersFile('cloudflare', config)
+    expect(f.content).toContain('/.well-known/ucp')
+    expect(f.content).toMatch(/\/\.well-known\/ucp\n\s*Content-Type: application\/json\n\s*Access-Control-Allow-Origin: \*/)
+  })
+
+  it('adds matching entries for every same-origin profile in profiles[]', () => {
+    const config: AgenticConfig = {
+      ...baseConfig,
+      ucp: {
+        profiles: [
+          'https://test.example/.well-known/ucp',
+          { url: 'https://test.example/profiles/b2b.json', description: 'B2B' },
+        ],
+      },
+    }
+    const entries = vercelHeaderEntries(config)
+    const sources = entries.map((e) => e.source).sort()
+    expect(sources).toEqual([
+      '/.well-known/ucp',
+      '/agents.json',
+      '/agents.txt',
+      '/profiles/b2b.json',
+    ])
+  })
+
+  it('skips UCP profiles on a different origin from site.url', () => {
+    const config: AgenticConfig = {
+      ...baseConfig,
+      ucp: {
+        profiles: [
+          'https://test.example/.well-known/ucp',
+          'https://other.example/.well-known/ucp',
+        ],
+      },
+    }
+    const entries = vercelHeaderEntries(config)
+    const sources = entries.map((e) => e.source)
+    expect(sources).toContain('/.well-known/ucp')
+    expect(sources.filter((s) => s.endsWith('/ucp'))).toHaveLength(1)
+  })
+
+  it('deduplicates identical profile paths', () => {
+    const config: AgenticConfig = {
+      ...baseConfig,
+      ucp: {
+        profiles: [
+          'https://test.example/.well-known/ucp',
+          { url: 'https://test.example/.well-known/ucp' },
+        ],
+      },
+    }
+    const entries = vercelHeaderEntries(config)
+    expect(entries.filter((e) => e.source === '/.well-known/ucp')).toHaveLength(1)
+  })
+
+  it('emits both A2A and UCP entries together when both are configured', () => {
+    const config: AgenticConfig = {
+      ...baseConfig,
+      a2a: { cards: 'https://test.example/.well-known/agent-card.json' },
+      ucp: { profiles: 'https://test.example/.well-known/ucp' },
+    }
+    const entries = vercelHeaderEntries(config)
+    const sources = entries.map((e) => e.source).sort()
+    expect(sources).toEqual([
+      '/.well-known/agent-card.json',
+      '/.well-known/ucp',
+      '/agents.json',
+      '/agents.txt',
+    ])
+  })
+
+  it('mergeVercelHeaders preserves unrelated entries when extra UCP entries are added', () => {
+    const userEntry: VercelHeaderEntry = {
+      source: '/api/(.*)',
+      headers: [{ key: 'X-Custom', value: 'yes' }],
+    }
+    const config: AgenticConfig = {
+      ...baseConfig,
+      ucp: { profiles: 'https://test.example/.well-known/ucp' },
+    }
+    const merged = mergeVercelHeaders([userEntry], config)
+    expect(merged).toContainEqual(userEntry)
+    expect(merged.map((e) => e.source)).toContain('/.well-known/ucp')
+  })
+})
