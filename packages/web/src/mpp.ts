@@ -10,7 +10,7 @@
  * SDK : https://mpp.dev/sdk/typescript
  */
 
-import type { MppConfig, PricingConfig } from '@agentify/core'
+import type { MppConfig, PricingConfig } from '@herald/core'
 import { toAtomic } from './x402.js'
 
 // Default USDC.e contract on Tempo mainnet.
@@ -61,7 +61,7 @@ async function loadMppx(): Promise<MppxModule | null> {
       return (await import('mppx/server')) as unknown as MppxModule
     } catch {
       console.warn(
-        '[agentify/web] MPP enabled but `mppx` package not installed — `npm install mppx`. MPP path disabled.',
+        '[herald/web] MPP enabled but `mppx` package not installed — `npm install mppx`. MPP path disabled.',
       )
       return null
     }
@@ -126,7 +126,7 @@ export async function createMppxRuntime(
       )
     } catch {
       console.warn(
-        '[agentify/web] Stripe MPP skipped — `stripe` package not installed. Run `npm install stripe`.',
+        '[herald/web] Stripe MPP skipped — `stripe` package not installed. Run `npm install stripe`.',
       )
     }
   }

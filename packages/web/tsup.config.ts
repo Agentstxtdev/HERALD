@@ -8,7 +8,7 @@ export default defineConfig({
   clean: true,
   // All framework deps are optional peers — never bundle them
   external: [
-    '@agentify/core',
+    '@herald/core',
     'express',
     '@x402/express',
     'next',

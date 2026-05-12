@@ -102,7 +102,7 @@ export function generateAgentsJson(config: AgenticConfig): string {
 
       // Experimental identifiers (spec §3.1) are surfaced as empty objects:
       // their presence signals support, the shape is the protocol author's
-      // responsibility, and agentify carries no runtime contract for them.
+      // responsibility, and herald carries no runtime contract for them.
       for (const proto of active) {
         if (isExperimentalIdentifier(proto) && !(proto in p)) {
           p[proto] = {}

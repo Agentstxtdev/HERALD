@@ -1,8 +1,8 @@
 import { z } from 'zod'
-import { PAYMENT_PROTOCOLS, AUTH_PROTOCOLS } from '@agentify/core'
+import { PAYMENT_PROTOCOLS, AUTH_PROTOCOLS } from '@herald/core'
 
 // Registered identifiers plus an `x-` prefix escape hatch per spec §3.1.
-// Adding a registered protocol is one edit in @agentify/core/protocols.ts;
+// Adding a registered protocol is one edit in @herald/core/protocols.ts;
 // experimental protocols flow through automatically via the `x-` regex.
 const ProtocolIdentifierSchema = (registered: readonly string[]) =>
   z.string().refine(
@@ -15,7 +15,7 @@ const ProtocolIdentifierSchema = (registered: readonly string[]) =>
 // ─────────────────────────────────────────────────────────────────────────────
 // Zod v4 schema for AgenticConfig — validates user-supplied config at load time.
 //
-// Lives in the CLI (not @agentify/core) to preserve core's zero-runtime-dep
+// Lives in the CLI (not @herald/core) to preserve core's zero-runtime-dep
 // guarantee. This is the only place user config crosses a trust boundary:
 // `generate.ts` → loadConfig() → AgenticConfigSchema.safeParse().
 //
@@ -105,7 +105,7 @@ const evmAddressSchema = z
   .catch(({ error, input }) => {
     if (input !== undefined && input !== '') {
       const msg = error.issues[0]?.message ?? 'invalid format'
-      console.warn(`agentify: ignoring malformed evmAddress (${msg}); set EVM_ADDRESS to a valid 0x[40 hex] value or unset to skip EVM.`)
+      console.warn(`herald: ignoring malformed evmAddress (${msg}); set EVM_ADDRESS to a valid 0x[40 hex] value or unset to skip EVM.`)
     }
     return undefined
   })
@@ -117,7 +117,7 @@ const solanaAddressSchema = z
   .catch(({ error, input }) => {
     if (input !== undefined && input !== '') {
       const msg = error.issues[0]?.message ?? 'invalid format'
-      console.warn(`agentify: ignoring malformed solanaAddress (${msg}); set SOLANA_ADDRESS to a valid base58 public key or unset to skip Solana.`)
+      console.warn(`herald: ignoring malformed solanaAddress (${msg}); set SOLANA_ADDRESS to a valid base58 public key or unset to skip Solana.`)
     }
     return undefined
   })
@@ -159,7 +159,7 @@ const MppConfigSchema = z.object({
     .catch(({ error, input }) => {
       if (input !== undefined && input !== '') {
         const msg = error.issues[0]?.message ?? 'invalid format'
-        console.warn(`agentify: ignoring malformed stripeSecretKey (${msg}); set STRIPE_SECRET_KEY to a valid sk_... value or unset to skip Stripe.`)
+        console.warn(`herald: ignoring malformed stripeSecretKey (${msg}); set STRIPE_SECRET_KEY to a valid sk_... value or unset to skip Stripe.`)
       }
       return undefined
     }),

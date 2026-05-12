@@ -4,7 +4,7 @@ import { resolve } from 'node:path'
 export default defineConfig({
   resolve: {
     alias: {
-      '@agentstxt/core': resolve('./packages/core/src/index.ts'),
+      '@herald/core': resolve('./packages/core/src/index.ts'),
     },
   },
   test: {

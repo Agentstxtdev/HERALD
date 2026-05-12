@@ -14,7 +14,7 @@
  * Migration v1→v2: https://docs.x402.org/guides/migration-v1-to-v2
  */
 
-import type { X402Config, PricingConfig } from '@agentify/core'
+import type { X402Config, PricingConfig } from '@herald/core'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CAIP-2 network IDs (verified against x402-specification-v2)

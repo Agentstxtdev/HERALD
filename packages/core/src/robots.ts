@@ -1,7 +1,7 @@
 import type { AgenticConfig, CrawlerRule } from './types.js'
 
 /**
- * Stable string emitted at the top of every agentify-generated robots.txt.
+ * Stable string emitted at the top of every herald-generated robots.txt.
  * Consumers (e.g. the CLI's `generate` command) use it as the marker to detect
  * "we generated this file before" and avoid the merge-then-duplicate trap on
  * regen. Do NOT change without updating every consumer that imports it.
@@ -151,11 +151,11 @@ export function generateRobotsTxt(
       : `${baseUrl}${content.driver.sitemapUrl}`
     lines.push(`Sitemap: ${sitemapUrl}`)
   } else if (content?.driver.type === 'static' || content?.driver.type === 'manual') {
-    // agentify emits sitemap.xml at /sitemap.xml for these drivers (per the
+    // herald emits sitemap.xml at /sitemap.xml for these drivers (per the
     // CLI's emission policy). Reference it so crawlers don't have to guess.
     lines.push(`Sitemap: ${baseUrl}/sitemap.xml`)
   }
-  // 'firecrawl' driver: no Sitemap: directive — agentify skips emitting
+  // 'firecrawl' driver: no Sitemap: directive — herald skips emitting
   // sitemap.xml in that case (Firecrawl returns a curated subset, not authoritative).
 
   // No Agents-Txt: directive: per the agents.txt spec §4.3, the file is fixed

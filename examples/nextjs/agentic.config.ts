@@ -1,4 +1,4 @@
-import type { AgenticConfig } from '@agentify/core'
+import type { AgenticConfig } from '@herald/core'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://example.com'
 const EVM_ADDRESS = process.env.EVM_ADDRESS

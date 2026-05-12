@@ -7,5 +7,5 @@ export default defineConfig({
   dts: false,
   sourcemap: false,
   clean: true,
-  external: ['@agentify/core', 'commander', 'zod'],
+  external: ['@herald/core', 'commander', 'zod'],
 })

@@ -9,7 +9,7 @@ import {
   SOLANA_CAIP2,
   toAtomic,
 } from '../x402.js'
-import type { X402Config } from '@agentify/core'
+import type { X402Config } from '@herald/core'
 
 const evmConfig: X402Config = {
   treasury: { evmAddress: '0x1234567890123456789012345678901234567890', evmChains: ['eip155:8453'] },

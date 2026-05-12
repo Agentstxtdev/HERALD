@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/logos/agentify-mark-v2.svg" width="235" alt="AGENTIFY">
+<img src="assets/logos/herald-mark-v2.svg" width="235" alt="HERALD">
 
 <h1>HERALD</h1>
 
@@ -8,7 +8,7 @@
 
 <br>
 
-[![npm: agentify](https://img.shields.io/npm/v/agentify?label=agentify&style=flat-square&color=cb3837)](https://www.npmjs.com/package/agentify)
+[![npm: @herald/cli](https://img.shields.io/npm/v/%40herald%2Fcli?label=%40herald%2Fcli&style=flat-square&color=cb3837)](https://www.npmjs.com/package/@herald/cli)
 [![Spec: agents.txt](https://img.shields.io/badge/spec-agents.txt-111?style=flat-square)](https://agentstxt.dev)
 [![Payments: x402 v2 + MPP](https://img.shields.io/badge/payments-x402%20v2%20%2B%20MPP-7c3aed?style=flat-square)](#optional-add-on-payment-middleware)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
@@ -16,7 +16,7 @@
 
 </div>
 
-AGENTIFY is an open-source framework + CLI that emits the standard discovery files agents need to read and (optionally) pay for your site. One config object drives all of it. Each file is an independent open standard; pick the layers you want and AGENTIFY generates only those.
+HERALD is an open-source framework + CLI that emits the standard discovery files agents need to read and (optionally) pay for your site. One config object drives all of it. Each file is an independent open standard; pick the layers you want and HERALD generates only those.
 
 ---
 
@@ -101,7 +101,7 @@ AGENTIFY is an open-source framework + CLI that emits the standard discovery fil
 /agents.json  : agents.txt spec, structured JSON companion            [optional, --skip-agents]
 ```
 
-Each file is its own open standard. AGENTIFY is the build/serve tooling for them. You can use it as a robots.txt-only generator, add llms.txt for content briefing, or go all the way with agents.txt + agents.json for capability discovery.
+Each file is its own open standard. HERALD is the build/serve tooling for them. You can use it as a robots.txt-only generator, add llms.txt for content briefing, or go all the way with agents.txt + agents.json for capability discovery.
 
 ### Standards this builds on
 
@@ -125,7 +125,7 @@ Each file is its own open standard. AGENTIFY is the build/serve tooling for them
 
 `agents.txt` (with companion `agents.json`) is a **lightweight, machine-readable capability declaration layer for websites in the agentic web**: a protocol-agnostic discovery file that publicly announces what agent-interaction capabilities a site supports, without embedding the implementation details of any specific protocol.
 
-AGENTIFY implements the spec but does not own it. The spec lives at [agentstxt.dev](https://agentstxt.dev) under CC0. Anyone may implement it without restriction. The AGENTIFY reference implementation is Apache 2.0.
+HERALD implements the spec but does not own it. The spec lives at [agentstxt.dev](https://agentstxt.dev) under CC0. Anyone may implement it without restriction. The HERALD reference implementation is Apache 2.0.
 
 **Core design principles:**
 
@@ -144,7 +144,7 @@ It is deliberately not a configuration file, not a full API spec, and not tied t
 
 ### Where these files fit
 
-AGENTIFY emits the four files that make up the agent-readiness stack:
+HERALD emits the four files that make up the agent-readiness stack:
 
 ```
 Layer 1: ACCESS CONTROL     /robots.txt   (RFC 9309)         "You may enter my house"
@@ -153,16 +153,16 @@ Layer 3: CONTENT BRIEFING   /llms.txt     (llmstxt.org)      "Here's what's insi
 Layer 4: AGENT CAPABILITIES /agents.txt   (agents.txt spec)  "Here's what you can do inside my house"
 ```
 
-`agents.txt` (with companion `agents.json`) is the newest piece, an open standard for declaring agent-interaction capabilities (payments, auth, MCP, skills) without prescribing any specific protocol. AGENTIFY exists to make adopting it trivial; the spec itself lives at [agentstxt.dev](https://agentstxt.dev).
+`agents.txt` (with companion `agents.json`) is the newest piece, an open standard for declaring agent-interaction capabilities (payments, auth, MCP, skills) without prescribing any specific protocol. HERALD exists to make adopting it trivial; the spec itself lives at [agentstxt.dev](https://agentstxt.dev).
 
 > [!NOTE]
-> **AGENTIFY also ships an optional `x402 v2 + MPP` payment middleware for Express, Hono, and Next.js.**
+> **HERALD also ships an optional `x402 v2 + MPP` payment middleware for Express, Hono, and Next.js.**
 >
-> It is not part of the agents.txt standard; it is a convenience layer that wires payment endpoints lining up automatically with what AGENTIFY already declared for you in `agents.txt` / `agents.json`, so "make my site agent-ready *and* monetizable" collapses into a single config object.
+> It is not part of the agents.txt standard; it is a convenience layer that wires payment endpoints lining up automatically with what HERALD already declared for you in `agents.txt` / `agents.json`, so "make my site agent-ready *and* monetizable" collapses into a single config object.
 >
-> The middleware lives behind sub-path imports (`@agentify/web/express`, `@agentify/web/hono`, `@agentify/web/nextjs`). x402 v2 talks directly to the public facilitator at `https://x402.org/facilitator` (no `@x402/*` SDK required); MPP is layered on the optional `mppx` peer dep (Tempo USDC + Stripe SPT).
+> The middleware lives behind sub-path imports (`@herald/addon/express`, `@herald/addon/hono`, `@herald/addon/nextjs`). x402 v2 talks directly to the public facilitator at `https://x402.org/facilitator` (no `@x402/*` SDK required); MPP is layered on the optional `mppx` peer dep (Tempo USDC + Stripe SPT).
 >
-> Skip the *Optional add-on* section below if you only use AGENTIFY for discovery file generation.
+> Skip the *Optional add-on* section below if you only use HERALD for discovery file generation.
 
 ---
 
@@ -178,27 +178,28 @@ Layer 4: AGENT CAPABILITIES /agents.txt   (agents.txt spec)  "Here's what you ca
 ## Install
 
 ```bash
-npm install @agentify/web
-# or
-pnpm add @agentify/web
+npm install -D @herald/cli               # install as dev dependency
+herald init                              # interactive setup → writes agentic.config.js
+herald generate                          # writes discovery files to ./public
 ```
 
+`@herald/core` is a transitive dependency pulled in automatically. You never install it directly.
+
+---
+
+### CLI flags
+
 ```bash
-npx agentify init       # interactive setup
-npx agentify generate   # writes robots.txt, llms.txt, agents.txt, agents.json
-                        # also writes sitemap.xml when content driver is static/manual
-                        # also writes llms-full.txt when content.fullTxt is configured
+# Positive selectors (emit only these files):
+herald generate --agents                  # only agents.txt + agents.json
+herald generate --robots --llms           # only robots.txt + llms.txt
+herald generate --robots                  # only robots.txt
+herald generate --sitemap                 # only sitemap.xml
+herald generate --llms-full               # only llms-full.txt
 
-# Pick exactly which files to emit with positive flags:
-npx agentify generate --agents                  # only agents.txt + agents.json
-npx agentify generate --robots --llms           # only robots.txt + llms.txt
-npx agentify generate --robots                  # only robots.txt
-npx agentify generate --sitemap                 # only sitemap.xml (also emits for firecrawl driver)
-npx agentify generate --llms-full               # only refresh llms-full.txt
-
-# Or subtract from the default with --skip-* (back-compat with previous CLI):
-npx agentify generate --skip-agents             # everything except agents.txt + agents.json
-npx agentify generate --skip-llms-full          # keep llms.txt, skip the expensive Firecrawl scrape
+# Negative selectors (emit everything except):
+herald generate --skip-agents             # skip agents.txt + agents.json
+herald generate --skip-llms-full          # skip the expensive Firecrawl scrape
 ```
 
 ---
@@ -207,9 +208,9 @@ npx agentify generate --skip-llms-full          # keep llms.txt, skip the expens
 
 `robots.txt` is the Layer 1 *access control* file for your site. The format is defined by the [Robots Exclusion Protocol (RFC 9309)](https://www.rfc-editor.org/rfc/rfc9309) and is honored by every well-behaved crawler. It declares which user agents may visit which paths, and it is the right place to draw the line between visitors you welcome and ones you do not.
 
-Beyond the RFC, AGENTIFY's generator does four things on top of a plain `robots.txt`. It explicitly allows the major search engine crawlers (Googlebot, Bingbot, and similar) so your SEO is unaffected. It blocks the well-known free AI training scrapers (GPTBot, ClaudeBot, CCBot, Google-Extended) when `crawlers.blockFreeAiScrapers` is enabled, since those crawls produce no value for the site owner. It allows the paid agentic agents (such as `AgentstxtBot`) through to the rest of the stack, where they can negotiate access via x402 or MPP through `agents.txt`. And it appends the `Sitemap:` and `Content-Signal:` directives that downstream tools rely on for sitemap discovery and for stating AI-usage preferences. The default wildcard block also `Allow: /agents.txt` and `Allow: /llms.txt`, which both grants explicit access and exposes those files to any crawler reading `robots.txt` (no separate discovery directive is needed; `agents.txt` is fixed at the canonical path).
+Beyond the RFC, HERALD's generator does four things on top of a plain `robots.txt`. It explicitly allows the major search engine crawlers (Googlebot, Bingbot, and similar) so your SEO is unaffected. It blocks the well-known free AI training scrapers (GPTBot, ClaudeBot, CCBot, Google-Extended) when `crawlers.blockFreeAiScrapers` is enabled, since those crawls produce no value for the site owner. It allows the paid agentic agents (such as `AgentstxtBot`) through to the rest of the stack, where they can negotiate access via x402 or MPP through `agents.txt`. And it appends the `Sitemap:` and `Content-Signal:` directives that downstream tools rely on for sitemap discovery and for stating AI-usage preferences. The default wildcard block also `Allow: /agents.txt` and `Allow: /llms.txt`, which both grants explicit access and exposes those files to any crawler reading `robots.txt` (no separate discovery directive is needed; `agents.txt` is fixed at the canonical path).
 
-The generator also merges intelligently with an existing `robots.txt` file. Anything below the `# ── Existing rules (preserved) ──` marker is kept verbatim across regenerations, so any project-specific rules you have authored survive every `agentify generate` run.
+The generator also merges intelligently with an existing `robots.txt` file. Anything below the `# ── Existing rules (preserved) ──` marker is kept verbatim across regenerations, so any project-specific rules you have authored survive every `herald generate` run.
 
 ```
 # robots.txt
@@ -248,7 +249,7 @@ Content-Signal: search=yes, ai-train=no, ai-input=no
 ### sitemap.xml emission policy
 
 
-AGENTIFY only emits `sitemap.xml` when it has authoritative URLs to put in it. The default policy keys off `content.driver`:
+HERALD only emits `sitemap.xml` when it has authoritative URLs to put in it. The default policy keys off `content.driver`:
 
 | Driver | Default | Why |
 |---|---|---|
@@ -265,7 +266,7 @@ If your framework already generates a sitemap (Next.js `app/sitemap.ts`, `@astro
 
 `llms.txt` is the Layer 3 *content briefing* for your site: an LLM-optimized index that follows the [llmstxt.org](https://llmstxt.org/) spec. It tells an agent what your site is and points at the pages worth reading, in a structured plain-text format. Format is fixed: an H1 with the site name, an optional `>` blockquote summary, then `## Section` headings each containing a bullet list of `[Title](url): description` lines. A trailing `## Optional` section flags pages an agent can safely ignore on a first pass.
 
-The page list itself comes from `content.driver` in your `agentic.config.js`. The driver decides where the URLs originate (your existing `sitemap.xml`, a Firecrawl crawl, an explicit list of pages, or fully curated sections), and `@agentify/core` renders them into the format above. Payment terms, authentication, MCP endpoints, and skill packages **do not** belong in `llms.txt`; those live one layer up in `agents.txt` / `agents.json`.
+The page list itself comes from `content.driver` in your `agentic.config.js`. The driver decides where the URLs originate (your existing `sitemap.xml`, a Firecrawl crawl, an explicit list of pages, or fully curated sections), and `@herald/core` renders them into the format above. Payment terms, authentication, MCP endpoints, and skill packages **do not** belong in `llms.txt`; those live one layer up in `agents.txt` / `agents.json`.
 
 ```markdown
 # My Site
@@ -318,7 +319,7 @@ Get a free API key at [firecrawl.dev](https://firecrawl.dev) (no credit card for
 
 ### llms-full.txt: expanded companion with inlined page content
 
-The [llmstxt.org](https://llmstxt.org) spec describes "expanded" forms (`llms-ctx.txt`, `llms-ctx-full.txt`) where each linked page's markdown content is inlined under its heading, so an LLM can ingest the whole site as one document. The community has converged on `/llms-full.txt` as the served filename. That's what agents look for, and that's what AGENTIFY emits.
+The [llmstxt.org](https://llmstxt.org) spec describes "expanded" forms (`llms-ctx.txt`, `llms-ctx-full.txt`) where each linked page's markdown content is inlined under its heading, so an LLM can ingest the whole site as one document. The community has converged on `/llms-full.txt` as the served filename. That's what agents look for, and that's what HERALD emits.
 
 By default `llms-full.txt` is built from the same URL list as `llms.txt`. The optional `content.fullTxt.driver` lets you point at a different URL list, useful when your `llms.txt` indexes the marketing site but you want `llms-full.txt` to ingest the docs subdomain:
 
@@ -351,18 +352,18 @@ Omit the `fullTxt` block to skip llms-full.txt generation entirely.
 
 ---
 
-### The agentify CLI and `agentic.config.js`
+### The `@herald/cli` and `agentic.config.js`
 
 
-AGENTIFY is driven by a single file at your project root: **`agentic.config.js`**. It's the source of truth for every discovery file AGENTIFY emits and (when enabled) the payment middleware. The CLI creates, validates, and re-renders from it.
+HERALD is driven by a single file at your project root: **`agentic.config.js`**. It's the source of truth for every discovery file HERALD emits and (when enabled) the payment middleware. The CLI creates, validates, and re-renders from it.
 
 ### Three commands
 
 | Command | What it does | Output |
 |---|---|---|
-| `npx agentify init` | Interactive wizard. Detects framework / sitemap / `.env` and writes `agentic.config.js` at your project root (with sensible defaults you can edit later). Use `-y` to skip all prompts and accept detected values. | `./agentic.config.js` |
-| `npx agentify generate` | Imports `agentic.config.js`, validates it, runs the generators (`@agentify/core`), writes `robots.txt`, `llms.txt`, `agents.txt`, `agents.json`, and (when applicable) `sitemap.xml` to `--out` (default `./public`). Each file passes its spec validator inline; failures print as warnings. | files under `--out` |
-| `npx agentify check <url>` | Fetches the live discovery files from a public URL and scores them against the same validators that `generate` uses. Useful for CI or post-deploy smoke tests. | report on stdout |
+| `herald init` | Interactive wizard. Detects framework / sitemap / `.env` and writes `agentic.config.js` at your project root (with sensible defaults you can edit later). Use `-y` to skip all prompts and accept detected values. | `./agentic.config.js` |
+| `herald generate` | Imports `agentic.config.js`, validates it, runs the generators (`@herald/core`), writes `robots.txt`, `llms.txt`, `agents.txt`, `agents.json`, and (when applicable) `sitemap.xml` to `--out` (default `./public`). Each file passes its spec validator inline; failures print as warnings. | files under `--out` |
+| `herald check <url>` | Fetches the live discovery files from a public URL and scores them against the same validators that `generate` uses. Useful for CI or post-deploy smoke tests. | report on stdout |
 
 Per-file flags for `generate`:
 
@@ -384,11 +385,11 @@ Per-file flags for `generate`:
 - `--skip-sitemap`: never emit `sitemap.xml`, even for `static` / `manual`
 - `--skip-headers`: skip the §4.5 headers config file
 
-See `npx agentify generate --help` for the full list.
+See `herald generate --help` for the full list.
 
 ### `agentic.config.js`: the file you create
 
-You don't manually write this from scratch. Run **`npx agentify init`** in your project root and the wizard writes it for you. The file shape:
+You don't manually write this from scratch. Run **`herald init`** in your project root and the wizard writes it for you. The file shape:
 
 ```js
 // agentic.config.js  (lives at your project root)
@@ -420,7 +421,7 @@ export default {
     allowPaidAgents: true,
   },
 
-  // Optional: payment middleware (only relevant if you also use @agentify/web)
+  // Optional: payment middleware (only relevant if you also use @herald/addon)
   payments: {
     protocols: ['mpp', 'x402'],
     x402: {
@@ -445,23 +446,23 @@ export default {
 }
 ```
 
-**Experimental protocols (`x-` prefix).** Both `payments.protocols` and `authorization.protocols` accept identifiers prefixed with `x-` (for example `x-mypay`, `x-myauth`) per [agents.txt spec §3.1](https://agentstxt.dev). The generator emits them verbatim into `agents.txt` and as empty per-protocol objects in `agents.json` (`payments['x-mypay']: {}`). This is the runway for advertising a new protocol before it lands in the spec, without forking agentify.
+**Experimental protocols (`x-` prefix).** Both `payments.protocols` and `authorization.protocols` accept identifiers prefixed with `x-` (for example `x-mypay`, `x-myauth`) per [agents.txt spec §3.1](https://agentstxt.dev). The generator emits them verbatim into `agents.txt` and as empty per-protocol objects in `agents.json` (`payments['x-mypay']: {}`). This is the runway for advertising a new protocol before it lands in the spec, without forking herald.
 
 The **same file** is consumed by:
 
-- **CLI**: `npx agentify generate` reads it to write static files into `--out`
-- **`@agentify/web` middleware**: `import config from './agentic.config.js'`, then `app.use(createAgenticRouter(config))` and `app.use('/api', agenticPaymentMiddleware(config, '/api'))`
+- **CLI**: `herald generate` reads it to write static files into `--out`
+- **`@herald/addon` middleware**: `import config from './agentic.config.js'`, then `app.use(createAgenticRouter(config))` and `app.use('/api', agenticPaymentMiddleware(config, '/api'))`
 
 You write it once. There is no separate runtime config; nothing duplicates.
 
 ### Where the file lives
 
-- **Static / Jamstack sites** (Astro, Hugo, 11ty, Next.js export): at your project root, generated at build time by `npx agentify generate --out ./public`.
-- **Server frameworks** (Express, Hono, Next.js App Router): at your project root, imported into your server file. The `@agentify/web` adapter serves the discovery files from memory and gates payments at request time.
+- **Static / Jamstack sites** (Astro, Hugo, 11ty, Next.js export): at your project root, generated at build time by `herald generate --out ./public`.
+- **Server frameworks** (Express, Hono, Next.js App Router): at your project root, imported into your server file. The `@herald/addon` adapter serves the discovery files from memory and gates payments at request time.
 
 ### Validation
 
-Both `init` and `generate` run a Zod schema (CLI-only, doesn't bloat `@agentify/core`). Errors print field-level paths so misconfiguration surfaces early:
+Both `init` and `generate` run a Zod schema (CLI-only, doesn't bloat `@herald/core`). Errors print field-level paths so misconfiguration surfaces early:
 
 ```
 ❌ Failed to load config: Invalid agentic.config.js:
@@ -472,7 +473,7 @@ Both `init` and `generate` run a Zod schema (CLI-only, doesn't bloat `@agentify/
 **Per-field lenient validation for optional wallet env vars.** The format checks for `evmAddress` (40-char `0x` hex), `solanaAddress` (32-char base58 minimum), and `stripeSecretKey` (`sk_` prefix) are still strict, but a malformed *optional* field no longer aborts the whole generate. Instead, the value is treated as `undefined` and the CLI prints a one-line warning:
 
 ```
-agentify: ignoring malformed evmAddress (evmAddress must be a 40-char hex EVM address (0x...)); set EVM_ADDRESS to a valid 0x[40 hex] value or unset to skip EVM.
+herald: ignoring malformed evmAddress (evmAddress must be a 40-char hex EVM address (0x...)); set EVM_ADDRESS to a valid 0x[40 hex] value or unset to skip EVM.
 ```
 
 This means a typo in an unused wallet (`EVM_ADDRESS=garbage` in your `.env` when you only meant to wire up Solana) does not break the Solana side. The `TreasuryConfigSchema.refine` rule still fires after the lenient pass: if every wallet is dropped, x402 fails with `treasury must include at least one of evmAddress or solanaAddress (after lenient validation)`, because x402 with no recipient is meaningless.
@@ -483,18 +484,18 @@ The `generate` step then runs the spec validators (RFC 9309 for robots.txt, llms
 
 The agents.txt spec mandates four response headers on `/agents.txt` and `/agents.json`: a Content-Type with charset (for agents.txt), `Access-Control-Allow-Origin: *` (so browser-context agents can read the files cross-origin), and a `Cache-Control: public, max-age=3600` (SHOULD). Static-asset pipelines on most hosting platforms do not set these by default, so the headers have to be wired in some platform-specific way.
 
-`agentify generate` handles this for you. The CLI detects your hosting platform from project files and emits the right config:
+`herald generate` handles this for you. The CLI detects your hosting platform from project files and emits the right config:
 
 | Platform | Detected via | Emits |
 |----------|--------------|-------|
 | **Cloudflare** (Workers / Pages) | `wrangler.json`, `wrangler.toml`, `@astrojs/cloudflare`, `@cloudflare/workers-types`, `wrangler` dep | `_headers` in `--out` |
 | **Netlify** | `netlify.toml`, `@netlify/plugin-*` | `_headers` in `--out` (same syntax as Cloudflare) |
-| **Vercel** | `vercel.json`, `.vercel/` | `vercel.json#headers` at the project root, **merged** with any existing entries (the agentify-managed sources are replaced; everything else is preserved verbatim) |
+| **Vercel** | `vercel.json`, `.vercel/` | `vercel.json#headers` at the project root, **merged** with any existing entries (the herald-managed sources are replaced; everything else is preserved verbatim) |
 | **Unknown** | nothing matched | `_headers` in `--out` as a best-effort default, plus a console warning. Translate to your platform's mechanism. See the per-platform table below. |
 
 **A2A AgentCard paths included automatically.** When `a2a.cards` is set in `agentic.config.js`, the generator emits matching header entries for each same-origin AgentCard path alongside the `/agents.txt` and `/agents.json` entries. The headers used are `Content-Type: application/json`, `Access-Control-Allow-Origin: *`, `Cache-Control: public, max-age=3600`. AgentCards on a different origin from `site.url` are skipped because their headers are not the responsibility of this deployment. AgentCards (a2a-protocol.org) are not governed by agents.txt §4.5, but the CORS line is load-bearing for any browser-context A2A client probing the well-known path cross-origin, so it is included by default.
 
-**Static file vs dynamic handler.** Headers config files (`_headers`, `vercel.json#headers`) apply only to *static* files on the hosting platform's asset pipeline. They do not apply to *dynamic* routes served by a handler or worker (Express, Next.js App Router, Hono, Cloudflare Workers route handlers, etc.). If you serve `/agents.txt` or an AgentCard dynamically, the route handler must set the headers in code. `@agentify/web` does this for the routes it owns; if you hand-roll a route, follow the same shape. Agent-auth's `/.well-known/agent-configuration` endpoint is the canonical dynamic case: it is conventionally served by a handler and is therefore not emitted into the headers config.
+**Static file vs dynamic handler.** Headers config files (`_headers`, `vercel.json#headers`) apply only to *static* files on the hosting platform's asset pipeline. They do not apply to *dynamic* routes served by a handler or worker (Express, Next.js App Router, Hono, Cloudflare Workers route handlers, etc.). If you serve `/agents.txt` or an AgentCard dynamically, the route handler must set the headers in code. `@herald/addon` does this for the routes it owns; if you hand-roll a route, follow the same shape. Agent-auth's `/.well-known/agent-configuration` endpoint is the canonical dynamic case: it is conventionally served by a handler and is therefore not emitted into the headers config.
 
 Override detection with `--platform <cloudflare\|netlify\|vercel\|unknown>` if needed. Skip the file with `--skip-headers`. Emit only the headers config with `--headers`.
 
@@ -518,7 +519,7 @@ For platforms the CLI does not generate for, configure the four headers yourself
 | Apache | `Header set` in `.htaccess` or vhost config |
 | Caddy | `header` directive in your Caddyfile |
 | AWS S3 + CloudFront | Response Headers Policy (or Lambda@Edge) attached to the distribution |
-| Express / Hono / Next.js handlers | Set headers in the route handler that responds with the file. `@agentify/web` does this for routes it owns. |
+| Express / Hono / Next.js handlers | Set headers in the route handler that responds with the file. `@herald/addon` does this for routes it owns. |
 
 Once deployed, run `agents.txt`'s own MCP `audit_site` tool against your live URL to verify §4.5 compliance:
 
@@ -540,6 +541,10 @@ A clean run reports `corsAllOrigins: true`, the right `Content-Type` on each fil
 
 <br>
 
+```bash
+npm install @herald/addon
+```
+
 ## Quick start
 
 <details>
@@ -549,8 +554,8 @@ A clean run reports `corsAllOrigins: true`, the right `Content-Type` on each fil
 
 ```ts
 import express from 'express'
-import { createAgenticRouter, agenticPaymentMiddleware } from '@agentify/web/express'
-import type { AgenticConfig } from '@agentify/core'
+import { createAgenticRouter, agenticPaymentMiddleware } from '@herald/addon/express'
+import type { AgenticConfig } from '@herald/core'
 
 const config: AgenticConfig = {
   site: {
@@ -607,28 +612,28 @@ Create four route files:
 
 **`app/robots.txt/route.ts`**
 ```ts
-import { robotsTxtHandler } from '@agentify/web/nextjs'
+import { robotsTxtHandler } from '@herald/addon/nextjs'
 import config from '@/agentic.config'
 export const GET = robotsTxtHandler(config)
 ```
 
 **`app/llms.txt/route.ts`**
 ```ts
-import { llmsTxtHandler } from '@agentify/web/nextjs'
+import { llmsTxtHandler } from '@herald/addon/nextjs'
 import config from '@/agentic.config'
 export const GET = llmsTxtHandler(config)
 ```
 
 **`app/agents.txt/route.ts`**
 ```ts
-import { agentsTxtHandler } from '@agentify/web/nextjs'
+import { agentsTxtHandler } from '@herald/addon/nextjs'
 import config from '@/agentic.config'
 export const GET = agentsTxtHandler(config)
 ```
 
 **`app/agents.json/route.ts`**
 ```ts
-import { agentsJsonHandler } from '@agentify/web/nextjs'
+import { agentsJsonHandler } from '@herald/addon/nextjs'
 import config from '@/agentic.config'
 export const GET = agentsJsonHandler(config)
 ```
@@ -636,7 +641,7 @@ export const GET = agentsJsonHandler(config)
 **`middleware.ts`: gates API routes at the edge:**
 ```ts
 import agenticConfig from './agentic.config.js'
-import { createPaymentProxy } from '@agentify/web/nextjs'
+import { createPaymentProxy } from '@herald/addon/nextjs'
 
 export default createPaymentProxy(agenticConfig, '/api')
 export const config = { matcher: ['/api/:path*'] }
@@ -659,8 +664,8 @@ export async function GET() {
 
 ```ts
 import { Hono } from 'hono'
-import { createAgenticRoutes, agenticPaymentMiddleware } from '@agentify/web/hono'
-import type { AgenticConfig } from '@agentify/core'
+import { createAgenticRoutes, agenticPaymentMiddleware } from '@herald/addon/hono'
+import type { AgenticConfig } from '@herald/core'
 
 const config: AgenticConfig = {
   site: { name: 'My Site', url: 'https://mysite.com' },
@@ -732,11 +737,11 @@ Migration v1→v2 reference: https://docs.x402.org/guides/migration-v1-to-v2
 </details>
 
 <details>
-<summary><b>What AGENTIFY actually does for payment protocols</b></summary>
+<summary><b>What HERALD actually does for payment protocols</b></summary>
 
 <br>
 
-The agents.txt standard treats payments as one of the capability blocks a site declares to agents (spec §5). AGENTIFY is the resource-server implementation that pairs with that declaration: a single config object drives both the announcement layer (the `payments` block in `agents.txt` and `agents.json`) and the wire layer (the actual 402 handler that gates protected routes). Both registered payment protocols are supported out of the box, behind one `gateRequest()` entry point that emits a combined 402 carrying every active protocol's challenge so an agent picks whichever it can satisfy.
+The agents.txt standard treats payments as one of the capability blocks a site declares to agents (spec §5). HERALD is the resource-server implementation that pairs with that declaration: a single config object drives both the announcement layer (the `payments` block in `agents.txt` and `agents.json`) and the wire layer (the actual 402 handler that gates protected routes). Both registered payment protocols are supported out of the box, behind one `gateRequest()` entry point that emits a combined 402 carrying every active protocol's challenge so an agent picks whichever it can satisfy.
 
 The two currently-registered protocols are implemented in [`packages/web/src/x402.ts`](packages/web/src/x402.ts) and [`packages/web/src/mpp.ts`](packages/web/src/mpp.ts); the shared gate that sequences them is in [`packages/web/src/payment-gate.ts`](packages/web/src/payment-gate.ts). Adding a third protocol is mostly a registry edit plus a new sibling file (see the "Adding a new protocol" section below).
 
@@ -744,7 +749,7 @@ The two currently-registered protocols are implemented in [`packages/web/src/x40
 
 Implemented directly, not via the official `@x402/express|hono|next` SDKs. Cryptographic verification and on-chain settlement are delegated to the facilitator. The whole flow is roughly 250 lines in [`packages/web/src/x402.ts`](packages/web/src/x402.ts):
 
-| Step | What AGENTIFY does | Where it lives |
+| Step | What HERALD does | Where it lives |
 |---|---|---|
 | 1. Build the 402 challenge | Translates `X402Config` into a `PaymentRequirements[]` array. Each entry carries `scheme: 'exact'`, CAIP-2 `network`, atomic-unit `amount`, `asset` (token contract or fiat code), `payTo`, `maxTimeoutSeconds`, and `extra` (e.g. `{ name: 'USDC', version: '2' }` for EVM; `{ name: 'USDC' }` for Solana). | `buildAccepts()` |
 | 2. Wrap in the v2 body | Emits `{ x402Version: 2, error?, resource: { url, description, mimeType }, accepts }` as the 402 JSON response body. | `buildPaymentRequired()` |
@@ -765,13 +770,13 @@ Implemented directly, not via the official `@x402/express|hono|next` SDKs. Crypt
 
 For non-USDC tokens or other CAIP-2 networks, set `x402.assets[network] = '<contract>'`.
 
-**Security boundary.** AGENTIFY does not verify cryptographic signatures, hold private keys, replay-protect state, or submit on-chain transactions. The facilitator does. The trust assumption is "the facilitator at `facilitatorUrl` honestly verifies and settles", the same assumption every x402 server makes, including ones using the official SDK. Run your own facilitator if that trust isn't acceptable for your deployment.
+**Security boundary.** HERALD does not verify cryptographic signatures, hold private keys, replay-protect state, or submit on-chain transactions. The facilitator does. The trust assumption is "the facilitator at `facilitatorUrl` honestly verifies and settles", the same assumption every x402 server makes, including ones using the official SDK. Run your own facilitator if that trust isn't acceptable for your deployment.
 
 ### MPP (session-based, via the `mppx` SDK)
 
 Implemented as a thin wrapper around `mppx@^0.6.x`, the IETF `draft-ryan-httpauth-payment` reference SDK co-authored by Stripe and Tempo. Tempo USDC and Stripe SPT are the two registered methods today; both can run simultaneously and appear in the same `WWW-Authenticate: Payment` challenge per RFC 7235 multi-scheme form. The full flow is in [`packages/web/src/mpp.ts`](packages/web/src/mpp.ts):
 
-| Step | What AGENTIFY does | Where it lives |
+| Step | What HERALD does | Where it lives |
 |---|---|---|
 | 1. Lazy-initialise mppx | On first request, reads `MppConfig` and registers the active methods: `tempo.charge({ currency, recipient, testnet })` when `mpp.tempoRecipient` is set, `stripe.charge({ client, networkId, paymentMethodTypes })` when both Stripe credentials are present. Wraps the constructor in try/catch so a misconfigured init returns a clean 503 with `endpoint_inactive` rather than crashing. Caches the resulting instance per worker isolate. | `createMppxRuntime()` |
 | 2. Build the challenge | Calls `Mppx.compose(...charges)(request)`, where each entry in `charges` is the per-request invocation (`mppx.tempo.charge({ amount, description, recipient })` and / or `mppx.stripe.charge({ amount, description, currency, decimals })`). Compose returns a unified `result` object whose `challenge.headers` carries the multi-method `WWW-Authenticate: Payment ..., Payment ...` value. | `runtime.charge()` |
@@ -782,7 +787,7 @@ Implemented as a thin wrapper around `mppx@^0.6.x`, the IETF `draft-ryan-httpaut
 
 **Activation rules.** Tempo activates when `mpp.tempoRecipient` is set (any 40-char `0x` EVM address). Stripe activates when both `mpp.stripeSecretKey` (`sk_test_...` or `sk_live_...`) and `mpp.stripeNetworkId` (Stripe Business Network profile ID) are set. Either path independently. `mpp.secretKey` is required by mppx to sign receipts and is therefore required for any MPP method to activate; a missing secret returns 503 with an actionable reason instead of crashing.
 
-**Security boundary.** AGENTIFY does not verify on-chain transfer proofs, hold Stripe API credentials, or sign receipts. mppx does the first two; the receipt HMAC is signed with the `mpp.secretKey` value AGENTIFY passes through to mppx at construction. Rotate `mpp.secretKey` like any other application secret; rotating it invalidates outstanding receipts (forces agents to renegotiate).
+**Security boundary.** HERALD does not verify on-chain transfer proofs, hold Stripe API credentials, or sign receipts. mppx does the first two; the receipt HMAC is signed with the `mpp.secretKey` value HERALD passes through to mppx at construction. Rotate `mpp.secretKey` like any other application secret; rotating it invalidates outstanding receipts (forces agents to renegotiate).
 
 ### Combined 402 emission
 
@@ -795,7 +800,7 @@ When both protocols are active, `gateRequest()` emits one 402 response whose bod
 
 <br>
 
-`@agentify/web` exposes a single `PricingConfig` abstraction for all protocols and runtimes. It implements x402 v2 directly and layers MPP via the optional `mppx` SDK; the same config fields drive both.
+`@herald/addon` exposes a single `PricingConfig` abstraction for all protocols and runtimes. It implements x402 v2 directly and layers MPP via the optional `mppx` SDK; the same config fields drive both.
 
 ### `PricingConfig`
 
@@ -841,7 +846,7 @@ These set the default price for all protected routes. `x402.perPath` and `mpp.pe
 
 <br>
 
-Out of the box, `@agentify/web` issues a single 402 advertising both protocols at once; agents pick whichever they support.
+Out of the box, `@herald/addon` issues a single 402 advertising both protocols at once; agents pick whichever they support.
 
 ### Protocols (gate decision order)
 
@@ -899,10 +904,10 @@ Two practical consequences for the gate decision in [`payment-gate.ts`](packages
 
 <br>
 
-> This is the `payments.*` slice of `AgenticConfig` shown exhaustively. The full file in your project also carries `site`, `content`, and `crawlers` blocks. See [The agentify CLI and `agentic.config.js`](#the-agentify-cli-and-agenticconfigjs) for the complete shape and how the file is created.
+> This is the `payments.*` slice of `AgenticConfig` shown exhaustively. The full file in your project also carries `site`, `content`, and `crawlers` blocks. See [The `@herald/cli` and `agentic.config.js`](#the-heraldcli-and-agenticconfigjs) for the complete shape and how the file is created.
 
 ```ts
-import type { AgenticConfig } from '@agentify/core'
+import type { AgenticConfig } from '@herald/core'
 
 const config: AgenticConfig = {
   site: { name: 'My Site', url: 'https://mysite.com' },
@@ -947,12 +952,12 @@ const config: AgenticConfig = {
 **Install footprint:**
 
 ```bash
-npm install @agentify/web express              # x402-only, no extras needed
-npm install @agentify/web express mppx         # + MPP via Tempo
-npm install @agentify/web express mppx stripe  # + Stripe (full MPP)
+npm install @herald/addon express              # x402-only, no extras needed
+npm install @herald/addon express mppx         # + MPP via Tempo
+npm install @herald/addon express mppx stripe  # + Stripe (full MPP)
 ```
 
-`@x402/*` packages are not required; `@agentify/web` implements x402 v2 directly.
+`@x402/*` packages are not required; `@herald/addon` implements x402 v2 directly.
 
 </details>
 
@@ -964,19 +969,19 @@ npm install @agentify/web express mppx stripe  # + Stripe (full MPP)
 
 | Package | Purpose |
 |---------|---------|
-| `@agentify/core` | Pure generators: robots.txt, llms.txt, agents.txt, agents.json. No runtime deps. |
-| `@agentify/web` | Middleware for Express / Next.js / Hono + x402 protocol |
-| `agentify` (CLI) | `npx agentify init/generate/check` |
+| `@herald/core` | Pure generators: robots.txt, llms.txt, agents.txt, agents.json. No runtime deps. |
+| `@herald/addon` | Middleware for Express / Next.js / Hono + x402 protocol |
+| `@herald/cli` | `herald init/generate/check` |
 
 ---
 
 ## Adding a new protocol
 
-Two paths exist depending on whether you want to ship the protocol experimentally or land it as a first-class agentify feature.
+Two paths exist depending on whether you want to ship the protocol experimentally or land it as a first-class herald feature.
 
 ### Path 1: experimental, in user space (`x-` prefix)
 
-Use this when the protocol is new, you want to advertise it on a live site, and you do not need agentify to know anything about it beyond its identifier. The spec reserves the `x-` prefix for exactly this case.
+Use this when the protocol is new, you want to advertise it on a live site, and you do not need herald to know anything about it beyond its identifier. The spec reserves the `x-` prefix for exactly this case.
 
 ```js
 // agentic.config.js
@@ -991,9 +996,9 @@ export default {
 
 What you get out of the box: the identifier appears verbatim in `agents.txt` (`Protocols: x402, x-mypay`); it shows up in `agents.json` as `payments['x-mypay']: {}`; validators do not warn on it; the gate middleware ignores it (you run your own protocol handler).
 
-No agentify code changes needed. The runtime contract for the experimental protocol is entirely your responsibility: response shape, settlement, headers, etc.
+No herald code changes needed. The runtime contract for the experimental protocol is entirely your responsibility: response shape, settlement, headers, etc.
 
-### Path 2: register the protocol in agentify
+### Path 2: register the protocol in herald
 
 Use this when the protocol has settled enough that you want generators, validators, the CLI wizard, and (optionally) middleware to know about it. Adding a new payment or auth protocol is now a small, predictable diff thanks to the central registry.
 
@@ -1036,7 +1041,7 @@ The CLI wizard prompts for this after the payments block; the field is `a2a: { c
 
 ```bash
 git clone https://github.com/agentstxt/agents.txt
-cd agents.txt/agentify
+cd agents.txt/herald
 pnpm install
 pnpm build       # builds core → web → cli in dependency order
 ```
@@ -1097,7 +1102,7 @@ packages/cli/dist/
 
 ### Architecture constraints
 
-- `@agentify/core` must have **zero runtime dependencies**. It must work on Node.js, Deno, Bun, and edge runtimes
+- `@herald/core` must have **zero runtime dependencies**. It must work on Node.js, Deno, Bun, and edge runtimes
 - Never import Zod into `core` or `web`. Zod lives in `cli` only
 - Never re-implement gate logic inside an adapter. All payment decisions go through `gateRequest()` in `payment-gate.ts`
 - New framework adapters: convert `frameworkRequest → Request`, call `gateRequest(request, { config, pathPrefix })`, write back the `GateResult`. Mirror `express.ts` as the reference
@@ -1113,10 +1118,10 @@ No. It generates a _better_ robots.txt that adds AI-specific rules on top of you
 Yes, but only a public address (no private keys on the server). Create one with MetaMask, Coinbase Wallet, or any EVM wallet. Funds go directly on-chain.
 
 **Can I use this without payments?**  
-Absolutely. Omit the `payments` block entirely (or list `protocols` but leave the credentials unset; both produce the same output). AGENTIFY still generates robots.txt + llms.txt + agents.txt + agents.json, just without any payment capability advertised.
+Absolutely. Omit the `payments` block entirely (or list `protocols` but leave the credentials unset; both produce the same output). HERALD still generates robots.txt + llms.txt + agents.txt + agents.json, just without any payment capability advertised.
 
 **Can I use this without agents.txt (just robots.txt and llms.txt)?**  
-Yes. Run `npx agentify generate --robots --llms` to emit only those two files (or, equivalently from the default mode, `--skip-agents`). Pass just `--robots` for robots.txt only. AGENTIFY is the tooling; agents.txt is one of the layers it can emit, not a hard requirement.
+Yes. Run `herald generate --robots --llms` to emit only those two files (or, equivalently from the default mode, `--skip-agents`). Pass just `--robots` for robots.txt only. HERALD is the tooling; agents.txt is one of the layers it can emit, not a hard requirement.
 
 **Is Firecrawl required?**  
 No. It's optional. The default sitemap driver works without any API keys. Firecrawl gives better results (titles, descriptions, grouping) but is not required.
@@ -1128,9 +1133,9 @@ We POST `{ x402Version: 2, paymentPayload, paymentRequirements }` to the facilit
 
 ## License
 
-This repository contains the agentify reference implementation only. It is released under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0); see [`LICENSE`](LICENSE).
+This repository contains the herald reference implementation only. It is released under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0); see [`LICENSE`](LICENSE).
 
-The agents.txt specification that agentify implements lives in a separate repository under [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/) at [agentstxt.dev](https://agentstxt.dev). Anyone may implement the spec without restriction.
+The agents.txt specification that herald implements lives in a separate repository under [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/) at [agentstxt.dev](https://agentstxt.dev). Anyone may implement the spec without restriction.
 
 ---
 

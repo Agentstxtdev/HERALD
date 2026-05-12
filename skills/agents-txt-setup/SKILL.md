@@ -1,9 +1,9 @@
 ---
 name: agents-txt-setup
-description: Guides Claude through setting up the `agentify` CLI and `@agentify/web` middleware on a user's website. Covers the init wizard, agentic.config.js fields, file generation (robots.txt / sitemap.xml / llms.txt / agents.txt / agents.json), framework middleware wiring (Express / Next.js / Hono), and the optional payment middleware (x402 v2 + MPP). Use when the user wants to add agentify to their project, generate the discovery files, accept x402 or MPP payments, or wire up `@agentify/web` route handlers and middleware.
+description: Guides Claude through setting up the `@herald/cli` CLI and `@herald/addon` middleware on a user's website. Covers the init wizard, agentic.config.js fields, file generation (robots.txt / sitemap.xml / llms.txt / agents.txt / agents.json), framework middleware wiring (Express / Next.js / Hono), and the optional payment middleware (x402 v2 + MPP). Use when the user wants to add herald to their project, generate the discovery files, accept x402 or MPP payments, or wire up `@herald/addon` route handlers and middleware.
 ---
 
-# agentify: setup
+# herald: setup
 
 ## Diagnose first
 
@@ -20,8 +20,9 @@ Then follow the workflow below.
 ## Step 1: Run `init`
 
 ```bash
-npx agentify init          # interactive wizard
-npx agentify init -y       # skip all prompts, use auto-detected defaults
+npm install -D @herald/cli   # install once as a dev dependency
+herald init                  # interactive wizard
+herald init -y               # skip all prompts, use auto-detected defaults
 ```
 
 **What `init` does internally:**
@@ -69,13 +70,13 @@ The single `AgenticConfig` object drives everything. Every generator and middlew
 ## Step 3: Generate files
 
 ```bash
-npx agentify generate --out ./public
+herald generate --out ./public
 ```
 
 **What `generate` does internally:**
 1. Dynamic `import()` of `agentic.config.js`
 2. Zod v4 validation: field-level errors printed before any file is written
-3. Calls `generateRobotsTxt`, `generateLlmsTxt`, `generateAgentsTxt`, `generateAgentsJson`, `generateSitemapXml` from `@agentify/core`
+3. Calls `generateRobotsTxt`, `generateLlmsTxt`, `generateAgentsTxt`, `generateAgentsJson`, `generateSitemapXml` from `@herald/core`
 4. Writes to `--out` dir (default `./public`)
 5. Runs spec validators inline, prints warnings, does not fail the build
 
@@ -103,7 +104,7 @@ Default mode (no flags) emits everything applicable to the config. Pass any posi
 
 **For Astro / 11ty / Hugo / Jamstack**: generation is all they need. Deploy the output files with their site. No middleware.
 
-**About the `_headers` / `vercel.json` file `generate` produces:** the agents.txt spec §4.5 mandates `Content-Type: text/plain; charset=utf-8` on `agents.txt`, `Content-Type: application/json` on `agents.json`, `Access-Control-Allow-Origin: *` on both, and recommends `Cache-Control: public, max-age=3600`. `agentify generate` detects the user's hosting platform and emits the right config to satisfy this without manual work:
+**About the `_headers` / `vercel.json` file `generate` produces:** the agents.txt spec §4.5 mandates `Content-Type: text/plain; charset=utf-8` on `agents.txt`, `Content-Type: application/json` on `agents.json`, `Access-Control-Allow-Origin: *` on both, and recommends `Cache-Control: public, max-age=3600`. `herald generate` detects the user's hosting platform and emits the right config to satisfy this without manual work:
 
 | Detected platform | Emits | Where |
 |---|---|---|
@@ -112,7 +113,7 @@ Default mode (no flags) emits everything applicable to the config. Pass any posi
 | Vercel | `vercel.json` with merge semantics | project root |
 | Unknown | `_headers` as a best-effort default + console warning | `--out` |
 
-For platforms agentify doesn't write a config for (nginx, Apache, Caddy, S3+CloudFront, etc.), tell the user to translate the rules manually — the README has copy-paste server config snippets. They can also pass `--platform <name>` to force a specific generator, or `--skip-headers` if they handle headers in their server framework (Express/Hono/Next.js handlers via `@agentify/web` already set them programmatically).
+For platforms herald doesn't write a config for (nginx, Apache, Caddy, S3+CloudFront, etc.), tell the user to translate the rules manually — the README has copy-paste server config snippets. They can also pass `--platform <name>` to force a specific generator, or `--skip-headers` if they handle headers in their server framework (Express/Hono/Next.js handlers via `@herald/addon` already set them programmatically).
 
 ---
 
@@ -122,7 +123,7 @@ See [REFERENCE.md](REFERENCE.md#middleware-snippets) for full copy-paste code.
 
 **Express:**
 ```ts
-import { createAgenticRouter, agenticPaymentMiddleware } from '@agentify/web/express'
+import { createAgenticRouter, agenticPaymentMiddleware } from '@herald/addon/express'
 app.use(createAgenticRouter(config))
 app.use('/api', agenticPaymentMiddleware(config, '/api'))
 ```
@@ -132,24 +133,24 @@ app.use('/api', agenticPaymentMiddleware(config, '/api'))
 
 **Hono:**
 ```ts
-import { createAgenticRoutes, agenticPaymentMiddleware } from '@agentify/web/hono'
+import { createAgenticRoutes, agenticPaymentMiddleware } from '@herald/addon/hono'
 createAgenticRoutes(app, config)
 app.use('/api/*', agenticPaymentMiddleware(config, '/api'))
 ```
 
-Install: `npm install @agentify/web`
+Install: `npm install @herald/addon`
 
 ---
 
 ## Step 5: Verify compliance
 
 ```bash
-npx agentify check https://mysite.com
+herald check https://mysite.com
 ```
 
 **What `check` does:** Fetches `robots.txt`, `llms.txt`, `agents.json`, `sitemap.xml` from the live URL and scores them using the same validators as `generate`, not ad-hoc string matching.
 
-For deeper §4.5 verification (response headers + cross-file consistency between agents.txt and agents.json), point the user at the live `audit_site` MCP tool published by the agents.txt project at `https://agentstxt.dev/mcp`. It validates Content-Type / CORS / Cache-Control on both files, schema-validates `agents.json` per §10, scans for accidental treasury or secret leaks per §10.4 / §12, and cross-checks that `agents.txt` and `agents.json` declare the same capabilities. Run both `agentify check` and `audit_site` after deploy.
+For deeper §4.5 verification (response headers + cross-file consistency between agents.txt and agents.json), point the user at the live `audit_site` MCP tool published by the agents.txt project at `https://agentstxt.dev/mcp`. It validates Content-Type / CORS / Cache-Control on both files, schema-validates `agents.json` per §10, scans for accidental treasury or secret leaks per §10.4 / §12, and cross-checks that `agents.txt` and `agents.json` declare the same capabilities. Run both `herald check` and `audit_site` after deploy.
 
 ---
 
@@ -169,8 +170,8 @@ For deeper §4.5 verification (response headers + cross-file consistency between
 - MPP requires `npm install mppx` separately; warn before they hit a runtime error
 - `mppx` passes through if not installed (dev-safe), but logs a warning
 - x402 v2 is implemented directly against the public facilitator at `https://x402.org/facilitator` (no `@x402/*` SDK). MPP runs through the optional `mppx` peer dep (Tempo USDC + Stripe SPT).
-- `@agentify/core` has zero runtime deps (edge-safe); payment code is in `@agentify/web`
+- `@herald/core` has zero runtime deps (edge-safe); payment code is in `@herald/addon`
 - `--skip-llms` is useful when Firecrawl is a separate CI step that takes too long; `--skip-llms-full` keeps the cheap `llms.txt` index but skips the Firecrawl-billed scrape
 - `pnpm` workspace required if contributing to the monorepo itself
 - `a2a` is optional. Most single-agent sites do not need it because A2A clients can probe `/.well-known/agent-card.json` directly. Suggest it only when the user has multiple A2A agents on one origin or serves an AgentCard at a non-canonical path.
-- For protocols not yet listed in `payments.protocols` / `authorization.protocols`, point users at the `x-` prefix (e.g. `'x-mypay'`). Agentify accepts them verbatim, validators pass them through without warnings, and there is no need to patch agentify. Only suggest a registry edit (`packages/core/src/protocols.ts`) when the protocol is stable and the user wants agentify-level support (gate middleware, wizard prompt, structured fields in `agents.json`).
+- For protocols not yet listed in `payments.protocols` / `authorization.protocols`, point users at the `x-` prefix (e.g. `'x-mypay'`). Herald accepts them verbatim, validators pass them through without warnings, and there is no need to patch herald. Only suggest a registry edit (`packages/core/src/protocols.ts`) when the protocol is stable and the user wants herald-level support (gate middleware, wizard prompt, structured fields in `agents.json`).

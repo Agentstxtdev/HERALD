@@ -1,9 +1,9 @@
 /**
- * Hono adapter for @agentify/web
+ * Hono adapter for @herald/addon
  *
  * Usage:
  *   import { Hono } from 'hono'
- *   import { createAgenticRoutes, agenticPaymentMiddleware } from '@agentify/web/hono'
+ *   import { createAgenticRoutes, agenticPaymentMiddleware } from '@herald/addon/hono'
  *
  *   const app = new Hono()
  *   createAgenticRoutes(app, config)
@@ -22,7 +22,7 @@ import {
   generateAgentsJson,
   resolveActiveProtocols,
   type AgenticConfig,
-} from '@agentify/core'
+} from '@herald/core'
 import { gateRequest } from './payment-gate.js'
 
 const CACHE_TTL_MS = 3600 * 1000

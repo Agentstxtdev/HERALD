@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Protocol registry — single source of truth
 //
-// Every protocol identifier and block-opening directive that agentify
+// Every protocol identifier and block-opening directive that herald
 // recognises is declared in this file. The generators, validators, and CLI
 // schema all read from here.
 //

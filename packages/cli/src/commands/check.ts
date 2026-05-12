@@ -1,5 +1,5 @@
 // Compliance checker — verifies a site exposes all required agentic web files
-import { validateRobotsTxt, validateLlmsTxt, validateAgentsTxt, validateAgentsJson, validateSitemapXml } from '@agentify/core'
+import { validateRobotsTxt, validateLlmsTxt, validateAgentsTxt, validateAgentsJson, validateSitemapXml } from '@herald/core'
 
 interface CheckResult {
   file: string
@@ -136,7 +136,7 @@ export async function checkCompliance(siteUrl: string): Promise<void> {
   console.log(`\n   Score: ${score}/${total} files compliant`)
 
   if (score < total) {
-    console.log(`\n   Run \`npx agentify generate\` to generate missing files.`)
+    console.log(`\n   Run \`herald generate\` to generate missing files.`)
   } else {
     console.log(`\n   🎉 Fully compliant with the Agentic Web Standard!`)
   }

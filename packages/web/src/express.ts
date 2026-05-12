@@ -1,8 +1,8 @@
 /**
- * Express adapter for @agentify/web
+ * Express adapter for @herald/addon
  *
  * Usage:
- *   import { createAgenticRouter, agenticPaymentMiddleware } from '@agentify/web/express'
+ *   import { createAgenticRouter, agenticPaymentMiddleware } from '@herald/addon/express'
  *
  *   app.use(createAgenticRouter(config))
  *   app.use('/api', agenticPaymentMiddleware(config, '/api'))
@@ -26,7 +26,7 @@ import {
   generateAgentsJson,
   resolveActiveProtocols,
   type AgenticConfig,
-} from '@agentify/core'
+} from '@herald/core'
 import { gateRequest } from './payment-gate.js'
 
 // ─────────────────────────────────────────────────────────────────────────────

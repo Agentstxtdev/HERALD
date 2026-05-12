@@ -1,8 +1,8 @@
 {
-  "name": "agentify",
+  "name": "herald",
   "private": true,
   "version": "0.1.0",
-  "description": "Monorepo for the Open Agentic Web standard — make any website LLM-ready and monetizable by AI agents",
+  "description": "Monorepo for the Herald standard — make any website LLM-ready and monetizable by AI agents",
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",

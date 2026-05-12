@@ -1,5 +1,5 @@
 /**
- * Express example — @agentify/web
+ * Express example — @herald/addon
  *
  * Demonstrates:
  *  1. Auto-serving /robots.txt, /llms.txt, /agents.txt
@@ -15,8 +15,8 @@
  */
 
 import express, { type Request, type Response } from 'express'
-import { createAgenticRouter, agenticPaymentMiddleware } from '@agentify/web/express'
-import type { AgenticConfig } from '@agentify/core'
+import { createAgenticRouter, agenticPaymentMiddleware } from '@herald/addon/express'
+import type { AgenticConfig } from '@herald/core'
 
 const SITE_URL = process.env.SITE_URL ?? 'http://localhost:3000'
 const EVM_ADDRESS = process.env.EVM_ADDRESS

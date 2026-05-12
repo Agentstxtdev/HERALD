@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { gateRequest } from '../payment-gate.js'
-import type { AgenticConfig } from '@agentify/core'
+import type { AgenticConfig } from '@herald/core'
 
 const baseConfig: AgenticConfig = {
   site: { name: 'Test', url: 'https://x.com' },

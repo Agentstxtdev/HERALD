@@ -1,5 +1,5 @@
 {
-  "name": "@agentify/example-express",
+  "name": "@herald/example-express",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -8,8 +8,8 @@
     "dev": "node --watch --experimental-strip-types server.ts"
   },
   "dependencies": {
-    "@agentify/core": "workspace:*",
-    "@agentify/web": "workspace:*",
+    "@herald/core": "workspace:*",
+    "@herald/addon": "workspace:*",
     "express": "^5.2.1"
   },
   "devDependencies": {

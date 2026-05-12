@@ -1,6 +1,6 @@
-# Contributing to agentify
+# Contributing to herald
 
-Thanks for taking the time to contribute. agentify is a small, opinionated toolkit; the bar is "make every change reversible, understandable, and shippable."
+Thanks for taking the time to contribute. herald is a small, opinionated toolkit; the bar is "make every change reversible, understandable, and shippable."
 
 This guide covers what's specific to this repository. For overall code conventions and architectural rules, read [`AGENTS.md`](AGENTS.md) (codebase guide) and [`CLAUDE.md`](CLAUDE.md) (operating instructions for AI agents — humans benefit from them too).
 
@@ -8,7 +8,7 @@ This guide covers what's specific to this repository. For overall code conventio
 
 ## Before you start
 
-- agentify is the **toolkit** — three npm-publishable packages plus example consumers. It is *not* the place for `agents.txt` spec changes; those happen in the sibling repository where the spec lives.
+- herald is the **toolkit** — three npm-publishable packages plus example consumers. It is *not* the place for `agents.txt` spec changes; those happen in the sibling repository where the spec lives.
 - Open an issue or discussion before sending large PRs. Small fixes (typo, bug, doc clarification) are fine without a heads-up.
 - Run on **Node 24 (`nvm use 24`)** and **pnpm 10**. The lockfile is committed; respect it (`pnpm install --frozen-lockfile`).
 
@@ -18,7 +18,7 @@ This guide covers what's specific to this repository. For overall code conventio
 
 ```bash
 git clone https://github.com/agentstxt/agents.txt
-cd agents.txt/agentify
+cd agents.txt/herald
 
 nvm use 24
 pnpm install
@@ -38,9 +38,9 @@ If anything in that sequence fails on a clean clone, that's a bug — please fil
 pnpm dev
 
 # Single-package focus
-pnpm --filter @agentify/web typecheck
-pnpm --filter @agentify/web test
-pnpm --filter agentify       build      # the CLI
+pnpm --filter @herald/addon typecheck
+pnpm --filter @herald/addon test
+pnpm --filter @herald/cli       build      # the CLI
 
 # Run the CLI from your local build
 node packages/cli/dist/cli.js init
@@ -71,7 +71,7 @@ Detailed architecture and rules: [`AGENTS.md`](AGENTS.md).
 
 These are non-negotiable. Violations get sent back without further review.
 
-1. **`@agentify/core` has zero runtime dependencies.** Do not add any. Edge-runtime compatibility is a property we sell to users.
+1. **`@herald/core` has zero runtime dependencies.** Do not add any. Edge-runtime compatibility is a property we sell to users.
 2. **Zod stays in `packages/cli` only.** Never import Zod into `core` or `web`.
 3. **Never re-implement gate logic in an adapter.** Call `gateRequest()` from `payment-gate.ts` and adapt the `GateResult`. Adapters stay under ~100 lines.
 4. **No secrets in commits.** No `.env`, no wallet private keys, no Stripe secret keys, no MPP HMAC keys. CI has no secret scanner; you are the scanner.
@@ -94,7 +94,7 @@ These are non-negotiable. Violations get sent back without further review.
 
 ## Changesets — versioning and npm publish
 
-agentify uses [Changesets](https://github.com/changesets/changesets) for versioning. **Any PR that changes anything published to npm must include a changeset.**
+herald uses [Changesets](https://github.com/changesets/changesets) for versioning. **Any PR that changes anything published to npm must include a changeset.**
 
 ```bash
 # After making your changes:
@@ -119,7 +119,7 @@ This commits a `.changeset/<random>.md` file. Include it in your PR.
 
 The [PR template](.github/PULL_REQUEST_TEMPLATE.md) is required. Specifically:
 
-- **Thinking path** — five to eight steps, blockquote style, traces from "agentify is X" down to "this PR does Y."
+- **Thinking path** — five to eight steps, blockquote style, traces from "herald is X" down to "this PR does Y."
 - **Verification** — copy-paste the commands a reviewer should run plus expected output (test counts, build success).
 - **Risks** — even if "Low risk."
 - **Changeset** — name the file or write "no changeset needed" with reason.

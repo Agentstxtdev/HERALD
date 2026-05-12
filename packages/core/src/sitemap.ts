@@ -250,7 +250,7 @@ export function manualDriver(sections: ContentSection[]): ContentDriver {
 //
 // Emits a minimal <urlset> from a list of pages. Used by the CLI when the user
 // has authoritative URLs (content.driver: 'static' | 'manual') or explicitly
-// opts in with --sitemap. Skipped by default for drivers where AGENTIFY is not
+// opts in with --sitemap. Skipped by default for drivers where HERALD is not
 // the source of truth (existing sitemap.xml, Firecrawl-curated subset).
 // ─────────────────────────────────────────────────────────────────────────────
 

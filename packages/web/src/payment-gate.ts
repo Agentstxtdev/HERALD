@@ -13,7 +13,7 @@
  * Adapters call this from a fetch-style entry point and write back the result.
  */
 
-import type { AgenticConfig, PricingConfig } from '@agentify/core'
+import type { AgenticConfig, PricingConfig } from '@herald/core'
 import {
   buildAccepts,
   buildPaymentRequired,
@@ -58,7 +58,7 @@ function resolveGate(opts: GateOptions): Promise<ResolvedGate> {
     const protocols = (payments?.protocols ?? ['mpp', 'x402']) as ReadonlyArray<'mpp' | 'x402'>
     const exemptUserAgents = (payments?.exemptUserAgents ?? []).map((u) => u.toLowerCase())
     // The gate is active iff at least one protocol has real credentials —
-    // mirrors `resolveActiveProtocols(payments)` from @agentify/core. No
+    // mirrors `resolveActiveProtocols(payments)` from @herald/core. No
     // master `enabled` flag: presence of usable credentials IS the signal.
     const hasX402 = !!payments && protocols.includes('x402') && !!payments.x402?.treasury && !!(payments.x402.treasury.evmAddress || payments.x402.treasury.solanaAddress)
     const wantsMpp = !!payments && protocols.includes('mpp') && !!payments.mpp && !!(payments.mpp.tempoRecipient || (payments.mpp.stripeSecretKey && payments.mpp.stripeNetworkId))

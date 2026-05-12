@@ -6,7 +6,7 @@ import { generateCommand } from './commands/generate.js'
 const program = new Command()
 
 program
-  .name('agentify')
+  .name('herald')
   .description(
     'Make any website LLM-ready and monetizable by AI agents.\n' +
     'Generates robots.txt, llms.txt, agents.txt, and agents.json following the Agentic Web Standard.',
@@ -56,7 +56,7 @@ program
 
 program
   .command('check <url>')
-  .description('Check if a site is agentify compliant')
+  .description('Check if a site is herald compliant')
   .action(async (url: string) => {
     const { checkCompliance } = await import('./commands/check.js')
     await checkCompliance(url)

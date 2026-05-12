@@ -1,10 +1,10 @@
-# Project: agentify
+# Project: herald
 
 A framework that makes any website readable and (optionally) monetizable by AI agents. One npm install. One config object. Five files generated (`robots.txt`, `sitemap.xml`, `llms.txt`, `agents.txt`, `agents.json`) plus an optional payment middleware (`x402 v2 + MPP`) on top.
 
 ## Skills
 
-Use `/agents-txt-setup` when helping a user integrate `agentify` into their own site. The skill walks Claude through diagnosing the user's framework, configuring `agentic.config.js`, running the CLI commands, and wiring the middleware, with inline gotchas.
+Use `/agents-txt-setup` when helping a user integrate `herald` into their own site. The skill walks Claude through diagnosing the user's framework, configuring `agentic.config.js`, running the CLI commands, and wiring the middleware, with inline gotchas.
 
 - [agents-txt-setup SKILL.md](skills/agents-txt-setup/SKILL.md): Claude's operating instructions for guiding setup
 - [agents-txt-setup REFERENCE.md](skills/agents-txt-setup/REFERENCE.md): full config schema, middleware snippets, CLI flags, package sub-paths, payment flows, core API
@@ -12,11 +12,11 @@ Use `/agents-txt-setup` when helping a user integrate `agentify` into their own 
 ## Monorepo Layout
 
 ```
-agentify/
+herald/
 ├── packages/
-│   ├── core/    — @agentify/core  — pure generators, zero runtime deps
-│   ├── web/     — @agentify/web   — Express / Hono / Next.js adapters + payment middleware
-│   └── cli/     — agentify        — npx agentify CLI (Commander.js)
+│   ├── core/    — @herald/core  — pure generators, zero runtime deps
+│   ├── web/     — @herald/addon   — Express / Hono / Next.js adapters + payment middleware
+│   └── cli/     — @herald/cli  — herald CLI (Commander.js)
 ├── examples/
 │   ├── express/ — working Express server
 │   └── nextjs/  — working Next.js App Router app
@@ -46,16 +46,16 @@ pnpm typecheck    # tsc --noEmit in every package
 pnpm clean        # rm -rf dist in every package
 
 # CLI — try without installing
-npx agentify init               # interactive wizard → agentic.config.js
-npx agentify generate --out ./public   # writes robots.txt, sitemap.xml, llms.txt, agents.txt, agents.json
-npx agentify check https://mysite.com  # live compliance audit
+herald init               # interactive wizard → agentic.config.js
+herald generate --out ./public   # writes robots.txt, sitemap.xml, llms.txt, agents.txt, agents.json
+herald check https://mysite.com  # live compliance audit
 ```
 
 ## Setup from Scratch
 
 ```bash
 # 1. Install
-cd agentify
+cd herald
 pnpm install
 
 # 2. Build all packages (core first — web and cli depend on it)
@@ -65,7 +65,7 @@ pnpm build
 node packages/cli/dist/cli.js init
 ```
 
-> **Note:** pnpm workspace links resolve `@agentify/core` via `workspace:*`. Build `core`
+> **Note:** pnpm workspace links resolve `@herald/core` via `workspace:*`. Build `core`
 > before `web` or `cli`, or run `pnpm build` from root which uses `-r` (recursive) ordering.
 
 ## The Single Config Object
@@ -85,11 +85,11 @@ interface AgenticConfig {
 }
 ```
 
-`payments.protocols` accepts the registered identifiers (`'x402'`, `'mpp'`) and any experimental identifier prefixed with `x-` (e.g. `'x-mypay'`) per agents.txt spec §3.1. Same convention for `authorization.protocols`. The set of identifiers comes from `@agentify/core`'s `protocols.ts` registry, which is the single source of truth.
+`payments.protocols` accepts the registered identifiers (`'x402'`, `'mpp'`) and any experimental identifier prefixed with `x-` (e.g. `'x-mypay'`) per agents.txt spec §3.1. Same convention for `authorization.protocols`. The set of identifiers comes from `@herald/core`'s `protocols.ts` registry, which is the single source of truth.
 
 Users write `agentic.config.js` once. Every generator and middleware adapter reads from it.
 
-## Package: `@agentify/core`
+## Package: `@herald/core`
 
 **Zero runtime dependencies.** Safe to use in Node.js, edge runtimes, Deno, Bun.
 
@@ -106,15 +106,15 @@ Key exports:
 | `validateRobotsTxt / validateLlmsTxt / validateAgentsTxt / validateAgentsJson / validateSitemapXml` | Spec compliance checks on generated output |
 | `sitemapDriver / firecrawlDriver / staticDriver / manualDriver` | ContentDriver factories (inject in tests) |
 
-## Package: `@agentify/web`
+## Package: `@herald/addon`
 
 Framework adapters behind sub-path exports (only pull in what you use):
 
 ```
-@agentify/web          → core + x402 utils + mpp utils + payment-gate
-@agentify/web/express  → Express adapter  (peer: express, mppx, stripe)
-@agentify/web/hono     → Hono adapter     (peer: hono,    mppx, stripe)
-@agentify/web/nextjs   → Next.js adapter  (peer: next,    mppx, stripe)
+@herald/addon          → core + x402 utils + mpp utils + payment-gate
+@herald/addon/express  → Express adapter  (peer: express, mppx, stripe)
+@herald/addon/hono     → Hono adapter     (peer: hono,    mppx, stripe)
+@herald/addon/nextjs   → Next.js adapter  (peer: next,    mppx, stripe)
 ```
 
 The three adapters are thin shells: they convert the framework-specific
@@ -124,7 +124,7 @@ in [packages/web/src/payment-gate.ts](packages/web/src/payment-gate.ts).
 
 **Express quick start:**
 ```ts
-import { createAgenticRouter, agenticPaymentMiddleware } from '@agentify/web/express'
+import { createAgenticRouter, agenticPaymentMiddleware } from '@herald/addon/express'
 app.use(createAgenticRouter(config))          // serves /robots.txt, /llms.txt, /agents.txt, /agents.json
 app.use('/api', agenticPaymentMiddleware(config, '/api'))  // gates /api/* behind x402 + MPP
 ```
@@ -144,7 +144,7 @@ public facilitator at `https://x402.org/facilitator`. The `@x402/*` packages
 exist but they're v1-style middlewares that own a different decision flow than
 ours; using them would force the gate to forfeit MPP-before-x402 ordering.
 
-## Package: `agentify` (CLI)
+## Package: `@herald/cli`
 
 ```
 packages/cli/src/
@@ -174,11 +174,11 @@ Per-file flags come in two symmetric sets. Default mode emits everything applica
 - Positive selectors: `--robots`, `--llms`, `--llms-full`, `--agents`, `--sitemap` (also forces emission for the `firecrawl` driver; warns + skips for the `sitemap` driver), `--headers` (emits the §4.5 deployment config for the detected hosting platform; `--platform <cloudflare|netlify|vercel|unknown>` overrides the probe)
 - Negative selectors: `--skip-robots`, `--skip-llms`, `--skip-llms-full`, `--skip-agents`, `--skip-sitemap`, `--skip-headers`
 
-The `--headers` flag delegates to `@agentify/core/src/headers.ts` (`generateHeadersFile(platform)`, `mergeVercelHeaders()`); the platform comes from `detectProject().hostingPlatform`. Auto-generation is implemented for Cloudflare and Netlify (a `_headers` file in `--out`) and Vercel (a `vercel.json` at the project root with merge semantics). Other platforms (nginx, Apache, Caddy, S3+CloudFront, etc.) get the `unknown` fallback `_headers` plus a console note pointing at the README's per-platform table; agentify deliberately does not write into `/etc/` or external IaC trees.
+The `--headers` flag delegates to `@herald/core/src/headers.ts` (`generateHeadersFile(platform)`, `mergeVercelHeaders()`); the platform comes from `detectProject().hostingPlatform`. Auto-generation is implemented for Cloudflare and Netlify (a `_headers` file in `--out`) and Vercel (a `vercel.json` at the project root with merge semantics). Other platforms (nginx, Apache, Caddy, S3+CloudFront, etc.) get the `unknown` fallback `_headers` plus a console note pointing at the README's per-platform table; herald deliberately does not write into `/etc/` or external IaC trees.
 
 **`check` command:**
 ```bash
-npx agentify check https://mysite.com
+herald check https://mysite.com
 ```
 Fetches `robots.txt`, `llms.txt`, `agents.txt`, `agents.json`, `sitemap.xml` and scores them using the same validators as `generate`.
 
@@ -229,14 +229,14 @@ returning `{ kind: 'pass' }`, `{ kind: 'pass-with-headers', headers }`, or
 - Named exports throughout; no default exports except framework adapters and generated configs
 - All packages: `"type": "module"`, `.js` extensions on all relative imports (NodeNext requirement)
 - No comments unless the WHY is non-obvious
-- Zod validation only in CLI; never import Zod into `@agentify/core`
+- Zod validation only in CLI; never import Zod into `@herald/core`
 - `s(value)` helper in `config-writer.ts`: always use it for string injection into config templates (JSON.stringify-based injection prevention)
 - `createMppxRuntime(mppConfig, realm)` in `mpp.ts`: single entry that builds `Mppx.create({...})` and exposes `runtime.charge(request, { tempoAmount, stripeAmount })` (compose-backed). Don't load `mppx/server` directly from adapters.
 - `gateRequest(request, opts)` in `payment-gate.ts`: the only place the protocol decision lives. Adapters never re-implement it.
 
 ## Boundaries
 
-- Never add runtime dependencies to `@agentify/core`; it must stay edge-runtime compatible
+- Never add runtime dependencies to `@herald/core`; it must stay edge-runtime compatible
 - Never re-implement the gate logic in an adapter; call `gateRequest()` and adapt the `GateResult`
 - Never add Zod to `packages/core` or `packages/web`
 - Never commit `.env` files or wallet private keys
@@ -268,16 +268,16 @@ const llmsTxt = await generateLlmsTxt(config, myDriver)
 
 Two paths. Pick by stability.
 
-**Path 1: experimental (`x-` prefix), no agentify changes.** When a user wants to advertise a protocol that has not been registered in the spec yet, they declare it with an `x-` prefix in `agentic.config.js`:
+**Path 1: experimental (`x-` prefix), no herald changes.** When a user wants to advertise a protocol that has not been registered in the spec yet, they declare it with an `x-` prefix in `agentic.config.js`:
 
 ```js
 payments: { protocols: ['x402', 'x-mypay'], x402: { /* ... */ } }
 authorization: { enabled: true, protocols: ['agent-auth', 'x-myauth'] }
 ```
 
-The identifier flows through to `agents.txt` (`Protocols: x402, x-mypay`) and `agents.json` (`payments['x-mypay']: {}`). Validators do not warn on it. The gate middleware ignores it; the user runs their own runtime handler. No agentify edits are required.
+The identifier flows through to `agents.txt` (`Protocols: x402, x-mypay`) and `agents.json` (`payments['x-mypay']: {}`). Validators do not warn on it. The gate middleware ignores it; the user runs their own runtime handler. No herald edits are required.
 
-**Path 2: register the protocol in agentify.** When the protocol has settled and we want generators, validators, the wizard, and (for payments) the gate to know about it:
+**Path 2: register the protocol in herald.** When the protocol has settled and we want generators, validators, the wizard, and (for payments) the gate to know about it:
 
 1. **Registry** ([`packages/core/src/protocols.ts`](packages/core/src/protocols.ts)): append the identifier to `PAYMENT_PROTOCOLS` or `AUTH_PROTOCOLS`. This single edit propagates to validators, the CLI Zod schema, and the audit tool via `isAcceptedPaymentIdentifier` / `isAcceptedAuthIdentifier`.
 2. **Types** ([`packages/core/src/types.ts`](packages/core/src/types.ts)): if the protocol has its own configuration block, add an interface (mirror `X402Config` / `MppConfig`). Hang it under `PaymentConfig` (or `AuthorizationConfig`) with the same key as the identifier.
@@ -289,7 +289,7 @@ The identifier flows through to `agents.txt` (`Protocols: x402, x-mypay`) and `a
 
 For a brand-new block kind (not payment, not auth, not MCP, not Skills, not A2A): the A2A diff is the most recent worked example. Add a new `XyzConfig` type, parser case if the tool reads agents.txt, `Xyz:` line emitter in `agents-txt.ts`, `xyz[]` array emitter in `agents-json.ts`, validator rules in `validate.ts`, Zod schema entry in `config-schema.ts`, and a wizard prompt.
 
-When the user mentions a new protocol that does not yet exist in `protocols.ts`, default to Path 1 (the `x-` prefix). Only suggest Path 2 if the protocol is clearly settled and the user wants agentify-level support. Never silently extend `PAYMENT_PROTOCOLS` / `AUTH_PROTOCOLS` without confirming the spec status.
+When the user mentions a new protocol that does not yet exist in `protocols.ts`, default to Path 1 (the `x-` prefix). Only suggest Path 2 if the protocol is clearly settled and the user wants herald-level support. Never silently extend `PAYMENT_PROTOCOLS` / `AUTH_PROTOCOLS` without confirming the spec status.
 
 ## Key Design Decisions (Why, Not What)
 

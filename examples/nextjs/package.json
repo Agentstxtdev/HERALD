@@ -1,5 +1,5 @@
 {
-  "name": "@agentify/example-nextjs",
+  "name": "@herald/example-nextjs",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -8,8 +8,8 @@
     "start": "next start"
   },
   "dependencies": {
-    "@agentify/core": "workspace:*",
-    "@agentify/web": "workspace:*",
+    "@herald/core": "workspace:*",
+    "@herald/addon": "workspace:*",
     "next": "^16.2.5",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"

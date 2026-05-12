@@ -1,5 +1,5 @@
 {
-  "name": "@agentify/web",
+  "name": "@herald/addon",
   "version": "0.1.0",
   "description": "Drop-in middleware to make any website LLM-ready and monetizable by AI agents via x402",
   "type": "module",
@@ -39,7 +39,7 @@
     "publint": "publint"
   },
   "dependencies": {
-    "@agentify/core": "workspace:*"
+    "@herald/core": "workspace:*"
   },
   "peerDependencies": {
     "express": ">=5.2.1",

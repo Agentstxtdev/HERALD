@@ -23,7 +23,7 @@ function createPrompter(rl: readline.Interface | null, skipAll: boolean) {
 }
 
 export async function initCommand(options: InitOptions): Promise<void> {
-  console.log('\n🤖 Open Agentic Web — init\n')
+  console.log('\n🤖 HERALD — init\n')
 
   // ── Auto-detect project environment ───────────────────────────────────────
   const detected = detectProject()
@@ -221,16 +221,16 @@ export async function initCommand(options: InitOptions): Promise<void> {
   console.log(`Next steps:`)
 
   if (detected.framework === 'nextjs') {
-    console.log(`  1. npm install @agentify/web`)
+    console.log(`  1. npm install @herald/addon`)
     console.log(`  2. Create app/robots.txt/route.ts  → export const GET = robotsTxtHandler(config)`)
     console.log(`  3. Create app/llms.txt/route.ts    → export const GET = llmsTxtHandler(config)`)
     console.log(`  4. Create app/agents.txt/route.ts → export const GET = agentsTxtHandler(config)`)
   } else if (detected.framework === 'express' || detected.framework === 'hono') {
-    console.log(`  1. npm install @agentify/web`)
+    console.log(`  1. npm install @herald/addon`)
     console.log(`  2. app.use(createAgenticRouter(config))`)
     console.log(`  3. app.use('/api', agenticPaymentMiddleware(config))`)
   } else {
-    console.log(`  1. npx agentify generate --out ./public`)
+    console.log(`  1. herald generate --out ./public`)
     console.log(`  2. Deploy the generated files with your site`)
   }
 
@@ -243,6 +243,6 @@ export async function initCommand(options: InitOptions): Promise<void> {
   }
 
   console.log()
-  console.log(`  Run: npx agentify check ${siteUrl.trim()}  (after deploying to verify compliance)`)
+  console.log(`  Run: herald check ${siteUrl.trim()}  (after deploying to verify compliance)`)
   console.log()
 }

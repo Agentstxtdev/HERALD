@@ -1,5 +1,5 @@
 {
-  "name": "@agentify/core",
+  "name": "@herald/core",
   "version": "0.1.0",
   "description": "Pure generators for robots.txt, llms.txt, and agents.txt — no runtime dependencies",
   "type": "module",

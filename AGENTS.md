@@ -1,6 +1,6 @@
-# AGENTIFY: Codebase Guide
+# HERALD: Codebase Guide
 
-This document explains the architecture of the `agentify` monorepo: what each package does, how the pieces fit together, and where to make changes when extending the system.
+This document explains the architecture of the `herald` monorepo: what each package does, how the pieces fit together, and where to make changes when extending the system.
 
 ---
 
@@ -17,18 +17,18 @@ A framework that makes any website readable and (optionally) monetizable by AI a
 | `agents.txt` standard | `agents.json` | Agent capabilities catalog (structured JSON companion) |
 | x402 v2 (own implementation) + MPP via `mppx` | HTTP 402 | Optional agent micropayments (crypto + fiat) |
 
-The `agents.txt` standard is defined and maintained outside this repository; agentify is an implementation of it. Anyone may write a different implementation; agentify exists to make adoption trivial in JavaScript-/TypeScript-flavored projects.
+The `agents.txt` standard is defined and maintained outside this repository; herald is an implementation of it. Anyone may write a different implementation; herald exists to make adoption trivial in JavaScript-/TypeScript-flavored projects.
 
 ---
 
 ## Monorepo layout
 
 ```
-agentify/
+herald/
 ├── packages/
 │   ├── core/          — shared types + pure generators (no framework deps)
 │   ├── web/           — Express / Hono / Next.js adapters + payment middleware
-│   └── cli/           — npx agentify CLI
+│   └── cli/           — @herald/cli
 ├── examples/
 │   ├── express/       — working Express server
 │   └── nextjs/        — working Next.js App Router app
@@ -42,7 +42,7 @@ All packages are ESM (`"type": "module"`). TypeScript uses `NodeNext` module res
 
 ---
 
-## Package: `@agentify/core`
+## Package: `@herald/core`
 
 **No framework dependencies. Pure functions only.**
 
@@ -245,7 +245,7 @@ Adding a registered protocol is now a one-file edit: append to `PAYMENT_PROTOCOL
 
 ---
 
-## Package: `@agentify/web`
+## Package: `@herald/addon`
 
 **Framework adapters and payment middleware. All framework packages are optional peer dependencies.**
 
@@ -263,10 +263,10 @@ packages/web/src/
 The package exports sub-paths so users only pull in what they use:
 
 ```
-@agentify/web           → core + x402 utils + mpp utils + payment-gate
-@agentify/web/express   → express.ts (requires: express)
-@agentify/web/hono      → hono.ts    (requires: hono)
-@agentify/web/nextjs    → nextjs.ts  (requires: next)
+@herald/addon           → core + x402 utils + mpp utils + payment-gate
+@herald/addon/express   → express.ts (requires: express)
+@herald/addon/hono      → hono.ts    (requires: hono)
+@herald/addon/nextjs    → nextjs.ts  (requires: next)
 ```
 
 `mppx` and `stripe` are optional peer deps regardless of framework.
@@ -393,7 +393,7 @@ There is no per-framework x402 SDK to wire; everything happens inside
 
 ---
 
-## Package: `agentify` (CLI)
+## Package: `@herald/cli`
 
 ```
 packages/cli/src/
@@ -429,10 +429,10 @@ Loads `agentic.config.js` via dynamic `import()`, then immediately validates it 
 **Per-field lenient validation for wallet env vars.** The format checks for `evmAddress` (40-char `0x` hex), `solanaAddress` (32-char base58 minimum), and `stripeSecretKey` (`sk_` prefix) are still strict, but each uses `.catch()` so a malformed *optional* field warns and is treated as `undefined` rather than aborting the whole parse. A typo in `EVM_ADDRESS` no longer blocks the Solana side of a Solana-only deployment. The `TreasuryConfigSchema.refine` rule runs after the lenient pass; if every wallet is dropped, x402 still fails because a treasury with no recipient is meaningless. Warning shape:
 
 ```
-agentify: ignoring malformed evmAddress (...); set EVM_ADDRESS to a valid 0x[40 hex] value or unset to skip EVM.
+herald: ignoring malformed evmAddress (...); set EVM_ADDRESS to a valid 0x[40 hex] value or unset to skip EVM.
 ```
 
-On success, calls the generators from `@agentify/core`, writes files to `--out` (default `./public`), then runs the spec compliance validators (`validateRobotsTxt`, `validateLlmsTxt`, `validateAgentsTxt`, `validateAgentsJson` from core) and prints any warnings inline.
+On success, calls the generators from `@herald/core`, writes files to `--out` (default `./public`), then runs the spec compliance validators (`validateRobotsTxt`, `validateLlmsTxt`, `validateAgentsTxt`, `validateAgentsJson` from core) and prints any warnings inline.
 
 Per-file flags come in two symmetric sets. The default mode emits everything applicable to the config; pass any positive selector and the output set narrows to those flags only; any `--skip-*` flag subtracts from whichever set is selected. Resolution rules live in `packages/cli/src/commands/generate.ts → resolveOutputs()`.
 
@@ -448,9 +448,9 @@ Negative selectors (subtract from the selected set):
 - `--skip-robots`: skip robots.txt (useful when your framework or CDN owns it)
 - `--skip-llms`: skip llms.txt (useful when Firecrawl is run separately or is too slow for CI)
 - `--skip-llms-full`: skip llms-full.txt (keep llms.txt; useful when you only want to refresh the index without re-running the Firecrawl scrape)
-- `--skip-agents`: skip agents.txt + agents.json (treat AGENTIFY as a robots.txt + llms.txt tool only)
+- `--skip-agents`: skip agents.txt + agents.json (treat HERALD as a robots.txt + llms.txt tool only)
 - `--skip-sitemap`: never emit sitemap.xml (use when your framework already emits one)
-- `--skip-headers`: skip the §4.5 headers config (use when your platform isn't auto-generated for and you've configured headers elsewhere — nginx, Apache, Caddy, S3+CloudFront, programmatic handler in `@agentify/web`, etc.)
+- `--skip-headers`: skip the §4.5 headers config (use when your platform isn't auto-generated for and you've configured headers elsewhere — nginx, Apache, Caddy, S3+CloudFront, programmatic handler in `@herald/addon`, etc.)
 
 **sitemap.xml emission policy:** default behavior depends on `content.driver`:
 
@@ -465,7 +465,7 @@ Pages are deduplicated by URL and XML-escaped before serialization in `generateS
 
 ### `check` command
 
-Fetches `robots.txt`, `llms.txt`, `agents.txt`, `agents.json`, and `sitemap.xml` from a live URL and scores the site using the same `validateRobotsTxt`, `validateLlmsTxt`, `validateAgentsTxt`, and `validateAgentsJson` functions from `@agentify/core` that `generate` uses, not ad-hoc string matching.
+Fetches `robots.txt`, `llms.txt`, `agents.txt`, `agents.json`, and `sitemap.xml` from a live URL and scores the site using the same `validateRobotsTxt`, `validateLlmsTxt`, `validateAgentsTxt`, and `validateAgentsJson` functions from `@herald/core` that `generate` uses, not ad-hoc string matching.
 
 ---
 
@@ -608,7 +608,7 @@ if (hasFile('.myservice.json') || env.MY_SERVICE_API_KEY) {
 
 **One config object drives everything.** `AgenticConfig` is the single source of truth. Every generator and every middleware adapter reads from it. Users write the config once; the framework handles the rest.
 
-**`@agentify/core` has zero runtime dependencies.** It can run anywhere: Node.js, edge runtimes, Deno, Bun. Framework-specific code lives in `@agentify/web` sub-paths behind optional peer deps.
+**`@herald/core` has zero runtime dependencies.** It can run anywhere: Node.js, edge runtimes, Deno, Bun. Framework-specific code lives in `@herald/addon` sub-paths behind optional peer deps.
 
 **We hand-roll x402 v2 against the public facilitator.** The `@x402/*` SDK family exists but adds a v1↔v2-flavored decision flow that doesn't compose with our MPP-first ordering. Our `x402.ts` is ~250 lines (atomic-unit conversion, accepts builder, header coding, facilitator settle); cryptographic verification + on-chain settlement still happen in the facilitator. Override `x402.facilitatorUrl` to point at your own facilitator.
 
@@ -618,6 +618,6 @@ if (hasFile('.myservice.json') || env.MY_SERVICE_API_KEY) {
 
 **Mppx instance is built once, then `Mppx.compose(...)` rebuilt per request.** The instance (with `secretKey`/`realm`/registered methods) is cached in a `WeakMap<AgenticConfig>`. Per-request we call `Mppx.compose(tempo.charge({amount, recipient}), stripe.charge({amount, currency}))(request)` so amounts can vary by route while construction is amortized.
 
-**Validation is split across two layers with different purposes.** `@agentify/core` exports `validateRobotsTxt`, `validateLlmsTxt`, `validateAgentsTxt`, and `validateAgentsJson`; these are *semantic spec compliance* checks on generated outputs (does robots.txt block the right scrapers? does llms.txt start with `#`?). They run post-generation and live in core because they're useful to any caller. The CLI's `config-schema.ts` is a *Zod structural schema* for `AgenticConfig`; it validates user-supplied input before generation and lives in the CLI only to keep core's zero-runtime-dep guarantee intact. Adding Zod to core would break compatibility with edge runtimes and Deno/Bun deployments.
+**Validation is split across two layers with different purposes.** `@herald/core` exports `validateRobotsTxt`, `validateLlmsTxt`, `validateAgentsTxt`, and `validateAgentsJson`; these are *semantic spec compliance* checks on generated outputs (does robots.txt block the right scrapers? does llms.txt start with `#`?). They run post-generation and live in core because they're useful to any caller. The CLI's `config-schema.ts` is a *Zod structural schema* for `AgenticConfig`; it validates user-supplied input before generation and lives in the CLI only to keep core's zero-runtime-dep guarantee intact. Adding Zod to core would break compatibility with edge runtimes and Deno/Bun deployments.
 
 **`agents.txt` and `agents.json` are complementary, not redundant.** `agents.txt` is the announcement layer: minimal, plain text, easy to serve anywhere, readable by humans and simple parsers. `agents.json` is the machine-first catalog: structured, schema-validatable, with richer per-block detail (pricing upfront, chain IDs, authorization discovery pointer, MCP transport type). The relationship mirrors `llms.txt` and `llms-full.txt`. Both are generated from the same config; site operators write nothing extra. Sites should serve both; agents that support structured JSON should prefer `agents.json`.

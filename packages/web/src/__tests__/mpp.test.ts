@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { createMppxRuntime, pickMppPricing } from '../mpp.js'
-import type { MppConfig } from '@agentify/core'
+import type { MppConfig } from '@herald/core'
 
 describe('pickMppPricing', () => {
   it('uses default pricing when no perPath match', () => {

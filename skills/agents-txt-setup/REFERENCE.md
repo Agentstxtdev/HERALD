@@ -1,9 +1,9 @@
-# agentify: code reference
+# herald: code reference
 
 ## Full `agentic.config.js` Schema
 
 ```js
-/** @type {import('@agentify/core').AgenticConfig} */
+/** @type {import('@herald/core').AgenticConfig} */
 export default {
   site: {
     name: 'My Site',
@@ -104,7 +104,7 @@ export default {
 The wallet format checks in the CLI Zod schema (`evmAddress` must be `0x[40 hex]`, `solanaAddress` must be 32-char base58 minimum, `stripeSecretKey` must start with `sk_`) stay strict, but they are *per-field lenient*: a malformed optional field warns and is skipped, rather than aborting the entire generate. So `EVM_ADDRESS=garbage` in `.env` when only Solana is wired produces a warning and lets the Solana side through:
 
 ```
-agentify: ignoring malformed evmAddress (...); set EVM_ADDRESS to a valid 0x[40 hex] value or unset to skip EVM.
+herald: ignoring malformed evmAddress (...); set EVM_ADDRESS to a valid 0x[40 hex] value or unset to skip EVM.
 ```
 
 The `TreasuryConfigSchema.refine` rule still applies after the lenient pass: if every wallet in `payments.x402.treasury` ends up dropped, x402 fails with `treasury must include at least one of evmAddress or solanaAddress (after lenient validation)`. The same lenient pattern applies to `stripeSecretKey` (warns and drops if the prefix check fails; MPP loses Stripe support but Tempo can still activate).
@@ -119,7 +119,7 @@ Per-protocol activation is itself gated on the wallet survivors: `evmChains` onl
 
 ```ts
 import express from 'express'
-import { createAgenticRouter, agenticPaymentMiddleware } from '@agentify/web/express'
+import { createAgenticRouter, agenticPaymentMiddleware } from '@herald/addon/express'
 import config from './agentic.config.js'
 
 const app = express()
@@ -151,22 +151,22 @@ agentic.config.js     ← project root
 
 ```ts
 // app/robots.txt/route.ts
-import { robotsTxtHandler } from '@agentify/web/nextjs'
+import { robotsTxtHandler } from '@herald/addon/nextjs'
 import config from '@/agentic.config'
 export const GET = robotsTxtHandler(config)
 
 // app/llms.txt/route.ts
-import { llmsTxtHandler } from '@agentify/web/nextjs'
+import { llmsTxtHandler } from '@herald/addon/nextjs'
 import config from '@/agentic.config'
 export const GET = llmsTxtHandler(config)
 
 // app/agents.json/route.ts
-import { agentsJsonHandler } from '@agentify/web/nextjs'
+import { agentsJsonHandler } from '@herald/addon/nextjs'
 import config from '@/agentic.config'
 export const GET = agentsJsonHandler(config)
 
 // middleware.ts — runs at the edge before API routes
-import { createPaymentProxy } from '@agentify/web/nextjs'
+import { createPaymentProxy } from '@herald/addon/nextjs'
 import agenticConfig from './agentic.config.js'
 export default createPaymentProxy(agenticConfig, '/api')
 export const config = { matcher: ['/api/:path*'] }
@@ -181,7 +181,7 @@ export async function GET() {
 
 ```ts
 import { Hono } from 'hono'
-import { createAgenticRoutes, agenticPaymentMiddleware } from '@agentify/web/hono'
+import { createAgenticRoutes, agenticPaymentMiddleware } from '@herald/addon/hono'
 import config from './agentic.config.js'
 
 const app = new Hono()
@@ -197,7 +197,7 @@ export default app
 ## CLI Flags Reference
 
 ```bash
-npx agentify init [options]
+herald init [options]
   --name <name>          Site name
   --url <url>            Site URL
   --sitemap <url>        Sitemap URL
@@ -205,7 +205,7 @@ npx agentify init [options]
   --firecrawl-key <key>  Firecrawl API key
   -y, --yes              Skip all prompts, use detected defaults
 
-npx agentify generate [options]
+herald generate [options]
   -c, --config <path>    Config file path (default: ./agentic.config.js)
   -o, --out <dir>        Output directory (default: ./public)
 
@@ -227,19 +227,19 @@ npx agentify generate [options]
   --skip-sitemap         Never emit sitemap.xml
   --skip-headers         Skip the §4.5 headers config
 
-npx agentify check <url>
+herald check <url>
   Fetches and scores robots.txt, llms.txt, agents.json, sitemap.xml from live URL
 ```
 
 ### §4.5 Headers — what gets emitted per platform
 
-`agentify generate --headers` produces:
+`herald generate --headers` produces:
 
 | Detected platform | File written | Path | Strategy |
 |---|---|---|---|
 | `cloudflare` | `_headers` | `--out` (typically `public/`) | overwrite |
 | `netlify` | `_headers` (same syntax) | `--out` | overwrite |
-| `vercel` | `vercel.json` | project root | merge `headers[]` (existing entries with a different `source` preserved verbatim; agentify-managed sources replaced) |
+| `vercel` | `vercel.json` | project root | merge `headers[]` (existing entries with a different `source` preserved verbatim; herald-managed sources replaced) |
 | `unknown` | `_headers` (best-effort) | `--out` | overwrite + console warning |
 
 Detection (`detectProject().hostingPlatform`) goes file-presence first (`wrangler.json`/`wrangler.toml`/`netlify.toml`/`vercel.json`/`.vercel/`), dep-fallback second (`@astrojs/cloudflare`, `@cloudflare/workers-types`, `wrangler`, `@netlify/plugin-*`, `netlify-cli`).
@@ -261,7 +261,7 @@ The headers config file applies only to static files on the hosting platform's a
 | File exists on disk in `--out` after build (e.g. `public/agents.json`, `public/.well-known/agent-card.json`) | `_headers` / `vercel.json#headers` |
 | URL responds without a file on disk (route handler, middleware, worker) | The handler must set headers in code before responding |
 
-Quick test: run the build, then `ls` the output. If you can see the file, headers config applies. If the URL works but the file is absent, you are serving dynamically and the handler is responsible. `@agentify/web` handles this for the routes it owns. If a developer hand-rolls a route handler for `/agents.txt`, they must set `Content-Type: text/plain; charset=utf-8`, `Access-Control-Allow-Origin: *`, and `Cache-Control: public, max-age=3600` themselves.
+Quick test: run the build, then `ls` the output. If you can see the file, headers config applies. If the URL works but the file is absent, you are serving dynamically and the handler is responsible. `@herald/addon` handles this for the routes it owns. If a developer hand-rolls a route handler for `/agents.txt`, they must set `Content-Type: text/plain; charset=utf-8`, `Access-Control-Allow-Origin: *`, and `Cache-Control: public, max-age=3600` themselves.
 
 ### §4.5 Headers — manual config for unsupported platforms
 
@@ -279,13 +279,13 @@ Mirror the `/agents.json` shape for any additional same-origin static AgentCards
 ## Package Sub-paths
 
 ```bash
-npm install @agentify/web
+npm install @herald/addon
 
 # Sub-path imports — only pull in what you use:
-@agentify/web            → core utils + x402 utils + MPP utils + payment-gate (no framework)
-@agentify/web/express    → Express adapter   (peer: express)
-@agentify/web/hono       → Hono adapter      (peer: hono)
-@agentify/web/nextjs     → Next.js adapter   (peer: next)
+@herald/addon            → core utils + x402 utils + MPP utils + payment-gate (no framework)
+@herald/addon/express    → Express adapter   (peer: express)
+@herald/addon/hono       → Hono adapter      (peer: hono)
+@herald/addon/nextjs     → Next.js adapter   (peer: next)
 
 # MPP payment verification (optional — install when you want Stripe/Tempo)
 npm install mppx stripe
@@ -341,7 +341,7 @@ Requires `npm install mppx`. Stripe leg additionally requires `npm install strip
 
 ---
 
-## `@agentify/core` Key Exports
+## `@herald/core` Key Exports
 
 ```ts
 // Generators
@@ -388,7 +388,7 @@ Zero runtime dependencies, safe on Node.js, edge runtimes, Deno, Bun.
 
 Two paths based on stability.
 
-### Path 1: experimental, no agentify changes (`x-` prefix)
+### Path 1: experimental, no herald changes (`x-` prefix)
 
 For protocols not yet in the registry, advertise them with an `x-` prefix in the user's config. Per agents.txt spec §3.1, parsers must accept these and validators must not warn.
 
@@ -404,11 +404,11 @@ Emission:
 - `agents.txt`: `Protocols: x402, x-mypay`
 - `agents.json`: `"payments": { "x402": { ... }, "x-mypay": {} }`
 
-The empty object is the support signal. The structured shape of an experimental protocol's per-protocol block in `agents.json` is the protocol author's responsibility; agentify does not enforce one. The gate middleware ignores `x-` identifiers; the user runs their own protocol handler.
+The empty object is the support signal. The structured shape of an experimental protocol's per-protocol block in `agents.json` is the protocol author's responsibility; herald does not enforce one. The gate middleware ignores `x-` identifiers; the user runs their own protocol handler.
 
-No agentify edits required.
+No herald edits required.
 
-### Path 2: register the protocol in agentify
+### Path 2: register the protocol in herald
 
 When the protocol is stable and you want generators, validators, the wizard, and (for payments) the gate to know about it:
 
@@ -424,4 +424,4 @@ For a brand-new block kind (not payment, not auth, not MCP, not Skills, not A2A)
 
 ### Decision
 
-When a user mentions a protocol not currently in the registry, default to Path 1. Suggest Path 2 only when the protocol has clearly settled and the user wants agentify-level support.
+When a user mentions a protocol not currently in the registry, default to Path 1. Suggest Path 2 only when the protocol has clearly settled and the user wants herald-level support.

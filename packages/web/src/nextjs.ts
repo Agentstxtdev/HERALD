@@ -1,11 +1,11 @@
 /**
- * Next.js adapter for @agentify/web
+ * Next.js adapter for @herald/addon
  *
  * Two usage patterns:
  *
  * 1. middleware.ts — Edge Middleware payment proxy:
  *      import config from './agentic.config.js'
- *      import { createPaymentProxy } from '@agentify/web/nextjs'
+ *      import { createPaymentProxy } from '@herald/addon/nextjs'
  *      export default createPaymentProxy(config, '/api')
  *      export const config = { matcher: ['/api/:path*'] }
  *
@@ -29,7 +29,7 @@ import {
   generateAgentsJson,
   resolveActiveProtocols,
   type AgenticConfig,
-} from '@agentify/core'
+} from '@herald/core'
 import { gateRequest } from './payment-gate.js'
 
 // ─────────────────────────────────────────────────────────────────────────────
