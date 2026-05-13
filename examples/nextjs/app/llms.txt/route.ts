@@ -1,0 +1,13 @@
+import { generateLlmsTxt } from '@agentstxtdev/herald-core'
+import config from '../../agentsjson.config.js'
+
+const SPEC_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Cache-Control': 'public, max-age=3600',
+}
+
+export async function GET() {
+  return new Response(await generateLlmsTxt(config), {
+    headers: { 'Content-Type': 'text/plain; charset=utf-8', ...SPEC_HEADERS },
+  })
+}

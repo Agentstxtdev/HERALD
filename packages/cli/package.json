@@ -1,0 +1,56 @@
+{
+  "name": "@agentstxtdev/herald",
+  "version": "0.1.0",
+  "description": "The agent-capabilities discovery layer for the agentic web. Emit robots.txt, llms.txt, agents.txt, agents.json, sitemap.xml, security.txt from one config.",
+  "type": "module",
+  "bin": {
+    "herald": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "lint": "biome lint ./src",
+    "publint": "publint"
+  },
+  "dependencies": {
+    "@agentstxtdev/herald-core": "workspace:*",
+    "commander": "^14.0.3",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.2",
+    "typescript": "^6.0.3"
+  },
+  "keywords": [
+    "herald",
+    "agents-txt",
+    "agents-json",
+    "llms-txt",
+    "robots-txt",
+    "sitemap",
+    "security-txt",
+    "ai-crawler",
+    "agentic-web",
+    "cli"
+  ],
+  "license": "Apache-2.0",
+  "homepage": "https://agentstxt.dev",
+  "bugs": { "url": "https://github.com/agentstxtdev/herald/issues" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agentstxtdev/herald.git",
+    "directory": "packages/cli"
+  },
+  "engines": {
+    "node": ">=20.12.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
