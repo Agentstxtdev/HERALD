@@ -122,6 +122,14 @@ Each file is its own open standard. HERALD is the build/serve tooling for them. 
 
 <br>
 
+<div align="center">
+
+<img src="assets/logos/alogo.svg" width="180" alt="AGENTS.TXT">
+
+</div>
+
+<br>
+
 `agents.txt` (with companion `agents.json`) is a **lightweight, machine-readable capability declaration layer for websites in the agentic web**: a protocol-agnostic discovery file that publicly announces what agent-interaction capabilities a site supports, without embedding the implementation details of any specific protocol.
 
 HERALD implements the spec but does not own it. The spec lives at [agentstxt.dev](https://agentstxt.dev) under CC0. Anyone may implement it without restriction. The HERALD reference implementation is Apache 2.0.
