@@ -41,7 +41,7 @@ pnpm clean        # rm -rf dist in every package
 
 # CLI — try without installing
 herald init               # interactive wizard → agentsjson.config.js
-herald generate --out ./public   # writes robots.txt, sitemap.xml, llms.txt, agents.txt, agents.json
+herald emit --out ./public   # writes robots.txt, sitemap.xml, llms.txt, agents.txt, agents.json
 herald check https://mysite.com  # live compliance audit
 ```
 
@@ -108,13 +108,13 @@ Key exports:
 
 ```
 packages/cli/src/
-├── cli.ts            — Commander entry: init | generate | check
+├── cli.ts            — Commander entry: init | emit | check
 ├── project-probe.ts  — detectProject(): reads package.json, .env, scans for sitemap
 ├── config-writer.ts  — buildAgenticConfigContent() + writeAgenticConfig()
 ├── config-schema.ts  — Zod v4 schema for AgenticConfig (CLI-only — keeps core dep-free)
 └── commands/
     ├── init.ts       — readline wizard (orchestrates probe + writer)
-    ├── generate.ts   — validates config via Zod, writes files, runs spec validators
+    ├── emit.ts       — validates config via Zod, writes files, runs spec validators
     └── check.ts      — fetches live site, scores compliance
 ```
 
@@ -123,7 +123,7 @@ packages/cli/src/
 2. readline prompts pre-filled with detected values (or `-y` to skip all)
 3. `writeAgenticConfig(path, choices)` → writes `agentsjson.config.js`
 
-**`generate` flow:**
+**`emit` flow:**
 1. Dynamic `import()` of `agentsjson.config.js`
 2. Zod validation with field-level error paths. Per-field lenient on optional wallets: `evmAddress`, `solanaAddress`, and `stripeSecretKey` keep their strict format checks (regex / min length / `sk_` prefix), but a malformed value `.catch()`es to `undefined` with a `console.warn` instead of aborting the whole parse. The `treasury` refine then ensures at least one wallet survived.
 3. `generateRobotsTxt` / `generateLlmsTxt` / `generateAgentsTxt` / `generateAgentsJson` / `generateSitemapXml` / `generateSecurityTxt` (per the file's emission policy; see [README.md](README.md) for the sitemap rules) → writes to `--out` dir (default: `./public`). Per-protocol chain emission in `agents.json` is gated on the surviving wallets: `evmChains` only when `evmAddress` is set, Solana chains only when `solanaAddress` is set.
@@ -140,7 +140,7 @@ The `--headers` flag delegates to `@herald/core/src/headers.ts` (`generateHeader
 ```bash
 herald check https://mysite.com
 ```
-Fetches `robots.txt`, `llms.txt`, `agents.txt`, `agents.json`, `sitemap.xml` and scores them using the same validators as `generate`.
+Fetches `robots.txt`, `llms.txt`, `agents.txt`, `agents.json`, `sitemap.xml` and scores them using the same validators as `emit`.
 
 ## Content Drivers
 
@@ -243,6 +243,6 @@ When the user mentions a new protocol that does not yet exist in `protocols.ts`,
 
 - **Single config object**: one source of truth for all generators; users configure once
 - **Core has zero deps**: safe on edge runtimes; Zod stays in CLI only
-- **Declaration only**: herald generates the discovery files that *advertise* payment and auth support. The 402 handler, signature verification, and settlement are out of scope and live in whatever middleware the adopter wires up
+- **Declaration only**: herald emits the discovery files that *advertise* payment and auth support. The 402 handler, signature verification, and settlement are out of scope and live in whatever middleware the adopter wires up
 - **Two validation layers with different purposes**: core validates generated *output* (spec compliance); CLI validates *input* (Zod schema on AgenticConfig before generation)
 - **agents.txt is Layer 4**: plain-text capabilities declaration; wallet/pricing details that are runtime concerns (signatures, full token contracts, secret keys) stay in 402 responses, not in the discovery file

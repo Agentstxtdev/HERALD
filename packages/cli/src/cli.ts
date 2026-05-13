@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 import { Command } from 'commander'
 import { initCommand } from './commands/init.js'
-import { generateCommand } from './commands/generate.js'
+import { emitCommand } from './commands/emit.js'
 
 const program = new Command()
 
 program
   .name('herald')
   .description(
-    'Make any website LLM-ready and monetizable by AI agents.\n' +
-    'Generates robots.txt, llms.txt, agents.txt, and agents.json following the Agentic Web Standard.',
+    'The agent-capabilities discovery layer for the agentic web.\n' +
+    'Emits robots.txt, llms.txt, agents.txt, and agents.json so your site declares\n' +
+    'what AI agents can do with it.',
   )
   .version('0.1.0')
 
@@ -25,12 +26,12 @@ program
   .action(initCommand)
 
 program
-  .command('generate')
+  .command('emit')
   .description(
-    'Generate robots.txt, llms.txt, agents.txt, and agents.json from agentsjson.config.js.\n' +
+    'Emit robots.txt, llms.txt, agents.txt, and agents.json from agentsjson.config.js.\n' +
     'Outputs to --out directory (default: ./public).\n' +
     '\n' +
-    'By default every applicable file is generated. Pass one or more positive flags\n' +
+    'By default every applicable file is emitted. Pass one or more positive flags\n' +
     '(--robots, --llms, --llms-full, --agents, --sitemap) to emit only those files.\n' +
     'Negative flags (--skip-*) subtract from whatever set is selected.',
   )
@@ -54,7 +55,7 @@ program
   .option('--skip-headers', 'Skip the §4.5 headers config file')
   .option('--skip-security', 'Skip .well-known/security.txt')
   .option('--platform <name>', 'Override the detected hosting platform for `--headers` (cloudflare|netlify|vercel|unknown)')
-  .action(generateCommand)
+  .action(emitCommand)
 
 program
   .command('check <url>')

@@ -219,7 +219,7 @@ export async function initCommand(options: InitOptions): Promise<void> {
 
   // ── Next steps ──────────────────────────────────────────────────────────────
   console.log(`Next steps:`)
-  console.log(`  1. herald generate --out ./public`)
+  console.log(`  1. herald emit --out ./public`)
   console.log(`  2. Deploy the generated files with your site`)
 
   if (contentChoice === 'firecrawl') {

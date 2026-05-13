@@ -4,7 +4,9 @@
 
 <h1>HERALD</h1>
 
-**Make any website LLM-ready and agent-discoverable in minutes.**
+**The agent-capabilities discovery layer for the agentic web.**
+
+*One config. One command. One binary.*
 
 <br>
 
@@ -21,7 +23,7 @@ HERALD is an open-source framework + CLI that emits the standard discovery files
 
 <div align="center">
 
-### Works out of the box
+### Declare directives for the agentic web
 
 <table>
 <tr>
@@ -183,7 +185,7 @@ Layer 4: AGENT CAPABILITIES /agents.txt   (agents.txt spec)  "Here's what you ca
 ```bash
 npm install -D @herald/cli               # install as dev dependency
 herald init                              # interactive setup → writes agentsjson.config.js
-herald generate                          # writes discovery files to ./public
+herald emit                          # writes discovery files to ./public
 ```
 
 `@herald/core` is a transitive dependency pulled in automatically. You never install it directly.
@@ -194,15 +196,15 @@ herald generate                          # writes discovery files to ./public
 
 ```bash
 # Positive selectors (emit only these files):
-herald generate --agents                  # only agents.txt + agents.json
-herald generate --robots --llms           # only robots.txt + llms.txt
-herald generate --robots                  # only robots.txt
-herald generate --sitemap                 # only sitemap.xml
-herald generate --llms-full               # only llms-full.txt
+herald emit --agents                  # only agents.txt + agents.json
+herald emit --robots --llms           # only robots.txt + llms.txt
+herald emit --robots                  # only robots.txt
+herald emit --sitemap                 # only sitemap.xml
+herald emit --llms-full               # only llms-full.txt
 
 # Negative selectors (emit everything except):
-herald generate --skip-agents             # skip agents.txt + agents.json
-herald generate --skip-llms-full          # skip the expensive Firecrawl scrape
+herald emit --skip-agents             # skip agents.txt + agents.json
+herald emit --skip-llms-full          # skip the expensive Firecrawl scrape
 ```
 
 ---
@@ -213,7 +215,7 @@ herald generate --skip-llms-full          # skip the expensive Firecrawl scrape
 
 Beyond the RFC, HERALD's generator does three things on top of a plain `robots.txt`. It explicitly allows the major search engine crawlers (Googlebot, Bingbot, and similar) so your SEO is unaffected. It blocks the well-known free AI training scrapers (GPTBot, ClaudeBot, CCBot, Google-Extended) when `crawlers.blockFreeAiScrapers` is enabled, since those crawls produce no value for the site owner. And it appends the `Sitemap:` and `Content-Signal:` directives that downstream tools rely on for sitemap discovery and for stating AI-usage preferences. The default wildcard block also `Allow: /agents.txt` and `Allow: /llms.txt`, which both grants explicit access and exposes those files to any crawler reading `robots.txt` (no separate discovery directive is needed; `agents.txt` is fixed at the canonical path).
 
-The generator also merges intelligently with an existing `robots.txt` file. Anything below the `# ── Existing rules (preserved) ──` marker is kept verbatim across regenerations, so any project-specific rules you have authored survive every `herald generate` run.
+The generator also merges intelligently with an existing `robots.txt` file. Anything below the `# ── Existing rules (preserved) ──` marker is kept verbatim across regenerations, so any project-specific rules you have authored survive every `herald emit` run.
 
 ```
 # robots.txt
@@ -369,10 +371,10 @@ HERALD is driven by a single file at your project root: **`agentsjson.config.js`
 | Command | What it does | Output |
 |---|---|---|
 | `herald init` | Interactive wizard. Detects framework / sitemap / `.env` and writes `agentsjson.config.js` at your project root (with sensible defaults you can edit later). Use `-y` to skip all prompts and accept detected values. | `./agentsjson.config.js` |
-| `herald generate` | Imports `agentsjson.config.js`, validates it, runs the generators (`@herald/core`), writes `robots.txt`, `llms.txt`, `agents.txt`, `agents.json`, and (when applicable) `sitemap.xml` to `--out` (default `./public`). Each file passes its spec validator inline; failures print as warnings. | files under `--out` |
-| `herald check <url>` | Fetches the live discovery files from a public URL and scores them against the same validators that `generate` uses. Useful for CI or post-deploy smoke tests. | report on stdout |
+| `herald emit` | Imports `agentsjson.config.js`, validates it, runs the generators (`@herald/core`), writes `robots.txt`, `llms.txt`, `agents.txt`, `agents.json`, and (when applicable) `sitemap.xml` to `--out` (default `./public`). Each file passes its spec validator inline; failures print as warnings. | files under `--out` |
+| `herald check <url>` | Fetches the live discovery files from a public URL and scores them against the same validators that `emit` uses. Useful for CI or post-deploy smoke tests. | report on stdout |
 
-Per-file flags for `generate`:
+Per-file flags for `emit`:
 
 **Positive selectors** (pass one or more to emit only those files; otherwise everything applicable to the config is emitted):
 
@@ -392,11 +394,11 @@ Per-file flags for `generate`:
 - `--skip-sitemap`: never emit `sitemap.xml`, even for `static` / `manual`
 - `--skip-headers`: skip the §4.5 headers config file
 
-See `herald generate --help` for the full list.
+See `herald emit --help` for the full list.
 
 ### `agentsjson.config.js`: the file you create
 
-You don't manually write this from scratch. Run **`herald init`** or **`herald generate --agents`**in your project root and the wizard writes it for you. The file shape:
+You don't manually write this from scratch. Run **`herald init`** or **`herald emit --agents`**in your project root and the wizard writes it for you. The file shape:
 
 ```js
 // agentsjson.config.js  (lives at your project root)
@@ -508,16 +510,16 @@ export default {
 
 **Experimental protocols (`x-` prefix).** Both `payments.protocols` and `authorization.protocols` accept identifiers prefixed with `x-` (for example `x-mypay`, `x-myauth`) per [agents.txt spec §3.1](https://agentstxt.dev). The generator emits them verbatim into `agents.txt` and as empty per-protocol objects in `agents.json` (`payments['x-mypay']: {}`). This is the runway for advertising a new protocol before it lands in the spec, without forking herald.
 
-The same file is consumed by **`herald generate`**, which reads it to write the static discovery files into `--out`. You write it once. There is no separate runtime config; nothing duplicates.
+The same file is consumed by **`herald emit`**, which reads it to write the static discovery files into `--out`. You write it once. There is no separate runtime config; nothing duplicates.
 
 ### Where the file lives
 
-- **Static / Jamstack sites** (Astro, Hugo, 11ty, Next.js export): at your project root, generated at build time by `herald generate --out ./public`.
+- **Static / Jamstack sites** (Astro, Hugo, 11ty, Next.js export): at your project root, generated at build time by `herald emit --out ./public`.
 - **Server frameworks** (Express, Hono, Next.js App Router): at your project root, generated at build time or on deploy. Serve the resulting files as static assets, or hand-roll a route that imports `@herald/core` to render them on demand.
 
 ### Validation
 
-Both `init` and `generate` run a Zod schema (CLI-only, doesn't bloat `@herald/core`). Errors print field-level paths so misconfiguration surfaces early:
+Both `init` and `emit` run a Zod schema (CLI-only, doesn't bloat `@herald/core`). Errors print field-level paths so misconfiguration surfaces early:
 
 ```
 ❌ Failed to load config: Invalid agentsjson.config.js:
@@ -533,13 +535,13 @@ herald: ignoring malformed evmAddress (evmAddress must be a 40-char hex EVM addr
 
 This means a typo in an unused wallet (`EVM_ADDRESS=garbage` in your `.env` when you only meant to wire up Solana) does not break the Solana side. The `TreasuryConfigSchema.refine` rule still fires after the lenient pass: if every wallet is dropped, x402 fails with `treasury must include at least one of evmAddress or solanaAddress (after lenient validation)`, because x402 with no recipient is meaningless.
 
-The `generate` step then runs the spec validators (RFC 9309 for robots.txt, llmstxt.org for llms.txt, agents.txt v1 for agents.txt/json, sitemaps.org 0.9 for sitemap.xml) on the *output* files and prints any compliance warnings, so a typo in your config can never silently produce a non-compliant file.
+The `emit` step then runs the spec validators (RFC 9309 for robots.txt, llmstxt.org for llms.txt, agents.txt v1 for agents.txt/json, sitemaps.org 0.9 for sitemap.xml) on the *output* files and prints any compliance warnings, so a typo in your config can never silently produce a non-compliant file.
 
 ### Serving headers (agents.txt spec §4.5)
 
 The agents.txt spec mandates four response headers on `/agents.txt` and `/agents.json`: a Content-Type with charset (for agents.txt), `Access-Control-Allow-Origin: *` (so browser-context agents can read the files cross-origin), and a `Cache-Control: public, max-age=3600` (SHOULD). Static-asset pipelines on most hosting platforms do not set these by default, so the headers have to be wired in some platform-specific way.
 
-`herald generate` handles this for you. The CLI detects your hosting platform from project files and emits the right config:
+`herald emit` handles this for you. The CLI detects your hosting platform from project files and emits the right config:
 
 | Platform | Detected via | Emits |
 |----------|--------------|-------|
@@ -894,7 +896,7 @@ Only if you want a wallet address to appear in your `agents.json` declaration. A
 Absolutely. Omit the `payments` block entirely (or list `protocols` but leave the credentials unset; both produce the same output). HERALD still generates robots.txt + llms.txt + agents.txt + agents.json, just without any payment capability advertised.
 
 **Can I use this without agents.txt (just robots.txt and llms.txt)?**  
-Yes. Run `herald generate --robots --llms` to emit only those two files (or, equivalently from the default mode, `--skip-agents`). Pass just `--robots` for robots.txt only. HERALD is the tooling; agents.txt is one of the layers it can emit, not a hard requirement.
+Yes. Run `herald emit --robots --llms` to emit only those two files (or, equivalently from the default mode, `--skip-agents`). Pass just `--robots` for robots.txt only. HERALD is the tooling; agents.txt is one of the layers it can emit, not a hard requirement.
 
 **Is Firecrawl required?**  
 No. It's optional. The default sitemap driver works without any API keys. Firecrawl gives better results (titles, descriptions, grouping) but is not required.

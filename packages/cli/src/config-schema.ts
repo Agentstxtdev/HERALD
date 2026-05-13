@@ -17,7 +17,7 @@ const ProtocolIdentifierSchema = (registered: readonly string[]) =>
 //
 // Lives in the CLI (not @herald/core) to preserve core's zero-runtime-dep
 // guarantee. This is the only place user config crosses a trust boundary:
-// `generate.ts` → loadConfig() → AgenticConfigSchema.safeParse().
+// `emit.ts` → loadConfig() → AgenticConfigSchema.safeParse().
 //
 // v4 API notes used here:
 //   z.url()     — top-level URL format (replaces deprecated z.string().url())

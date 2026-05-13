@@ -136,7 +136,7 @@ export async function checkCompliance(siteUrl: string): Promise<void> {
   console.log(`\n   Score: ${score}/${total} files compliant`)
 
   if (score < total) {
-    console.log(`\n   Run \`herald generate\` to generate missing files.`)
+    console.log(`\n   Run \`herald emit\` to generate missing files.`)
   } else {
     console.log(`\n   🎉 Fully compliant with the Agentic Web Standard!`)
   }

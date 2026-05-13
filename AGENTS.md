@@ -290,7 +290,7 @@ packages/cli/src/
 ├── config-schema.ts     — Zod v4 schema for AgenticConfig (CLI-only, keeps core dep-free)
 └── commands/
     ├── init.ts          — interactive wizard (orchestrates probe + writer)
-    ├── generate.ts      — Zod-validates config, writes + spec-checks robots/llms/sitemap/agents-txt/agents-json
+    ├── emit.ts          — Zod-validates config, writes + spec-checks robots/llms/sitemap/agents-txt/agents-json
     └── check.ts         — fetches a live site and validates compliance
 ```
 
@@ -303,7 +303,7 @@ Orchestrates three concerns that are now separated into distinct modules:
 
 The `-y` flag skips all prompts and uses detected defaults.
 
-### `generate` command
+### `emit` command
 
 Loads `agentsjson.config.js` via dynamic `import()`, then immediately validates it through `AgenticConfigSchema` (Zod v4, `config-schema.ts`). Structural errors (missing site, wrong type, refine violations) are reported with field-level paths before any file is written:
 
@@ -321,7 +321,7 @@ herald: ignoring malformed evmAddress (...); set EVM_ADDRESS to a valid 0x[40 he
 
 On success, calls the generators from `@herald/core`, writes files to `--out` (default `./public`), then runs the spec compliance validators (`validateRobotsTxt`, `validateLlmsTxt`, `validateAgentsTxt`, `validateAgentsJson` from core) and prints any warnings inline.
 
-Per-file flags come in two symmetric sets. The default mode emits everything applicable to the config; pass any positive selector and the output set narrows to those flags only; any `--skip-*` flag subtracts from whichever set is selected. Resolution rules live in `packages/cli/src/commands/generate.ts → resolveOutputs()`.
+Per-file flags come in two symmetric sets. The default mode emits everything applicable to the config; pass any positive selector and the output set narrows to those flags only; any `--skip-*` flag subtracts from whichever set is selected. Resolution rules live in `packages/cli/src/commands/emit.ts → resolveOutputs()`.
 
 Positive selectors (emit only these):
 - `--robots`: emit robots.txt
@@ -352,7 +352,7 @@ Pages are deduplicated by URL and XML-escaped before serialization in `generateS
 
 ### `check` command
 
-Fetches `robots.txt`, `llms.txt`, `agents.txt`, `agents.json`, and `sitemap.xml` from a live URL and scores the site using the same `validateRobotsTxt`, `validateLlmsTxt`, `validateAgentsTxt`, and `validateAgentsJson` functions from `@herald/core` that `generate` uses, not ad-hoc string matching.
+Fetches `robots.txt`, `llms.txt`, `agents.txt`, `agents.json`, and `sitemap.xml` from a live URL and scores the site using the same `validateRobotsTxt`, `validateLlmsTxt`, `validateAgentsTxt`, and `validateAgentsJson` functions from `@herald/core` that `emit` uses, not ad-hoc string matching.
 
 ## Adding a new content driver
 

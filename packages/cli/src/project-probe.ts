@@ -10,7 +10,7 @@ import { resolve } from 'node:path'
 export interface Detected {
   framework: 'nextjs' | 'express' | 'hono' | 'astro' | 'unknown'
   /**
-   * Hosting platform inferred from project files. Used by `herald generate`
+   * Hosting platform inferred from project files. Used by `herald emit`
    * to emit the right §4.5 headers config (`_headers` for Cloudflare/Netlify,
    * `vercel.json` for Vercel, fallback to `_headers` otherwise).
    */

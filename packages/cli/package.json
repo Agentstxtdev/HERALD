@@ -1,7 +1,7 @@
 {
   "name": "@herald/cli",
   "version": "0.1.0",
-  "description": "CLI to make any website agent-ready: robots.txt, llms.txt, agents.txt, agents.json, x402 + MPP payments",
+  "description": "The agent-capabilities discovery layer for the agentic web. Emit robots.txt, llms.txt, agents.txt, agents.json, sitemap.xml, security.txt from one config.",
   "type": "module",
   "bin": {
     "herald": "./dist/cli.js"
@@ -29,12 +29,14 @@
   },
   "keywords": [
     "herald",
-    "llms-txt",
     "agents-txt",
     "agents-json",
+    "llms-txt",
+    "robots-txt",
+    "sitemap",
+    "security-txt",
     "ai-crawler",
-    "x402",
-    "mpp",
+    "agentic-web",
     "cli"
   ],
   "license": "Apache-2.0",

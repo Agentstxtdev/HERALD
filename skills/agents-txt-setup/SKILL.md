@@ -73,10 +73,10 @@ The single `AgenticConfig` object drives everything. Every generator reads from 
 ## Step 3: Generate files
 
 ```bash
-herald generate --out ./public
+herald emit --out ./public
 ```
 
-**What `generate` does internally:**
+**What `emit` does internally:**
 1. Dynamic `import()` of `agentsjson.config.js`
 2. Zod v4 validation: field-level errors printed before any file is written
 3. Calls `generateRobotsTxt`, `generateLlmsTxt`, `generateAgentsTxt`, `generateAgentsJson`, `generateSitemapXml`, `generateSecurityTxt`, `generateHeadersFile` from `@herald/core` per the file's emission policy
@@ -111,7 +111,7 @@ Default mode (no flags) emits everything applicable to the config. Pass any posi
 
 **For Astro / 11ty / Hugo / Jamstack** (and any framework): generation is all herald does. Deploy the output files as static assets; the production host applies the headers config at its edge. There is no runtime piece to wire.
 
-**About the `_headers` / `vercel.json` file `generate` produces:** the agents.txt spec §4.5 mandates `Content-Type: text/plain; charset=utf-8` on `agents.txt`, `Content-Type: application/json` on `agents.json`, `Access-Control-Allow-Origin: *` on both, and recommends `Cache-Control: public, max-age=3600`. `herald generate --headers` detects the user's hosting platform and emits the right config to satisfy this without manual work:
+**About the `_headers` / `vercel.json` file `emit` produces:** the agents.txt spec §4.5 mandates `Content-Type: text/plain; charset=utf-8` on `agents.txt`, `Content-Type: application/json` on `agents.json`, `Access-Control-Allow-Origin: *` on both, and recommends `Cache-Control: public, max-age=3600`. `herald emit --headers` detects the user's hosting platform and emits the right config to satisfy this without manual work:
 
 | Detected platform | Emits | Where |
 |---|---|---|
@@ -132,7 +132,7 @@ If the user serves `/agents.txt` or `/agents.json` from a server route rather th
 herald check https://mysite.com
 ```
 
-**What `check` does:** Fetches `robots.txt`, `llms.txt`, `agents.txt`, `agents.json`, `sitemap.xml` from the live URL and scores them using the same validators as `generate`, not ad-hoc string matching.
+**What `check` does:** Fetches `robots.txt`, `llms.txt`, `agents.txt`, `agents.json`, `sitemap.xml` from the live URL and scores them using the same validators as `emit`, not ad-hoc string matching.
 
 For deeper §4.5 verification (response headers + cross-file consistency between agents.txt and agents.json), point the user at the live `audit_site` MCP tool published by the agents.txt project at `https://agentstxt.dev/mcp`. It validates Content-Type / CORS / Cache-Control on both files, schema-validates `agents.json` per §5, scans for accidental treasury or secret leaks per §5.4 / §14, and cross-checks that `agents.txt` and `agents.json` declare the same capabilities. Run both `herald check` and `audit_site` after deploy.
 

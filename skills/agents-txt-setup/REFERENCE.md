@@ -134,7 +134,7 @@ Herald only writes the files; deployment is the adopter's responsibility.
 | Setup | How to serve the files |
 |---|---|
 | Static / Jamstack (Astro, Hugo, 11ty, Next.js export) | Build emits the files into `public/`; the hosting platform serves them as static assets with the §4.5 headers from `_headers` / `vercel.json`. |
-| Server framework (Express, Hono, Next.js App Router) | Run `herald generate` at build time and serve `public/` statically, or hand-roll routes that import `@herald/core` and call the generators on demand. If the route is dynamic, the handler must set `Content-Type` (with charset for the `.txt` files), `Access-Control-Allow-Origin: *`, and `Cache-Control: public, max-age=3600` itself; static-asset header config does not apply. |
+| Server framework (Express, Hono, Next.js App Router) | Run `herald emit` at build time and serve `public/` statically, or hand-roll routes that import `@herald/core` and call the generators on demand. If the route is dynamic, the handler must set `Content-Type` (with charset for the `.txt` files), `Access-Control-Allow-Origin: *`, and `Cache-Control: public, max-age=3600` itself; static-asset header config does not apply. |
 
 Herald does not ship a runtime middleware. The `payments` block in `agentsjson.config.js` flows into `agents.txt` and `agents.json` as a declaration of what the site supports; the 402 handler, signature verification, and on-chain or fiat settlement live entirely outside herald.
 
@@ -151,7 +151,7 @@ herald init [options]
   --firecrawl-key <key>  Firecrawl API key
   -y, --yes              Skip all prompts, use detected defaults
 
-herald generate [options]
+herald emit [options]
   -c, --config <path>    Config file path (default: ./agentsjson.config.js)
   -o, --out <dir>        Output directory (default: ./public)
 
@@ -181,7 +181,7 @@ herald check <url>
 
 ### §4.5 Headers — what gets emitted per platform
 
-`herald generate --headers` produces:
+`herald emit --headers` produces:
 
 | Detected platform | File written | Path | Strategy |
 |---|---|---|---|
