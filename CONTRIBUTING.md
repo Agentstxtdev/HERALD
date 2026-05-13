@@ -8,7 +8,7 @@ This guide covers what's specific to this repository. For overall code conventio
 
 ## Before you start
 
-- herald is the **toolkit** — three npm-publishable packages plus example consumers. It is *not* the place for `agents.txt` spec changes; those happen in the sibling repository where the spec lives.
+- herald is the **toolkit** — two npm-publishable packages (`@herald/core`, `@herald/cli`) plus example consumers. It is *not* the place for `agents.txt` spec changes; those happen in the sibling repository where the spec lives.
 - Open an issue or discussion before sending large PRs. Small fixes (typo, bug, doc clarification) are fine without a heads-up.
 - Run on **Node 24 (`nvm use 24`)** and **pnpm 10**. The lockfile is committed; respect it (`pnpm install --frozen-lockfile`).
 
@@ -22,9 +22,9 @@ cd agents.txt/herald
 
 nvm use 24
 pnpm install
-pnpm build       # builds core → web → cli in dependency order via Turbo
+pnpm build       # builds core → cli in dependency order via Turbo
 pnpm typecheck   # tsc --noEmit across all packages
-pnpm test        # vitest run, ~270 tests
+pnpm test        # vitest run, 326 tests
 ```
 
 If anything in that sequence fails on a clean clone, that's a bug — please file an issue with the failing output before trying to fix something else.
@@ -38,9 +38,9 @@ If anything in that sequence fails on a clean clone, that's a bug — please fil
 pnpm dev
 
 # Single-package focus
-pnpm --filter @herald/addon typecheck
-pnpm --filter @herald/addon test
-pnpm --filter @herald/cli       build      # the CLI
+pnpm --filter @herald/core typecheck
+pnpm --filter @herald/cli  typecheck
+pnpm --filter @herald/cli  build
 
 # Run the CLI from your local build
 node packages/cli/dist/cli.js init
@@ -52,16 +52,15 @@ node packages/cli/dist/cli.js init
 
 | Change type | Location |
 |---|---|
-| Pure generator (robots / llms / agents.txt / agents.json / sitemap.xml) | `packages/core/src/` |
+| Pure generator (robots / llms / agents.txt / agents.json / sitemap.xml / security.txt) | `packages/core/src/` |
 | Spec validator | `packages/core/src/validate.ts` |
 | New content driver | `packages/core/src/sitemap.ts` (factory) + `LlmsDriver` union in `types.ts` + `resolveContent()` in `llms.ts` |
-| Payment middleware logic | `packages/web/src/payment-gate.ts` (the only place the protocol decision lives) |
-| x402 v2 wire helpers | `packages/web/src/x402.ts` |
-| MPP runtime | `packages/web/src/mpp.ts` |
-| New framework adapter | `packages/web/src/<framework>.ts` (mirror `express.ts` — convert request → `Request`, call `gateRequest()`, write back the `GateResult`) |
+| Headers config (§4.5) | `packages/core/src/headers.ts` (`generateHeadersFile`, `mergeVercelHeaders`) |
+| Protocol registry | `packages/core/src/protocols.ts` (`PAYMENT_PROTOCOLS`, `AUTH_PROTOCOLS`, `MPP_METHODS`) |
+| Payment declaration activation | `packages/core/src/payments.ts` (`resolveActiveProtocols`, `isX402Active`, `isMppActive`, `isAp2Active`) |
 | CLI command | `packages/cli/src/commands/<name>.ts` |
 | CLI wizard prompt | `packages/cli/src/commands/init.ts` |
-| Config Zod schema | `packages/cli/src/config-schema.ts` (CLI-only — never import Zod into `core` or `web`) |
+| Config Zod schema | `packages/cli/src/config-schema.ts` (CLI-only — never import Zod into `core`) |
 
 Detailed architecture and rules: [`AGENTS.md`](AGENTS.md).
 
@@ -72,22 +71,22 @@ Detailed architecture and rules: [`AGENTS.md`](AGENTS.md).
 These are non-negotiable. Violations get sent back without further review.
 
 1. **`@herald/core` has zero runtime dependencies.** Do not add any. Edge-runtime compatibility is a property we sell to users.
-2. **Zod stays in `packages/cli` only.** Never import Zod into `core` or `web`.
-3. **Never re-implement gate logic in an adapter.** Call `gateRequest()` from `payment-gate.ts` and adapt the `GateResult`. Adapters stay under ~100 lines.
+2. **Zod stays in `packages/cli` only.** Never import Zod into `core`.
+3. **Declaration only.** Herald is a file generator. Do not add runtime middleware (402 handlers, framework adapters, request gates) to the toolkit; the spec is implementation-agnostic, and the runtime side belongs in whatever middleware an adopter wires up separately.
 4. **No secrets in commits.** No `.env`, no wallet private keys, no Stripe secret keys, no MPP HMAC keys. CI has no secret scanner; you are the scanner.
-5. **No `console.log` left in shipped code.** Use it during development, remove before opening the PR.
+5. **No `console.log` left in shipped code** (except inside `packages/cli/src/commands/`, which is allowed to print to the user). Use it during development elsewhere, remove before opening the PR.
 6. **`exactOptionalPropertyTypes: true` is on.** Don't cheat the compiler with `as any` to silence it; restructure the type instead.
-7. **Spec compliance, not best-effort.** Generated files must validate against their respective specs (RFC 9309, sitemaps.org 0.9, llmstxt.org, agents.txt v1). The validators in `core` enforce this; if a validator says no, fix the generator.
+7. **Spec compliance, not best-effort.** Generated files must validate against their respective specs (RFC 9309, sitemaps.org 0.9, llmstxt.org, agents.txt v1, RFC 9116). The validators in `core` enforce this; if a validator says no, fix the generator.
+8. **Honest declarations.** A per-protocol block in `agents.txt` / `agents.json` is emitted only when its credentials are present in the config. New payment protocols added to `PAYMENT_PROTOCOLS` must include an activity check in `payments.ts` and a branch in `resolveActiveProtocols` before they will surface in any output.
 
 ---
 
 ## Tests
 
-- Vitest at the root (`pnpm test`) runs every `packages/*/src/**/*.test.ts`.
+- Vitest at the root (`pnpm test`) runs every `packages/*/src/**/*.test.ts`. **Always run from the workspace root**; running `pnpm test` from a sub-package picks the same root config but applies the include glob to the wrong cwd and reports "no test files found".
 - Tests are colocated with code under `__tests__/` directories.
 - New generators or validators **require new tests**. PRs adding behavior without tests will be asked to add them.
 - `ContentDriver` is a seam for tests — pass `staticDriver(pages)` to `generateLlmsTxt(config, driver)` to exercise the full generator without network calls.
-- `gateRequest()` tests live in `packages/web/src/__tests__/payment-gate.test.ts`. Add cases there for new gate behavior.
 - Aim for tests that exercise observable behavior, not internal implementation. If a refactor breaks a test that should still pass, the test was over-specified.
 
 ---

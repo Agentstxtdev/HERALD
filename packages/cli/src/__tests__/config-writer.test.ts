@@ -165,7 +165,7 @@ describe('buildAgenticConfigContent', () => {
 
   it('includes default integration note for unknown framework', () => {
     const output = buildAgenticConfigContent(minimalChoices)
-    expect(output).toContain('Static sites')
+    expect(output).toContain('herald emit')
   })
 
   it('includes crawlers block with defaults', () => {

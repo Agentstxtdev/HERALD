@@ -7,8 +7,8 @@
   Aim for 5–8 steps. See CONTRIBUTING.md for full examples.
 -->
 
-> - herald makes any website readable and (optionally) monetizable by AI agents
-> - [Which package or surface is involved — @herald/core / @herald/addon / herald CLI / examples / docs]
+> - herald is the agent-capabilities discovery layer for the agentic web
+> - [Which package or surface is involved — @herald/core / @herald/cli / examples / docs]
 > - [What problem or gap exists]
 > - [Why it needs to be addressed]
 > - This pull request ...
@@ -29,7 +29,7 @@
     pnpm test
     pnpm build
     pnpm publint
-  For CLI changes, include a paste of `herald init` or `generate` output.
+  For CLI changes, include a paste of `herald init` or `herald emit` output.
 -->
 
 -
