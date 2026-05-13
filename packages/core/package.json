@@ -1,6 +1,6 @@
 {
   "name": "@agentstxtdev/herald-core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Pure generators for robots.txt, sitemap.xml, llms.txt, agents.txt, and agents.json — no runtime dependencies",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -18,7 +18,9 @@
       }
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
@@ -31,10 +33,20 @@
   "devDependencies": {
     "typescript": "^6.0.3"
   },
-  "keywords": ["llms-txt", "robots-txt", "agents-txt", "agents-json", "agent-map", "llm", "ai-crawler"],
+  "keywords": [
+    "llms-txt",
+    "robots-txt",
+    "agents-txt",
+    "agents-json",
+    "agent-map",
+    "llm",
+    "ai-crawler"
+  ],
   "license": "Apache-2.0",
   "homepage": "https://agentstxt.dev",
-  "bugs": { "url": "https://github.com/agentstxtdev/herald/issues" },
+  "bugs": {
+    "url": "https://github.com/agentstxtdev/herald/issues"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/agentstxtdev/herald.git",
