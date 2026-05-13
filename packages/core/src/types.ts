@@ -216,6 +216,50 @@ export interface Ap2Config {
   description?: string
 }
 
+/**
+ * Single offer in an x-payment-info extension per the MPP / Payment Discovery
+ * draft (https://paymentauth.org/draft-payment-discovery-00.txt §3). Mirrors
+ * the wire shape exactly so an agent reading /openapi.json sees the same
+ * fields it would receive from a 402 WWW-Authenticate challenge.
+ */
+export interface OpenApiPaymentOffer {
+  /** "charge" (per-request) or "session" (pay-as-you-go bucket). */
+  intent: 'charge' | 'session'
+  /** Payment method identifier — e.g. 'tempo', 'stripe', 'lightning', 'card', 'x402'. */
+  method: string
+  /**
+   * Cost in the smallest currency unit (atomic). Null when pricing is dynamic
+   * and only known at request time (e.g. variable-size resources). For 0.01
+   * USDC at 6 decimals, use `'10000'`.
+   */
+  amount: string | null
+  /** ISO 4217 fiat code or on-chain token contract address. */
+  currency?: string
+  /** Human-readable note (free text). */
+  description?: string
+}
+
+export interface OpenApiPaymentPath {
+  summary?: string
+  description?: string
+  /** One or more payment offers attached to this path. Multiple offers map to MPP's `offers[]` shorthand. */
+  offers: OpenApiPaymentOffer[]
+}
+
+/**
+ * Minimal OpenAPI discovery surface herald emits at /openapi.json. The schema
+ * here intentionally only covers payable paths — the full OpenAPI document
+ * shape is the user's responsibility when they have a real API to describe.
+ * For sites that exist only to demonstrate payment flows (agentstxt.dev), this
+ * is enough to make the MPP auditor pass without inventing fake endpoints.
+ */
+export interface OpenApiDiscoveryConfig {
+  title?: string
+  version?: string
+  /** Map of pathname → payment-offer metadata. */
+  paths: Record<string, OpenApiPaymentPath>
+}
+
 export interface PaymentConfig {
   /**
    * Which payment protocols to accept. Agents pick what they support.
@@ -252,6 +296,14 @@ export interface PaymentConfig {
   ap2?: Ap2Config
   /** User-agents that bypass payment entirely */
   exemptUserAgents?: string[]
+  /**
+   * Optional OpenAPI discovery surface emitted at `/openapi.json`. Declares
+   * payable paths with `x-payment-info` extensions per the MPP / Payment
+   * Discovery draft. Independent of `protocols[]` — the site can announce a
+   * payable path even when the runtime credentials live elsewhere; the wire
+   * activation gate is the handler's responsibility, not the discovery file's.
+   */
+  openapi?: OpenApiDiscoveryConfig
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -293,6 +345,23 @@ export interface McpEndpoint {
   version?: string
 }
 
+/**
+ * Optional server-card metadata for the SEP-2127 discovery surface served at
+ * /.well-known/mcp/server-card.json. Required only when `--mcp-card` is emitted.
+ * The card describes the *server* (one per site); per-endpoint metadata stays
+ * on the endpoint entry.
+ */
+export interface McpServerCard {
+  name: string
+  version: string
+  /** Capability flags — all three required by the SEP-2127 auditor as booleans. */
+  capabilities: {
+    tools: boolean
+    resources: boolean
+    prompts: boolean
+  }
+}
+
 export interface McpConfig {
   /**
    * One or more MCP server endpoints (Streamable HTTP transport).
@@ -303,6 +372,12 @@ export interface McpConfig {
    * Pass a string for URL-only, or an object to include a description in agents.json.
    */
   endpoints: string | McpEndpoint | (string | McpEndpoint)[]
+  /**
+   * SEP-2127 server card metadata. When present, herald emits
+   * `/.well-known/mcp/server-card.json` describing this server. The card's
+   * `transport.endpoint` is taken from the first entry in `endpoints`.
+   */
+  serverCard?: McpServerCard
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -313,6 +388,24 @@ export interface SkillEntry {
   url: string
   /** Short description of what this skill package teaches. Appears in agents.json only. */
   description?: string
+  /**
+   * Skill identifier (lowercase alphanumeric + hyphens). Required for the
+   * Agent Skills Discovery index (`/.well-known/agent-skills/index.json` v0.2.0).
+   * Defaults to the last path segment before SKILL.md when omitted (e.g.
+   * `…/skills/adopt-agents-txt/SKILL.md` → `"adopt-agents-txt"`).
+   */
+  name?: string
+  /**
+   * Skill artifact type per Agent Skills Discovery v0.2.0. `'skill-md'` (a
+   * SKILL.md file) or `'archive'` (a packaged bundle). Default: `'skill-md'`.
+   */
+  type?: 'skill-md' | 'archive'
+  /**
+   * SHA-256 digest of the skill artifact, formatted as `sha256:<hex>`. Required
+   * for the Agent Skills Discovery index entry; agents use it to verify the
+   * artifact they fetched matches what the site advertised.
+   */
+  digest?: string
 }
 
 export interface SkillsConfig {

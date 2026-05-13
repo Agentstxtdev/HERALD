@@ -45,6 +45,7 @@ program
   .option('--sitemap', 'Emit only sitemap.xml (also forces emission for the firecrawl driver)')
   .option('--headers', 'Emit only the §4.5 headers config for the detected hosting platform (`_headers` for Cloudflare/Netlify, `vercel.json` for Vercel, fallback `_headers` otherwise)')
   .option('--security', 'Emit only .well-known/security.txt (RFC 9116; requires a `security.contact` in config)')
+  .option('--discovery', 'Emit only the discovery surfaces: .well-known/api-catalog (RFC 9727), .well-known/mcp/server-card.json (SEP-2127), .well-known/agent-skills/index.json (agentskills.io v0.2.0). Each file is gated by its own config block.')
   // Negative selectors: subtract from the selected set. Useful with the default
   // "emit everything" mode, or to drop one file from a positive selection.
   .option('--skip-robots', 'Skip robots.txt')
@@ -54,6 +55,7 @@ program
   .option('--skip-sitemap', 'Skip sitemap.xml')
   .option('--skip-headers', 'Skip the §4.5 headers config file')
   .option('--skip-security', 'Skip .well-known/security.txt')
+  .option('--skip-discovery', 'Skip the .well-known/ discovery surfaces (api-catalog, mcp/server-card.json, agent-skills/index.json)')
   .option('--platform <name>', 'Override the detected hosting platform for `--headers` (cloudflare|netlify|vercel|unknown)')
   .action(emitCommand)
 

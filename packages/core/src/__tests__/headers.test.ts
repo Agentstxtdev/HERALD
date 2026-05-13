@@ -110,7 +110,9 @@ describe('headers generators with A2A AgentCard config', () => {
     const entries = vercelHeaderEntries(config)
     const sources = entries.map((e) => e.source).sort()
     expect(sources).toEqual([
+      '/',
       '/.well-known/agent-card.json',
+      '/.well-known/api-catalog',
       '/agents.json',
       '/agents.txt',
       '/agents/support/card.json',
@@ -191,6 +193,8 @@ describe('headers generators with UCP profile config', () => {
     const entries = vercelHeaderEntries(config)
     const sources = entries.map((e) => e.source).sort()
     expect(sources).toEqual([
+      '/',
+      '/.well-known/api-catalog',
       '/.well-known/ucp',
       '/agents.json',
       '/agents.txt',
@@ -237,7 +241,9 @@ describe('headers generators with UCP profile config', () => {
     const entries = vercelHeaderEntries(config)
     const sources = entries.map((e) => e.source).sort()
     expect(sources).toEqual([
+      '/',
       '/.well-known/agent-card.json',
+      '/.well-known/api-catalog',
       '/.well-known/ucp',
       '/agents.json',
       '/agents.txt',
@@ -335,7 +341,10 @@ describe('headers generators with UCP profile config', () => {
     }
     const sources = vercelHeaderEntries(config).map((e) => e.source).sort()
     expect(sources).toEqual([
+      '/',
       '/.well-known/agent-card.json',
+      '/.well-known/agent-skills/index.json',
+      '/.well-known/api-catalog',
       '/.well-known/ucp',
       '/agents.json',
       '/agents.txt',

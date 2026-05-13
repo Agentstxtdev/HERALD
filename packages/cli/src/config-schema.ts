@@ -177,6 +177,26 @@ const Ap2ConfigSchema = z.object({
   description: z.string().optional(),
 })
 
+const OpenApiPaymentOfferSchema = z.object({
+  intent: z.enum(['charge', 'session']),
+  method: z.string().min(1, 'x-payment-info offer.method must be non-empty'),
+  amount: z.union([z.string(), z.null()]),
+  currency: z.string().optional(),
+  description: z.string().optional(),
+})
+
+const OpenApiPaymentPathSchema = z.object({
+  summary: z.string().optional(),
+  description: z.string().optional(),
+  offers: z.array(OpenApiPaymentOfferSchema).min(1, 'each openapi path must declare at least one payment offer'),
+})
+
+const OpenApiDiscoveryConfigSchema = z.object({
+  title: z.string().optional(),
+  version: z.string().optional(),
+  paths: z.record(z.string().regex(/^\//, 'openapi.paths key must start with "/"'), OpenApiPaymentPathSchema),
+})
+
 const PaymentConfigSchema = z.object({
   protocols: z.array(ProtocolIdentifierSchema(PAYMENT_PROTOCOLS)).optional(),
   required: z.boolean().optional(),
@@ -184,6 +204,7 @@ const PaymentConfigSchema = z.object({
   mpp: MppConfigSchema.optional(),
   ap2: Ap2ConfigSchema.optional(),
   exemptUserAgents: z.array(z.string()).optional(),
+  openapi: OpenApiDiscoveryConfigSchema.optional(),
 })
 
 const AuthorizationConfigSchema = z.object({
@@ -201,11 +222,22 @@ const McpEndpointSchema = z.union([
   }),
 ])
 
+const McpServerCardSchema = z.object({
+  name:    z.string().min(1, 'mcp.serverCard.name must be non-empty'),
+  version: z.string().min(1, 'mcp.serverCard.version must be non-empty'),
+  capabilities: z.object({
+    tools:     z.boolean(),
+    resources: z.boolean(),
+    prompts:   z.boolean(),
+  }),
+})
+
 const McpConfigSchema = z.object({
   endpoints: z.union([
     McpEndpointSchema,
     z.array(McpEndpointSchema).min(1, 'endpoints must contain at least one entry'),
   ]),
+  serverCard: McpServerCardSchema.optional(),
 })
 
 const SkillEntrySchema = z.union([
@@ -213,6 +245,9 @@ const SkillEntrySchema = z.union([
   z.object({
     url: z.url('Skills URL must be a valid URL'),
     description: z.string().optional(),
+    name: z.string().regex(/^[a-z0-9-]+$/, 'skill name must be lowercase alphanumeric + hyphens').optional(),
+    type: z.enum(['skill-md', 'archive']).optional(),
+    digest: z.string().regex(/^sha256:[0-9a-f]{64}$/i, 'skill digest must be "sha256:<64-hex>"').optional(),
   }),
 ])
 

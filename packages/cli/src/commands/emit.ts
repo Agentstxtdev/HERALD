@@ -9,6 +9,10 @@ import {
   generateSecurityTxt,
   generateSitemapXml,
   generateHeadersFile,
+  generateApiCatalog,
+  generateMcpServerCard,
+  generateAgentSkillsIndex,
+  generateOpenApiJson,
   mergeVercelHeaders,
   headersDeploymentNote,
   crawlWithFirecrawl,
@@ -45,11 +49,13 @@ interface EmitOptions {
   skipSitemap?: boolean
   skipHeaders?: boolean
   skipSecurity?: boolean
+  discovery?: boolean
+  skipDiscovery?: boolean
   /** Override the detected hosting platform (cloudflare|netlify|vercel|unknown). */
   platform?: string
 }
 
-type Output = 'robots' | 'llms' | 'llms-full' | 'agents' | 'sitemap' | 'headers' | 'security'
+type Output = 'robots' | 'llms' | 'llms-full' | 'agents' | 'sitemap' | 'headers' | 'security' | 'discovery'
 
 const OK = '✔'      // ✔
 const WARN = '⚠'    // ⚠
@@ -94,18 +100,19 @@ async function loadConfig(configPath: string): Promise<AgenticConfig> {
 
 function resolveOutputs(options: EmitOptions, config: AgenticConfig): Set<Output> {
   const hasPositive =
-    options.robots || options.llms || options.llmsFull || options.agents || options.sitemap || options.headers || options.security
+    options.robots || options.llms || options.llmsFull || options.agents || options.sitemap || options.headers || options.security || options.discovery
 
   const enabled = new Set<Output>()
 
   if (hasPositive) {
-    if (options.robots)   enabled.add('robots')
-    if (options.llms)     enabled.add('llms')
-    if (options.llmsFull) enabled.add('llms-full')
-    if (options.agents)   enabled.add('agents')
-    if (options.sitemap)  enabled.add('sitemap')
-    if (options.headers)  enabled.add('headers')
-    if (options.security) enabled.add('security')
+    if (options.robots)    enabled.add('robots')
+    if (options.llms)      enabled.add('llms')
+    if (options.llmsFull)  enabled.add('llms-full')
+    if (options.agents)    enabled.add('agents')
+    if (options.sitemap)   enabled.add('sitemap')
+    if (options.headers)   enabled.add('headers')
+    if (options.security)  enabled.add('security')
+    if (options.discovery) enabled.add('discovery')
   } else {
     enabled.add('robots')
     enabled.add('llms')
@@ -115,15 +122,20 @@ function resolveOutputs(options: EmitOptions, config: AgenticConfig): Set<Output
     const driverType = config.content?.driver?.type
     if (driverType === 'static' || driverType === 'manual') enabled.add('sitemap')
     if (config.security?.contact) enabled.add('security')
+    // Discovery surfaces (API catalog, MCP server card, agent-skills index)
+    // emit when any of their source blocks is present. Each file has its own
+    // gate inside the generator; the umbrella flag just admits them to the set.
+    if (config.mcp || config.a2a || config.ucp || config.skills) enabled.add('discovery')
   }
 
-  if (options.skipRobots)   enabled.delete('robots')
-  if (options.skipLlms)     enabled.delete('llms')
-  if (options.skipLlmsFull) enabled.delete('llms-full')
-  if (options.skipAgents)   enabled.delete('agents')
-  if (options.skipSitemap)  enabled.delete('sitemap')
-  if (options.skipHeaders)  enabled.delete('headers')
-  if (options.skipSecurity) enabled.delete('security')
+  if (options.skipRobots)    enabled.delete('robots')
+  if (options.skipLlms)      enabled.delete('llms')
+  if (options.skipLlmsFull)  enabled.delete('llms-full')
+  if (options.skipAgents)    enabled.delete('agents')
+  if (options.skipSitemap)   enabled.delete('sitemap')
+  if (options.skipHeaders)   enabled.delete('headers')
+  if (options.skipSecurity)  enabled.delete('security')
+  if (options.skipDiscovery) enabled.delete('discovery')
 
   return enabled
 }
@@ -399,6 +411,55 @@ export async function emitCommand(options: EmitOptions): Promise<void> {
       }
     } catch (err) {
       console.log(`  ${FAIL} ${pad('security.txt', FILE_COL)}${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
+  // ── Discovery surfaces: api-catalog, mcp/server-card, agent-skills/index ──
+  if (outputs.has('discovery')) {
+    const wellKnownDir = join(outDir, '.well-known')
+    if (!existsSync(wellKnownDir)) mkdirSync(wellKnownDir, { recursive: true })
+
+    // RFC 9727 API catalog — emit whenever any mcp/a2a/ucp block is configured.
+    if (config.mcp || config.a2a || config.ucp) {
+      const catalog = generateApiCatalog(config)
+      writeFileSync(join(wellKnownDir, 'api-catalog'), catalog, 'utf-8')
+      console.log(`  ${OK} ${pad('.well-known/api-catalog', FILE_COL)}`)
+      written++
+    }
+
+    // SEP-2127 MCP server card — emit only when serverCard metadata exists.
+    const mcpCard = generateMcpServerCard(config)
+    if (mcpCard) {
+      const mcpDir = join(wellKnownDir, 'mcp')
+      if (!existsSync(mcpDir)) mkdirSync(mcpDir, { recursive: true })
+      writeFileSync(join(mcpDir, 'server-card.json'), mcpCard, 'utf-8')
+      console.log(`  ${OK} ${pad('.well-known/mcp/server-card.json', FILE_COL)}`)
+      written++
+    } else if (config.mcp && !config.mcp.serverCard) {
+      console.log(`  ${WARN} ${pad('.well-known/mcp/server-card.json', FILE_COL)}skipped: mcp.serverCard not set in config`)
+    }
+
+    // Cloudflare Agent Skills Discovery v0.2.0 index — emit only when at least
+    // one skill entry carries a digest. The generator warns per-entry otherwise.
+    const skillsIndex = generateAgentSkillsIndex(config)
+    if (skillsIndex) {
+      const skillsDir = join(wellKnownDir, 'agent-skills')
+      if (!existsSync(skillsDir)) mkdirSync(skillsDir, { recursive: true })
+      writeFileSync(join(skillsDir, 'index.json'), skillsIndex, 'utf-8')
+      console.log(`  ${OK} ${pad('.well-known/agent-skills/index.json', FILE_COL)}`)
+      written++
+    } else if (config.skills) {
+      console.log(`  ${WARN} ${pad('.well-known/agent-skills/index.json', FILE_COL)}skipped: no skill entries with digest`)
+    }
+
+    // MPP / Payment Discovery /openapi.json. Independent of the per-protocol
+    // env-var gate that drives agents.json: this file is a discovery surface,
+    // not a payment activation signal.
+    const openapi = generateOpenApiJson(config)
+    if (openapi) {
+      writeFileSync(join(outDir, 'openapi.json'), openapi, 'utf-8')
+      console.log(`  ${OK} ${pad('openapi.json', FILE_COL)}`)
+      written++
     }
   }
 
