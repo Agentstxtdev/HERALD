@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { PAYMENT_PROTOCOLS, AUTH_PROTOCOLS } from '@herald/core'
+import { PAYMENT_PROTOCOLS, AUTH_PROTOCOLS } from '@agentstxtdev/herald-core'
 
 // Registered identifiers plus an `x-` prefix escape hatch per spec §3.1.
 // Adding a registered protocol is one edit in @herald/core/protocols.ts;

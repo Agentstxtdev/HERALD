@@ -1,4 +1,4 @@
-import { generateRobotsTxt } from '@herald/core'
+import { generateRobotsTxt } from '@agentstxtdev/herald-core'
 import config from '../../agentsjson.config.js'
 
 const SPEC_HEADERS = {

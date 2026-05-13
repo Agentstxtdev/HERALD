@@ -24,7 +24,7 @@ import {
   type HostingPlatform,
   type PageEntry,
   type ValidationResult,
-} from '@herald/core'
+} from '@agentstxtdev/herald-core'
 import { AgenticConfigSchema } from '../config-schema.js'
 import { detectProject } from '../project-probe.js'
 

@@ -7,5 +7,5 @@ export default defineConfig({
   dts: false,
   sourcemap: false,
   clean: true,
-  external: ['@herald/core', 'commander', 'zod'],
+  external: ['@agentstxtdev/herald-core', 'commander', 'zod'],
 })

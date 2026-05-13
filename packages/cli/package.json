@@ -1,5 +1,5 @@
 {
-  "name": "@herald/cli",
+  "name": "@agentstxtdev/herald",
   "version": "0.1.0",
   "description": "The agent-capabilities discovery layer for the agentic web. Emit robots.txt, llms.txt, agents.txt, agents.json, sitemap.xml, security.txt from one config.",
   "type": "module",
@@ -19,7 +19,7 @@
     "publint": "publint"
   },
   "dependencies": {
-    "@herald/core": "workspace:*",
+    "@agentstxtdev/herald-core": "workspace:*",
     "commander": "^14.0.3",
     "zod": "^4.4.3"
   },

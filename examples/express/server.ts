@@ -13,7 +13,7 @@ import {
   generateAgentsTxt,
   generateAgentsJson,
   type AgenticConfig,
-} from '@herald/core'
+} from '@agentstxtdev/herald-core'
 
 const SITE_URL = process.env.SITE_URL ?? 'http://localhost:3000'
 const EVM_ADDRESS = process.env.EVM_ADDRESS

@@ -38,7 +38,7 @@ importers:
 
   examples/express:
     dependencies:
-      '@herald/core':
+      '@agentstxtdev/herald-core':
         specifier: workspace:*
         version: link:../../packages/core
       express:
@@ -57,7 +57,7 @@ importers:
 
   examples/nextjs:
     dependencies:
-      '@herald/core':
+      '@agentstxtdev/herald-core':
         specifier: workspace:*
         version: link:../../packages/core
       next:
@@ -82,7 +82,7 @@ importers:
 
   packages/cli:
     dependencies:
-      '@herald/core':
+      '@agentstxtdev/herald-core':
         specifier: workspace:*
         version: link:../core
       commander:

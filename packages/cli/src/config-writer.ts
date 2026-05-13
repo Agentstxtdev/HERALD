@@ -50,9 +50,9 @@ export interface AgenticConfigChoices {
 }
 
 const INTEGRATION_NOTES: Record<string, string> = {
-  nextjs: `// Next.js — add app/{robots.txt,llms.txt,agents.txt,agents.json}/route.ts that imports the generators from @herald/core and returns the rendered file. See: https://github.com/agentstxtdev/herald/tree/main/examples/nextjs`,
+  nextjs: `// Next.js — add app/{robots.txt,llms.txt,agents.txt,agents.json}/route.ts that imports the generators from @agentstxtdev/herald-core and returns the rendered file. See: https://github.com/agentstxtdev/herald/tree/main/examples/nextjs`,
   express: `// Express — see: https://github.com/agentstxtdev/herald/tree/main/examples/express`,
-  hono: `// Hono — register GET handlers for /robots.txt, /llms.txt, /agents.txt, /agents.json that call the matching @herald/core generator.`,
+  hono: `// Hono — register GET handlers for /robots.txt, /llms.txt, /agents.txt, /agents.json that call the matching @agentstxtdev/herald-core generator.`,
   astro: `// Astro / static — run: herald emit --out ./public`,
   unknown: `// Run: herald emit --out ./public  (then deploy the files with your site)`,
 }
@@ -185,7 +185,7 @@ export function buildAgenticConfigContent(choices: AgenticConfigChoices): string
 
 ${integrationNote}
 
-/** @type {import('@herald/core').AgenticConfig} */
+/** @type {import('@agentstxtdev/herald-core').AgenticConfig} */
 export default {
   site: {
     name: ${s(choices.siteName)},

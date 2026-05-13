@@ -1,5 +1,5 @@
 // Compliance checker — verifies a site exposes all required agentic web files
-import { validateRobotsTxt, validateLlmsTxt, validateAgentsTxt, validateAgentsJson, validateSitemapXml } from '@herald/core'
+import { validateRobotsTxt, validateLlmsTxt, validateAgentsTxt, validateAgentsJson, validateSitemapXml } from '@agentstxtdev/herald-core'
 
 interface CheckResult {
   file: string

@@ -1,4 +1,4 @@
-import { generateAgentsJson } from '@herald/core'
+import { generateAgentsJson } from '@agentstxtdev/herald-core'
 import config from '../../agentsjson.config.js'
 
 export function GET() {

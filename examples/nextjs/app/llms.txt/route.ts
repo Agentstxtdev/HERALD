@@ -1,4 +1,4 @@
-import { generateLlmsTxt } from '@herald/core'
+import { generateLlmsTxt } from '@agentstxtdev/herald-core'
 import config from '../../agentsjson.config.js'
 
 const SPEC_HEADERS = {

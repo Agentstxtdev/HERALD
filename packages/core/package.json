@@ -1,5 +1,5 @@
 {
-  "name": "@herald/core",
+  "name": "@agentstxtdev/herald-core",
   "version": "0.1.0",
   "description": "Pure generators for robots.txt, sitemap.xml, llms.txt, agents.txt, and agents.json — no runtime dependencies",
   "type": "module",
