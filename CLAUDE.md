@@ -71,10 +71,10 @@ interface AgenticConfig {
   site:           { name, url, description }
   content?:       { driver: LlmsDriver }   // sitemap | firecrawl | static | manual
   crawlers?:      { blockFreeAiScrapers, allowSearchEngines, allowPaidAgents }
-  payments?:      { protocols, required?, x402?, mpp?, ap2?, exemptUserAgents? }
+  payments?:      { protocols, required?, x402?, mpp?, ap2?, exemptUserAgents?, openapi? }
   authorization?: { enabled, protocols?, identityRequired? }
-  mcp?:           { endpoints }
-  skills?:        { urls }
+  mcp?:           { endpoints, serverCard? }
+  skills?:        { urls }                         // SkillEntry now also accepts { name, type, digest }
   a2a?:           { cards }
   ucp?:           { profiles }
   security?:      { contact, policy?, preferredLanguages? }
@@ -82,6 +82,8 @@ interface AgenticConfig {
 ```
 
 `payments.protocols` accepts the registered identifiers (`'x402'`, `'mpp'`, `'ap2'`) and any experimental identifier prefixed with `x-` (e.g. `'x-mypay'`) per agents.txt spec §3.1. Same convention for `authorization.protocols`. The set of identifiers comes from `@herald/core`'s `protocols.ts` registry, which is the single source of truth.
+
+`mcp.serverCard`, `SkillEntry.{name, type, digest}`, and `payments.openapi` are the three opt-in fields that drive the ecosystem discovery surfaces (`/.well-known/mcp/server-card.json` per SEP-2127, `/.well-known/agent-skills/index.json` per agentskills.io v0.2.0, `/openapi.json` per the Payment Discovery draft). Each follows the same honest-declarations rule as the rest of herald: the matching generator returns `null` when its source block is absent, and the matching `_headers` / `Link:` entries only appear when the file does. The fourth ecosystem surface, `/.well-known/api-catalog` (RFC 9727), needs no new field; it derives its anchors entirely from the `mcp` / `a2a` / `ucp` blocks the config already declares. See [`packages/core/src/api-catalog.ts`](packages/core/src/api-catalog.ts), [`packages/core/src/mcp-server-card.ts`](packages/core/src/mcp-server-card.ts), [`packages/core/src/agent-skills-index.ts`](packages/core/src/agent-skills-index.ts), and [`packages/core/src/openapi.ts`](packages/core/src/openapi.ts) for the exact emission rules.
 
 Users write `agentsjson.config.js` once. Every generator reads from it.
 
@@ -100,7 +102,11 @@ Key exports:
 | `generateAgentsJson(config)` | agents.json: structured JSON companion to agents.txt |
 | `generateSitemapXml(pages)` | sitemaps.org 0.9 sitemap.xml from a `PageEntry[]` |
 | `generateSecurityTxt(config)` | RFC 9116 `security.txt` for `/.well-known/security.txt` |
-| `generateHeadersFile(platform)` / `mergeVercelHeaders()` | §4.5 platform headers config (`_headers` or `vercel.json`) |
+| `generateApiCatalog(config)` | RFC 9727 `/.well-known/api-catalog` (`application/linkset+json`). Builds anchors from the `mcp` / `a2a` / `ucp` blocks; no new config field required. |
+| `generateMcpServerCard(config)` | SEP-2127 `/.well-known/mcp/server-card.json`. Gated on `mcp.serverCard = { name, version, capabilities: { tools, resources, prompts } }`; returns `null` when the field is absent. |
+| `generateAgentSkillsIndex(config)` | agentskills.io Discovery v0.2.0 index at `/.well-known/agent-skills/index.json`. Per-entry `name?` / `type?` / `digest: "sha256:<hex>"` on `SkillEntry`; entries without a digest are skipped at emit time with a warning. |
+| `generateOpenApiJson(config)` | OpenAPI 3.1 at `/openapi.json` with `x-payment-info` per the [Payment Discovery draft](https://paymentauth.org/draft-payment-discovery-00.txt). Driven by `payments.openapi.paths`; single-offer paths use the direct shorthand, multi-offer use the `offers[]` array form. |
+| `generateHeadersFile(platform)` / `mergeVercelHeaders()` | §4.5 platform headers config (`_headers` or `vercel.json`). When the config carries an `mcp`, `a2a`, `ucp`, `skills`, or `payments.openapi` block, the generator emits matching CORS rules for the corresponding ecosystem discovery surfaces and an RFC 8288 `Link:` header block on `/` advertising every surface the site publishes. |
 | `validateRobotsTxt / validateLlmsTxt / validateAgentsTxt / validateAgentsJson / validateSitemapXml / validateSecurityTxt` | Spec compliance checks on generated output |
 | `sitemapDriver / firecrawlDriver / staticDriver / manualDriver` | ContentDriver factories (inject in tests) |
 
@@ -238,6 +244,22 @@ The identifier flows through to `agents.txt` (`Protocols: x402, x-mypay`) and `a
 For a brand-new block kind (not payment, not auth, not MCP, not Skills, not A2A, not UCP): the A2A diff is the most recent worked example. Add a new `XyzConfig` type, parser case if the tool reads agents.txt, `Xyz:` line emitter in `agents-txt.ts`, `xyz[]` array emitter in `agents-json.ts`, validator rules in `validate.ts`, Zod schema entry in `config-schema.ts`, and a wizard prompt.
 
 When the user mentions a new protocol that does not yet exist in `protocols.ts`, default to Path 1 (the `x-` prefix). Only suggest Path 2 if the protocol is clearly settled and the user wants herald-level support. Never silently extend `PAYMENT_PROTOCOLS` / `AUTH_PROTOCOLS` without confirming the spec status.
+
+## Adding a New Well-Known Discovery Surface
+
+Herald already emits four ecosystem discovery files alongside `agents.txt` / `agents.json`: RFC 9727 API catalog, SEP-2127 MCP server card, agentskills.io Discovery v0.2.0 index, and OpenAPI 3.1 with `x-payment-info` per the Payment Discovery draft. When a new ecosystem-level discovery surface stabilizes (a new RFC, a new SEP, a new well-known path that scanners probe), add a generator using the same shape as the existing four:
+
+1. **New generator file** in [`packages/core/src/`](packages/core/src/) (e.g. `xyz-discovery.ts`) exporting `generateXyzDiscovery(config): string | null`. Pure function, zero IO, zero runtime deps. Return `null` when the source block in the config is absent so the CLI can skip cleanly.
+2. **Types** in [`packages/core/src/types.ts`](packages/core/src/types.ts). Either extend an existing block (the way `mcp.serverCard?` extends `McpConfig`) or add a new top-level optional field. Keep the type strictly optional; the honest-declarations rule applies.
+3. **Headers** in [`packages/core/src/headers.ts`](packages/core/src/headers.ts). Inside `entriesForConfig`, add the matching `_headers` entry gated on the same config-block presence test the generator uses. Also append to the `linkValues` array if the surface deserves an RFC 8288 `Link:` header on `/`. The rule: a Link header MUST point at a path the site emits, so the gate is identical.
+4. **Index export** in [`packages/core/src/index.ts`](packages/core/src/index.ts).
+5. **CLI wiring** in [`packages/cli/src/commands/emit.ts`](packages/cli/src/commands/emit.ts) inside the `outputs.has('discovery')` branch. Mirror the existing pattern: call the generator, write the file when non-null, print a `✔` line; print a `⚠ skipped` line when the source field is absent but the surrounding block is present.
+6. **Zod schema** in [`packages/cli/src/config-schema.ts`](packages/cli/src/config-schema.ts) for any new config fields. Keep the regex / enum constraints tight (e.g. the `sha256:[0-9a-f]{64}` regex on `SkillEntry.digest` rejects malformed digests at parse time).
+7. **Tests** under [`packages/core/src/__tests__/`](packages/core/src/__tests__/) covering: emission with the block present, null return without it, headers-test updates if a new `_headers` source line gets added (the `vercelHeaderEntries` assertions need updating to include the new source).
+8. **CLAUDE.md** addition to the "Key exports" table above plus the matching `agentsjson.config.js` example block in a downstream README so adopters can see the shape.
+9. **Spec §12 row** in `agentstxt/app/site/src/content/spec/AGENTS-TXT-STANDARD.md` describing how the new surface relates to `agents.txt`. Editorial change, no version bump needed.
+
+The four existing surfaces are the worked examples; pick whichever shape is closest to the new one and copy. None of them needed runtime IO; if a new surface requires hashing or fetching (the way agent-skills/v0.2.0 needs sha256 digests), keep the IO at the CLI layer and have core accept a precomputed value, so `@herald/core` stays edge-runtime safe.
 
 ## Key Design Decisions (Why, Not What)
 

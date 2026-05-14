@@ -73,6 +73,28 @@ export default {
     },
 
     exemptUserAgents: [],  // user-agent strings that bypass payment entirely
+
+    // OpenAPI discovery surface emitted at /openapi.json per the Payment
+    // Discovery draft (paymentauth.org). One entry per payable path with
+    // x-payment-info offers. Independent of the protocols[] gate above: the
+    // file advertises protocol capability, not credential presence, so it
+    // emits regardless of which wallets are wired.
+    openapi: {
+      title:   'mysite API — payable routes',
+      version: '1.0.0',
+      paths: {
+        '/api/premium': {
+          summary: 'Premium endpoint.',
+          // Single-offer paths use the direct shorthand; multi-offer paths
+          // use offers[]. Amounts are atomic (USDC 6 decimals → 10000 = $0.01;
+          // Stripe USD 2 decimals → 1 = $0.01).
+          offers: [
+            { intent: 'charge', method: 'tempo',  amount: '10000', currency: '0x20c0...', description: 'USDC.e on Tempo' },
+            { intent: 'charge', method: 'stripe', amount: '1',     currency: 'usd',       description: 'Stripe card or Solana USDC' },
+          ],
+        },
+      },
+    },
   },
 
   authorization: {
@@ -86,11 +108,28 @@ export default {
       url: 'https://mysite.com/mcp',
       description: 'Public API surface.',
     },
+    // SEP-2127 server card emitted at /.well-known/mcp/server-card.json.
+    // All three capability booleans are required by the auditor; set the
+    // ones the MCP server actually exposes (false for unimplemented).
+    serverCard: {
+      name:    'mysite-mcp',
+      version: '1.0.0',
+      capabilities: { tools: true, resources: false, prompts: false },
+    },
   },
 
+  // The name / type / digest fields on each skill entry drive the
+  // agentskills.io Discovery v0.2.0 index emitted at
+  // /.well-known/agent-skills/index.json. Without a digest the skill still
+  // appears in agents.txt / agents.json (the canonical surfaces) but is
+  // skipped from the discovery index, since v0.2.0 requires verification
+  // metadata for every entry.
   skills: {
     urls: {
       url: 'https://mysite.com/skills/main/SKILL.md',
+      name: 'main',
+      type: 'skill-md',
+      digest: 'sha256:0123456789abcdef...',  // sha256sum public/skills/main/SKILL.md
       description: 'Teaches agents how to use this site.',
     },
   },
@@ -162,8 +201,17 @@ herald emit [options]
   --agents               Emit agents.txt + agents.json
   --sitemap              Emit sitemap.xml (also forces emission for the firecrawl driver)
   --security             Emit /.well-known/security.txt (requires security.contact)
+  --discovery            Emit the ecosystem discovery bundle:
+                           /.well-known/api-catalog         (RFC 9727 linkset+json)
+                           /.well-known/mcp/server-card.json (SEP-2127, needs mcp.serverCard)
+                           /.well-known/agent-skills/index.json (v0.2.0, needs skill digests)
+                           /openapi.json                    (Payment Discovery x-payment-info)
+                         Each file inside the bundle is independently gated on its
+                         source config block, following the honest-declarations rule.
   --headers              Emit §4.5 headers config (`_headers` for Cloudflare/Netlify,
-                         `vercel.json` for Vercel, fallback `_headers` otherwise)
+                         `vercel.json` for Vercel, fallback `_headers` otherwise).
+                         Includes CORS rules for any ecosystem surfaces the config
+                         declares, plus an RFC 8288 `Link:` block on `/` advertising them.
   --platform <name>      Override the detected platform: cloudflare|netlify|vercel|unknown
 
   # Negative selectors — subtract from the selected (or default) set
@@ -173,6 +221,8 @@ herald emit [options]
   --skip-agents          Skip agents.txt + agents.json
   --skip-sitemap         Never emit sitemap.xml
   --skip-security        Skip security.txt
+  --skip-discovery       Skip the ecosystem discovery bundle (api-catalog, mcp/server-card,
+                         agent-skills/index, openapi.json)
   --skip-headers         Skip the §4.5 headers config
 
 herald check <url>
@@ -409,6 +459,12 @@ generateLlmsFullTxt(config)                 → Promise<string>
 generateAgentsTxt(config)                   → string
 generateAgentsJson(config)                  → string
 generateSitemapXml(pages)                   → string
+generateSecurityTxt(config)                 → string | null
+generateApiCatalog(config)                  → string         // RFC 9727 linkset+json
+generateMcpServerCard(config)               → string | null  // SEP-2127; null when mcp.serverCard absent
+generateAgentSkillsIndex(config)            → string | null  // v0.2.0 index; null when no skill has a digest
+generateOpenApiJson(config)                 → string | null  // Payment Discovery x-payment-info
+generateHeadersFile(platform, config?)      → HeadersFile    // §4.5 + ecosystem CORS + Link headers on /
 
 // Validators (spec compliance checks on generated output, not user input)
 validateRobotsTxt(txt, config)  → ValidationResult[]

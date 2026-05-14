@@ -95,14 +95,20 @@ HERALD is an open-source framework + CLI that emits the standard discovery files
 ### The files it generates / serves
 
 ```
-/robots.txt   : RFC 9309 compliant, smart AI crawler rules            [default, --skip-robots]
-/llms.txt     : llmstxt.org spec, auto-generated from sitemap/Firecrawl [optional, --skip-llms]
-/sitemap.xml  : sitemaps.org 0.9, when you supply the URL list        [conditional; see below]
-/agents.txt   : agents.txt spec, plain-text capability declaration    [optional, --skip-agents]
-/agents.json  : agents.txt spec, structured JSON companion            [optional, --skip-agents]
+/robots.txt                              : RFC 9309 access control                       [default, --skip-robots]
+/llms.txt                                : llmstxt.org spec, from sitemap/Firecrawl       [optional, --skip-llms]
+/sitemap.xml                             : sitemaps.org 0.9, when you supply the URL list [conditional; see below]
+/agents.txt                              : agents.txt spec, plain-text capability layer   [optional, --skip-agents]
+/agents.json                             : agents.txt spec, structured JSON companion     [optional, --skip-agents]
+/.well-known/security.txt                : RFC 9116 vulnerability disclosure              [optional, --skip-security]
+/.well-known/api-catalog                 : RFC 9727 linkset+json API directory            [optional, --skip-discovery]
+/.well-known/mcp/server-card.json        : SEP-2127 MCP server card                       [optional, --skip-discovery]
+/.well-known/agent-skills/index.json     : agentskills.io Discovery v0.2.0 index          [optional, --skip-discovery]
+/openapi.json                            : OpenAPI 3.1 with x-payment-info per path       [optional, --skip-discovery]
+_headers / vercel.json                   : §4.5 CORS + Link headers for the above set     [default, --skip-headers]
 ```
 
-Each file is its own open standard. HERALD is the build/serve tooling for them. You can use it as a robots.txt-only generator, add llms.txt for content briefing, or go all the way with agents.txt + agents.json for capability discovery.
+Each file is its own open standard. HERALD is the build/serve tooling for them. Pick the subset that matches the site: a robots.txt-only generator for static sites, add llms.txt for content briefing, go all the way to `agents.txt` + `agents.json` for capability discovery, or include the four ecosystem discovery surfaces under `--discovery` for full readability by agent-readiness scanners (Cloudflare's `isitagentready.com`, agentic-API auditors, MCP Registry probes). Every file follows the same honest-declarations rule: a surface is emitted only when its source block exists in `agentsjson.config.js`, and the matching `_headers` / `Link:` entries appear only when the file does.
 
 ### Standards this builds on
 
@@ -117,6 +123,11 @@ Each file is its own open standard. HERALD is the build/serve tooling for them. 
 | [MCP (modelcontextprotocol.io)](https://modelcontextprotocol.io/) | Tool/resource server discovery |
 | [Agent Skills (agentskills.io)](https://agentskills.io/) | Skill package discovery |
 | [A2A (a2a-protocol.org)](https://a2a-protocol.org/) | Agent-to-agent AgentCard discovery |
+| [Agent Skills Discovery v0.2.0](https://github.com/cloudflare/agent-skills-discovery-rfc) | Verified skill discovery index with sha256 digests |
+| [MCP Server Card (SEP-2127)](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2127) | MCP-native pre-screening card |
+| [API Catalog (RFC 9727)](https://www.rfc-editor.org/rfc/rfc9727) | `application/linkset+json` directory of a site's APIs |
+| [Link headers (RFC 8288)](https://www.rfc-editor.org/rfc/rfc8288) | HTTP-layer discovery on `/` |
+| [Payment Discovery (`x-payment-info`)](https://paymentauth.org/draft-payment-discovery-00.txt) | Per-path payable-operation declarations in OpenAPI |
 | [Open Wallet Standard](https://openwallet.sh/) | Agent-side wallet (optional, for spending) |
 
 <details>
@@ -465,6 +476,22 @@ export default {
       presentations: ['sd-jwt-vc'],
       spec: 'https://ap2-protocol.org',
     },
+    // Optional: OpenAPI discovery surface emitted at /openapi.json per the
+    // Payment Discovery draft (paymentauth.org). One entry per payable path,
+    // each carrying x-payment-info offers an agent reads before issuing the
+    // request. Independent of the protocols[] gate above: this file
+    // advertises protocol capability, not credential presence.
+    openapi: {
+      paths: {
+        '/api/premium': {
+          summary: 'Premium API endpoint.',
+          offers: [
+            { intent: 'charge', method: 'tempo',  amount: '10000', currency: '0x20c00...', description: 'USDC.e on Tempo' },
+            { intent: 'charge', method: 'stripe', amount: '1',     currency: 'usd',       description: 'Stripe card or Solana USDC' },
+          ],
+        },
+      },
+    },
   },
 
   // Optional: agent identity verification (agent-auth)
@@ -480,12 +507,26 @@ export default {
       url: 'https://myblog.com/mcp',
       description: 'MCP server exposing blog content and search.',
     },
+    // Optional: SEP-2127 server card emitted at /.well-known/mcp/server-card.json.
+    // All three capability booleans are required by the auditor; set the ones
+    // your MCP server actually exposes.
+    serverCard: {
+      name:    'myblog-mcp',
+      version: '1.0.0',
+      capabilities: { tools: true, resources: false, prompts: false },
+    },
   },
 
-  // Optional: agent-installable skill packages (agentskills.io)
+  // Optional: agent-installable skill packages (agentskills.io).
+  // The name / type / digest fields drive the v0.2.0 discovery index at
+  // /.well-known/agent-skills/index.json. Without a digest the entry is
+  // emitted in agents.txt / agents.json but skipped from the index.
   skills: {
     urls: {
       url: 'https://myblog.com/skills/my-skill/SKILL.md',
+      name: 'my-skill',
+      type: 'skill-md',
+      digest: 'sha256:0123456789abcdef...',   // sha256sum public/skills/my-skill/SKILL.md
       description: 'Teaches agents how to search and navigate this blog.',
     },
   },

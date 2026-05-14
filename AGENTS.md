@@ -68,7 +68,12 @@ Each generator is a pure function: takes `AgenticConfig`, returns a string. No I
 | `generateAgentsTxt()` | `agents.txt` | Plain-text capabilities declaration (payments, auth, MCP, skills, A2A) |
 | `generateAgentsJson()` | `agents.json` | Structured JSON catalog: same config, richer per-block detail |
 | `generateSitemapXml()` | `sitemap.xml` | sitemaps.org 0.9 `<urlset>` from a `PageEntry[]` (XML-escaped, deduped) |
-| `generateHeadersFile(platform)` | `_headers` (Cloudflare/Netlify) or `vercel.json` (Vercel) | Platform-specific config carrying the spec §4.5 response headers (`Content-Type` with charset, `Access-Control-Allow-Origin: *`, `Cache-Control`). For Vercel, returns a JSON snippet the CLI merges with any existing `vercel.json`. |
+| `generateSecurityTxt()` | `/.well-known/security.txt` | RFC 9116 disclosure channel; `Contact`, `Expires`, `Canonical`, `Policy` |
+| `generateApiCatalog()` | `/.well-known/api-catalog` | RFC 9727 linkset+json. Anchors derived from `mcp` / `a2a` / `ucp`; service-desc and describedby links per anchor. No new config field. |
+| `generateMcpServerCard()` | `/.well-known/mcp/server-card.json` | SEP-2127 server card. Requires `mcp.serverCard = { name, version, capabilities }`; returns `null` otherwise. |
+| `generateAgentSkillsIndex()` | `/.well-known/agent-skills/index.json` | agentskills.io Discovery v0.2.0 with `$schema`, per-entry name / type / url / `digest: "sha256:<hex>"`. Entries lacking a digest are skipped with a warning. |
+| `generateOpenApiJson()` | `/openapi.json` | OpenAPI 3.1 with `x-payment-info` per the Payment Discovery draft. Driven by `payments.openapi.paths`; single-offer paths use the direct shorthand, multi-offer use `offers[]`. |
+| `generateHeadersFile(platform)` | `_headers` (Cloudflare/Netlify) or `vercel.json` (Vercel) | Platform-specific config carrying the spec §4.5 response headers (`Content-Type` with charset, `Access-Control-Allow-Origin: *`, `Cache-Control`). Also emits CORS entries for any ecosystem discovery surfaces the config declares, plus an RFC 8288 `Link:` block on `/` listing them. For Vercel, returns a JSON snippet the CLI merges with any existing `vercel.json`. |
 
 **`agents-json.ts`: the structured catalog**
 
@@ -95,15 +100,21 @@ interface AgenticConfig {
   site:           SiteConfig           // name, url, description
   content?:       ContentConfig        // how to discover pages (driver)
   crawlers?:      CrawlerConfig        // which bots to block/allow
-  payments?:      PaymentConfig        // declaration of supported payment protocols
+  payments?:      PaymentConfig        // payment protocols (+ optional openapi for x-payment-info)
   authorization?: AuthorizationConfig  // declaration of supported auth protocols
-  mcp?:           McpConfig            // MCP server endpoint URLs
-  skills?:        SkillsConfig         // skill package URLs (agentskills.io)
+  mcp?:           McpConfig            // MCP endpoint URLs (+ optional serverCard for SEP-2127)
+  skills?:        SkillsConfig         // skill URLs (SkillEntry: name? type? digest? for v0.2.0 index)
   a2a?:           A2AConfig            // A2A AgentCard URLs (a2a-protocol.org)
   ucp?:           UcpConfig            // UCP profile URLs (ucp.dev)
   security?:      SecurityConfig       // RFC 9116 security.txt
 }
 ```
+
+Three opt-in extensions drive the ecosystem discovery surfaces (SEP-2127 MCP card, agentskills.io v0.2.0 index, Payment Discovery `x-payment-info`):
+
+- `McpConfig.serverCard?: { name, version, capabilities: { tools, resources, prompts } }` — populates `/.well-known/mcp/server-card.json`. All three capability booleans are required by the SEP-2127 auditor.
+- `SkillEntry.{ name?, type?, digest? }` — `name` defaults to the URL's last folder segment, `type` defaults to `'skill-md'`, `digest` is a `sha256:<hex>` string the user computes from the artifact (no IO inside core). An entry without a digest is included in `agents.txt` / `agents.json` but skipped from `/.well-known/agent-skills/index.json` with a warning at emit time.
+- `PaymentConfig.openapi?: { title?, version?, paths: Record<string, { summary?, description?, offers[] }> }` — populates `/openapi.json`. Each offer is `{ intent, method, amount, currency?, description? }` per the Payment Discovery draft. The fourth ecosystem surface, `/.well-known/api-catalog` (RFC 9727), needs no new field; the linkset derives entirely from the `mcp` / `a2a` / `ucp` blocks.
 
 ### Content drivers (`types.ts` → `llms.ts` → `sitemap.ts`)
 
