@@ -13,6 +13,7 @@
 [![npm: @herald/cli](https://img.shields.io/npm/v/%40herald%2Fcli?label=%40herald%2Fcli&style=flat-square&color=cb3837)](https://www.npmjs.com/package/@herald/cli)
 [![Spec: agents.txt](https://img.shields.io/badge/spec-agents.txt-111?style=flat-square)](https://agentstxt.dev)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
+[![isitagentready: 100 / 100](https://img.shields.io/badge/isitagentready.com-100%20%2F%20100-16a34a?style=flat-square)](https://isitagentready.com/agentstxt.dev)
 [![GitHub stars](https://img.shields.io/github/stars/agentstxtdev/herald?style=flat-square&logo=github&logoColor=white&color=181717)](https://github.com/agentstxtdev/herald)
 
 </div>
