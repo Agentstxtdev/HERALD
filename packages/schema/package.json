@@ -1,6 +1,6 @@
 {
   "name": "@agentstxtdev/herald-schema",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Zod schemas for the agents.json wire format, with JSON Schema 2020-12 derivation. Single source of truth for runtime validation, TypeScript types, and the public agents.json JSON Schema served by agentstxt.dev.",
   "type": "module",
   "main": "./dist/index.cjs",
