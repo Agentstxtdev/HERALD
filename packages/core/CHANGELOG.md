@@ -1,5 +1,11 @@
 # @agentstxtdev/herald-core
 
+## 0.2.2
+
+### Patch Changes
+
+- Inject `$schema` field into emitted `agents.json` pointing at the canonical JSON Schema at https://agentstxt.dev/schema/agents-json/v1.0.json; add `headersExtras` field on `AgenticConfig` so adopters can declare additional `_headers` / `vercel.json` rules verbatim; recognise `$schema` in `validateAgentsJson` via a new `json-schema-ref` rule. Companion package `@agentstxtdev/herald-schema` published alongside as the Zod source of truth and JSON Schema derivation for the wire format.
+
 ## 0.2.1
 
 ### Patch Changes
@@ -12,9 +18,6 @@
 
 - - Add four new discovery generators: `generateApiCatalog` (RFC 9727),
     `generateMcpServerCard` (SEP-2127), `generateAgentSkillsIndex`
-    (Cloudflare RFC v0.2.0), `generateOpenApiJson` (Payment Discovery draft).
-    - Extend `McpConfig` with `serverCard?`, `SkillEntry` with `name? / type? /
-digest?`, `PaymentConfig` with `openapi?`.
-    - Generate matching `_headers` entries (CORS for the new well-known paths)
-      and RFC 8288 `Link:` headers on `/`.
-    - New CLI flags `--discovery` / `--skip-discovery` to control the bundle.
+    (Cloudflare RFC v0.2.0), `generateOpenApiJson` (Payment Discovery draft). - Extend `McpConfig` with `serverCard?`, `SkillEntry` with `name? / type? /
+digest?`, `PaymentConfig` with `openapi?`. - Generate matching `_headers` entries (CORS for the new well-known paths)
+    and RFC 8288 `Link:` headers on `/`. - New CLI flags `--discovery` / `--skip-discovery` to control the bundle.
