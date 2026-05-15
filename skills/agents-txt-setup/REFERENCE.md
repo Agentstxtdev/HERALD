@@ -149,6 +149,22 @@ export default {
       description: 'UCP profile for commerce capabilities.',
     },
   },
+
+  // Extra header rules appended verbatim to the generated `_headers` or
+  // `vercel.json`. Use for custom static directories herald has no built-in
+  // knowledge of: a vendored JSON Schema, an additional well-known surface,
+  // anything needing CORS or a specific Content-Type. Unmatched paths are a
+  // no-op at the edge, so dead entries are harmless.
+  headersExtras: [
+    {
+      source: '/schema/*',
+      headers: [
+        { key: 'Content-Type',                value: 'application/json' },
+        { key: 'Access-Control-Allow-Origin', value: '*' },
+        { key: 'Cache-Control',               value: 'public, max-age=86400, immutable' },
+      ],
+    },
+  ],
 }
 ```
 
@@ -505,9 +521,38 @@ validateSecurityTxt(body)               // spec compliance check
 type PaymentProtocolId = 'x402' | 'mpp' | 'ap2' | `x-${string}`
 type AuthProtocolId    = 'agent-auth'  | `x-${string}`
 type HostingPlatform   = 'cloudflare' | 'netlify' | 'vercel' | 'unknown'
+
+// Hosted JSON Schema reference
+AGENTS_JSON_SCHEMA_URL                  // 'https://agentstxt.dev/schema/agents-json/v1.0.json'
+                                        // Injected as `$schema` at the top of every generated agents.json
+                                        // so editors (VS Code, JetBrains, jq --schema) read it for autocomplete
 ```
 
 Zero runtime dependencies, safe on Node.js, edge runtimes, Deno, Bun.
+
+---
+
+## `@herald/schema` Key Exports
+
+The Zod source of truth for the agents.json wire format. Lives in its own package because Zod is a runtime dependency `@herald/core` cannot accept.
+
+```ts
+// Runtime validation + types
+import { AgentsJsonSchema, type AgentsJson } from '@herald/schema'
+
+AgentsJsonSchema.safeParse(json)          // { success: true, data: AgentsJson } | { success: false, error }
+AgentsJsonSchema.parse(json)              // throws on invalid input
+
+// JSON Schema derivation (the document hosted at agentstxt.dev/schema/agents-json/v1.0.json)
+toJsonSchema()                            // Record<string, unknown>: JSON Schema 2020-12 document
+toJsonSchemaString()                      // string: same, JSON.stringify with 2-space indent + trailing newline
+
+// Identity
+SCHEMA_VERSION                            // '1.0' (current wire-format version)
+SCHEMA_ID                                 // 'https://agentstxt.dev/schema/agents-json/v1.0.json'
+```
+
+CLI entry: `pnpm --filter @agentstxtdev/herald-schema emit:json-schema <out-dir>` writes `agents-json/v<VERSION>.json` to the given directory. Used by the agentstxt.dev reference deployment to keep the public schema file in sync with the Zod source.
 
 ---
 

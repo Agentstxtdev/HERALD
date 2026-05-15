@@ -29,7 +29,8 @@ Herald is a generator only. Runtime concerns like the 402 handler that implement
 herald/
 ├── packages/
 │   ├── core/          — shared types + pure generators (no framework deps)
-│   └── cli/           — @herald/cli
+│   ├── cli/           — @herald/cli
+│   └── schema/        — @herald/schema: Zod source of truth for agents.json + JSON Schema derivation
 ├── docs/              — engineering decisions and changelog entries
 ├── skills/            — agent-installable skill packages (e.g. agents-txt-setup)
 └── tsconfig.base.json — shared TypeScript config (ES2022, NodeNext, strict)
@@ -364,6 +365,19 @@ Pages are deduplicated by URL and XML-escaped before serialization in `generateS
 ### `check` command
 
 Fetches `robots.txt`, `llms.txt`, `agents.txt`, `agents.json`, and `sitemap.xml` from a live URL and scores the site using the same `validateRobotsTxt`, `validateLlmsTxt`, `validateAgentsTxt`, and `validateAgentsJson` functions from `@herald/core` that `emit` uses, not ad-hoc string matching.
+
+## Package: `@herald/schema`
+
+```
+packages/schema/src/
+├── agents-json-schema.ts  — Zod schema for the agents.json wire format
+├── index.ts               — public exports + toJsonSchema() derivation
+└── cli-emit.ts            — `node dist/cli-emit.js <out-dir>` writes the JSON Schema file
+```
+
+Single source of truth for three artefacts that downstream consumers expect to agree on: the runtime validator (`AgentsJsonSchema.safeParse(...)`), the TypeScript type (`AgentsJson` via `z.infer`), and the JSON Schema 2020-12 document hosted at `agentstxt.dev/schema/agents-json/v1.0.json`. Zod cannot live in `@herald/core` because of the zero-runtime-dep rule, so it ships from its own package; the JSON Schema URL is duplicated between `@herald/core` (`AGENTS_JSON_SCHEMA_URL`) and `@herald/schema` (`SCHEMA_ID`) deliberately, with a round-trip integration test in `packages/schema/src/__tests__/herald-output.test.ts` catching drift between the producer and the schema.
+
+To bump the wire-format version: edit `SCHEMA_VERSION` in `agents-json-schema.ts`, update the Zod object shape, rebuild, re-emit the JSON Schema file. The CLI helper writes `agents-json/v<VERSION>.json` so multiple versions coexist on the host. Adopters keep their old `$schema` reference valid; the new version ships at a new URL.
 
 ## Adding a new content driver
 

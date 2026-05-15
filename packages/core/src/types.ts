@@ -495,6 +495,19 @@ export interface SecurityConfig {
   encryption?: string
 }
 
+/**
+ * Extra raw `_headers` / `vercel.json` rules appended verbatim to the generated
+ * headers config. Use for paths herald doesn't know about — custom static
+ * directories, reference-deployment-specific surfaces, etc. Each entry mirrors
+ * the Vercel headers shape; the generator translates to Cloudflare `_headers`
+ * automatically.
+ */
+export interface ExtraHeaderRule {
+  /** Path or glob (e.g. `/schema/*`). Matches Vercel + Cloudflare `_headers` semantics. */
+  source: string
+  headers: Array<{ key: string; value: string }>
+}
+
 export interface AgenticConfig {
   site: SiteConfig
   content?: ContentConfig
@@ -506,5 +519,12 @@ export interface AgenticConfig {
   a2a?: A2AConfig
   ucp?: UcpConfig
   security?: SecurityConfig
+  /**
+   * Extra header rules to append to the generated `_headers` / `vercel.json`.
+   * Useful for paths herald has no built-in knowledge of (custom static
+   * directories, externally-hosted schemas, etc.). Unmatched paths are
+   * silently a no-op at the edge, so unused entries are harmless.
+   */
+  headersExtras?: ExtraHeaderRule[]
 }
 

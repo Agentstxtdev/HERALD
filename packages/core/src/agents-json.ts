@@ -27,10 +27,20 @@ const SOLANA_CHAIN_IDS: Record<string, string> = {
 // Standard: https://agentstxt.dev
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Canonical JSON Schema URL injected into every generated `agents.json` as
+ * `$schema`. Lets any JSON-aware editor (VS Code, JetBrains, jq --schema) give
+ * operators free autocomplete and inline validation when they hand-edit the
+ * file. The schema itself is generated from `@agentstxtdev/herald-schema` and
+ * hosted as a static asset at this URL on the reference deployment.
+ */
+export const AGENTS_JSON_SCHEMA_URL = 'https://agentstxt.dev/schema/agents-json/v1.0.json'
+
 export function generateAgentsJson(config: AgenticConfig): string {
   const { site, payments, authorization, mcp, skills, a2a, ucp } = config
 
   const obj: Record<string, unknown> = {
+    $schema: AGENTS_JSON_SCHEMA_URL,
     version: '1.0',
     standard: 'https://agentstxt.dev',
     site: {

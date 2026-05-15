@@ -559,6 +559,30 @@ The same file is consumed by **`herald emit`**, which reads it to write the stat
 - **Static / Jamstack sites** (Astro, Hugo, 11ty, Next.js export): at your project root, generated at build time by `herald emit --out ./public`.
 - **Server frameworks** (Express, Hono, Next.js App Router): at your project root, generated at build time or on deploy. Serve the resulting files as static assets, or hand-roll a route that imports `@herald/core` to render them on demand.
 
+### Editor autocomplete via `$schema`
+
+Every `agents.json` herald emits carries a `$schema` field pointing at the canonical JSON Schema hosted on agentstxt.dev:
+
+```json
+{
+  "$schema": "https://agentstxt.dev/schema/agents-json/v1.0.json",
+  "version": "1.0",
+  "standard": "https://agentstxt.dev",
+  "site": { ... }
+}
+```
+
+JSON-aware editors (VS Code, JetBrains, Helix with the JSON LSP, `jq --schema`, anything that respects the `$schema` field) read the referenced document and provide inline validation plus autocomplete the moment an operator opens the file. Hand-edits stay honest: a typo in `payments.mpp.methods`, a missing required field, a non-https URL in `mcp[].url` all surface in the editor before the file is ever served.
+
+The schema is derived from the Zod source in `@herald/schema` via `z.toJSONSchema()`. To consume it directly in a third-party validator:
+
+```ts
+import { AgentsJsonSchema } from '@herald/schema'
+
+const result = AgentsJsonSchema.safeParse(await (await fetch(url)).json())
+if (!result.success) console.error(result.error.issues)
+```
+
 ### Validation
 
 Both `init` and `emit` run a Zod schema (CLI-only, doesn't bloat `@herald/core`). Errors print field-level paths so misconfiguration surfaces early:
@@ -593,6 +617,27 @@ The agents.txt spec mandates four response headers on `/agents.txt` and `/agents
 | **Unknown** | nothing matched | `_headers` in `--out` as a best-effort default, plus a console warning. Translate to your platform's mechanism. See the per-platform table below. |
 
 **A2A AgentCard paths included automatically.** When `a2a.cards` is set in `agentsjson.config.js`, the generator emits matching header entries for each same-origin AgentCard path alongside the `/agents.txt` and `/agents.json` entries. The headers used are `Content-Type: application/json`, `Access-Control-Allow-Origin: *`, `Cache-Control: public, max-age=3600`. AgentCards on a different origin from `site.url` are skipped because their headers are not the responsibility of this deployment. AgentCards (a2a-protocol.org) are not governed by agents.txt §4.5, but the CORS line is load-bearing for any browser-context A2A client probing the well-known path cross-origin, so it is included by default.
+
+**Extra header rules for custom paths.** Adopters with custom static directories herald has no built-in knowledge of can declare additional rules via `headersExtras` on the config. Entries append verbatim to the generated `_headers` / `vercel.json`. Useful for serving a vendored JSON Schema, an additional well-known surface, or any other static asset that needs CORS or a specific `Content-Type`:
+
+```js
+// agentsjson.config.js
+export default {
+  // ...
+  headersExtras: [
+    {
+      source: '/schema/*',
+      headers: [
+        { key: 'Content-Type',                value: 'application/json' },
+        { key: 'Access-Control-Allow-Origin', value: '*' },
+        { key: 'Cache-Control',               value: 'public, max-age=86400, immutable' },
+      ],
+    },
+  ],
+}
+```
+
+Unmatched paths are a no-op at the edge, so an entry for a directory that does not exist is harmless.
 
 **Static file vs dynamic handler.** Headers config files (`_headers`, `vercel.json#headers`) apply only to *static* files on the hosting platform's asset pipeline. They do not apply to *dynamic* routes served by a handler or worker (Express, Next.js App Router, Hono, Cloudflare Workers route handlers, etc.). If you serve `/agents.txt` or an AgentCard dynamically, the route handler must set the headers in code (`Content-Type`, `Access-Control-Allow-Origin: *`, `Cache-Control: public, max-age=3600`). Agent-auth's `/.well-known/agent-configuration` endpoint is the canonical dynamic case: it is conventionally served by a handler and is therefore not emitted into the headers config.
 
@@ -800,6 +845,7 @@ Two practical consequences:
 |---------|---------|
 | `@herald/core` | Pure generators: robots.txt, llms.txt, agents.txt, agents.json. No runtime deps. |
 | `@herald/cli` | `herald init/generate/check` |
+| `@herald/schema` | Zod schemas for the `agents.json` wire format, with JSON Schema derivation via `z.toJSONSchema()`. Single source of truth for runtime validation, TypeScript types, and the public JSON Schema hosted on agentstxt.dev. Zod is kept out of `@herald/core` so core stays edge-runtime safe. |
 
 ---
 

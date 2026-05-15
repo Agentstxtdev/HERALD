@@ -1,0 +1,66 @@
+{
+  "name": "@agentstxtdev/herald-schema",
+  "version": "0.1.0",
+  "description": "Zod schemas for the agents.json wire format, with JSON Schema derivation. Single source of truth for runtime validation, TypeScript types, and the public JSON Schema hosted at agentstxt.dev/schema/agents-json/.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rm -rf dist",
+    "emit:json-schema": "node ./dist/cli-emit.js",
+    "test": "vitest run",
+    "lint": "biome lint ./src",
+    "publint": "publint"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@agentstxtdev/herald-core": "workspace:*",
+    "@types/node": "^25.6.2",
+    "typescript": "^6.0.3"
+  },
+  "keywords": [
+    "agents-json",
+    "agents-txt",
+    "json-schema",
+    "zod",
+    "schema",
+    "agentic-web"
+  ],
+  "license": "Apache-2.0",
+  "homepage": "https://agentstxt.dev",
+  "bugs": {
+    "url": "https://github.com/agentstxtdev/herald/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agentstxtdev/herald.git",
+    "directory": "packages/schema"
+  },
+  "engines": {
+    "node": ">=20.12.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

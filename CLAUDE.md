@@ -14,8 +14,9 @@ Use `/agents-txt-setup` when helping a user integrate `herald` into their own si
 ```
 herald/
 ├── packages/
-│   ├── core/    — @herald/core  — pure generators, zero runtime deps
-│   └── cli/     — @herald/cli   — herald CLI (Commander.js)
+│   ├── core/    — @herald/core    — pure generators, zero runtime deps
+│   ├── cli/     — @herald/cli     — herald CLI (Commander.js)
+│   └── schema/  — @herald/schema  — Zod source of truth for agents.json + JSON Schema export
 ├── docs/        — changelogs
 ├── skills/      — agent-installable skill packages
 └── tsconfig.base.json
@@ -78,12 +79,17 @@ interface AgenticConfig {
   a2a?:           { cards }
   ucp?:           { profiles }
   security?:      { contact, policy?, preferredLanguages? }
+  headersExtras?: ExtraHeaderRule[]                // append-verbatim `_headers` / `vercel.json` rules
 }
 ```
 
 `payments.protocols` accepts the registered identifiers (`'x402'`, `'mpp'`, `'ap2'`) and any experimental identifier prefixed with `x-` (e.g. `'x-mypay'`) per agents.txt spec §3.1. Same convention for `authorization.protocols`. The set of identifiers comes from `@herald/core`'s `protocols.ts` registry, which is the single source of truth.
 
 `mcp.serverCard`, `SkillEntry.{name, type, digest}`, and `payments.openapi` are the three opt-in fields that drive the ecosystem discovery surfaces (`/.well-known/mcp/server-card.json` per SEP-2127, `/.well-known/agent-skills/index.json` per agentskills.io v0.2.0, `/openapi.json` per the Payment Discovery draft). Each follows the same honest-declarations rule as the rest of herald: the matching generator returns `null` when its source block is absent, and the matching `_headers` / `Link:` entries only appear when the file does. The fourth ecosystem surface, `/.well-known/api-catalog` (RFC 9727), needs no new field; it derives its anchors entirely from the `mcp` / `a2a` / `ucp` blocks the config already declares. See [`packages/core/src/api-catalog.ts`](packages/core/src/api-catalog.ts), [`packages/core/src/mcp-server-card.ts`](packages/core/src/mcp-server-card.ts), [`packages/core/src/agent-skills-index.ts`](packages/core/src/agent-skills-index.ts), and [`packages/core/src/openapi.ts`](packages/core/src/openapi.ts) for the exact emission rules.
+
+`headersExtras` is the escape hatch for adopters who need `_headers` / `vercel.json` entries herald has no built-in knowledge of: a vendored JSON Schema directory, an additional well-known surface, any path requiring custom CORS or `Content-Type`. Entries append verbatim to the generated headers file. Unmatched paths are a no-op at the edge, so dead entries are harmless. The reference deployment uses this field to register the `/schema/*` rule that serves the public `agents.json` JSON Schema; see the agentstxt repo's `app/site/agentsjson.config.js` for the worked example.
+
+The `$schema` field herald injects into every generated `agents.json` is also driven from `@herald/core` (see `AGENTS_JSON_SCHEMA_URL` constant in `agents-json.ts`). The URL is duplicated between `@herald/core` and `@herald/schema` deliberately: core cannot import the schema package without violating its zero-dep rule. A round-trip test in `packages/schema/src/__tests__/herald-output.test.ts` catches drift if the two ever diverge.
 
 Users write `agentsjson.config.js` once. Every generator reads from it.
 
@@ -106,9 +112,35 @@ Key exports:
 | `generateMcpServerCard(config)` | SEP-2127 `/.well-known/mcp/server-card.json`. Gated on `mcp.serverCard = { name, version, capabilities: { tools, resources, prompts } }`; returns `null` when the field is absent. |
 | `generateAgentSkillsIndex(config)` | agentskills.io Discovery v0.2.0 index at `/.well-known/agent-skills/index.json`. Per-entry `name?` / `type?` / `digest: "sha256:<hex>"` on `SkillEntry`; entries without a digest are skipped at emit time with a warning. |
 | `generateOpenApiJson(config)` | OpenAPI 3.1 at `/openapi.json` with `x-payment-info` per the [Payment Discovery draft](https://paymentauth.org/draft-payment-discovery-00.txt). Driven by `payments.openapi.paths`; single-offer paths use the direct shorthand, multi-offer use the `offers[]` array form. |
+| `AGENTS_JSON_SCHEMA_URL` (constant) | Canonical JSON Schema URL injected into every generated `agents.json` as `$schema`. Lets editors (VS Code, JetBrains, `jq --schema`) give operators free autocomplete and inline validation. The schema document itself lives on agentstxt.dev; `@herald/core` is unaware of the schema's shape, and `@herald/schema` owns that. |
 | `generateHeadersFile(platform)` / `mergeVercelHeaders()` | §4.5 platform headers config (`_headers` or `vercel.json`). When the config carries an `mcp`, `a2a`, `ucp`, `skills`, or `payments.openapi` block, the generator emits matching CORS rules for the corresponding ecosystem discovery surfaces and an RFC 8288 `Link:` header block on `/` advertising every surface the site publishes. |
 | `validateRobotsTxt / validateLlmsTxt / validateAgentsTxt / validateAgentsJson / validateSitemapXml / validateSecurityTxt` | Spec compliance checks on generated output |
 | `sitemapDriver / firecrawlDriver / staticDriver / manualDriver` | ContentDriver factories (inject in tests) |
+
+`validateAgentsJson` emits a `json-schema-ref` rule that recognises the `$schema` field as a positive signal when present and warns (with the canonical URL as the recommended value) when absent. The validator does not fetch the referenced schema; presence + string-shape is enough at this layer.
+
+## Package: `@herald/schema`
+
+**Zod source of truth for the agents.json wire format.** Lives in its own package because Zod is a runtime dependency `@herald/core` cannot accept (the zero-runtime-dep rule keeps core edge-runtime safe). Bridges three artefacts from one Zod declaration:
+
+- `AgentsJsonSchema`: runtime validator (`AgentsJsonSchema.safeParse(json)`) for third-party consumers that have a served agents.json in hand
+- `z.infer<typeof AgentsJsonSchema>`: re-exported as the `AgentsJson` TypeScript type
+- `toJsonSchema()` / `toJsonSchemaString()`: derived JSON Schema 2020-12 document, hosted at `agentstxt.dev/schema/agents-json/v1.0.json` for editor autocomplete
+
+Key exports:
+
+| Export | What it is |
+|---|---|
+| `AgentsJsonSchema` | Zod object schema. Call `.parse()` to validate, `.safeParse()` for non-throwing result. |
+| `AgentsJson` | TypeScript type from `z.infer<typeof AgentsJsonSchema>`. Use for typed access to a parsed document. |
+| `SCHEMA_VERSION` | Current wire-format version string (e.g. `"1.0"`). Bump when the wire shape changes. |
+| `SCHEMA_ID` | Canonical hosted URL (e.g. `https://agentstxt.dev/schema/agents-json/v1.0.json`). |
+| `toJsonSchema()` | Derives a JSON Schema 2020-12 document from the Zod schema. Returns a plain JS object. |
+| `toJsonSchemaString()` | Same as `toJsonSchema()`, JSON-stringified with 2-space indent and a trailing newline. Matches herald's formatting convention. |
+
+CLI entry: `node dist/cli-emit.js <out-dir>` (or `pnpm --filter @agentstxtdev/herald-schema emit:json-schema <out-dir>`) writes `agents-json/v<SCHEMA_VERSION>.json` to the given directory. Used by the agentstxt.dev reference deployment to keep the public schema file in sync with the Zod source.
+
+The round-trip contract: every shape `generateAgentsJson` in `@herald/core` can emit must validate cleanly against `AgentsJsonSchema`. Enforced by an integration test in `packages/schema/src/__tests__/herald-output.test.ts`. If a future generator change emits a field the schema does not model, the test fails before merge.
 
 ## Package: `@herald/cli`
 

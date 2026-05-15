@@ -60,7 +60,9 @@ node packages/cli/dist/cli.js init
 | Payment declaration activation | `packages/core/src/payments.ts` (`resolveActiveProtocols`, `isX402Active`, `isMppActive`, `isAp2Active`) |
 | CLI command | `packages/cli/src/commands/<name>.ts` |
 | CLI wizard prompt | `packages/cli/src/commands/init.ts` |
-| Config Zod schema | `packages/cli/src/config-schema.ts` (CLI-only — never import Zod into `core`) |
+| Config Zod schema | `packages/cli/src/config-schema.ts` (CLI-only, never import Zod into `core`) |
+| Wire-format Zod schema (agents.json shape) | `packages/schema/src/agents-json-schema.ts`. Single source for the runtime validator, the `AgentsJson` type, and the hosted JSON Schema. Bump `SCHEMA_VERSION` when changing the wire shape and re-emit the JSON Schema file. |
+| `$schema` URL injected by the generator | `AGENTS_JSON_SCHEMA_URL` constant in `packages/core/src/agents-json.ts`. Kept in lockstep with `SCHEMA_ID` in `@herald/schema` by the round-trip test. |
 
 Detailed architecture and rules: [`AGENTS.md`](AGENTS.md).
 

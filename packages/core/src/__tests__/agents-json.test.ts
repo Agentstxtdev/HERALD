@@ -616,6 +616,31 @@ describe('validateAgentsJson', () => {
     expect(results.find((r) => r.rule === 'json-standard')?.status).toBe('pass')
   })
 
+  describe('$schema field recognition', () => {
+    it('passes json-schema-ref when $schema is a string', () => {
+      // generateAgentsJson injects $schema by default, so the minimal-config
+      // output already exercises the happy path.
+      const results = validateAgentsJson(generateAgentsJson(baseConfig))
+      const rule = results.find((r) => r.rule === 'json-schema-ref')
+      expect(rule?.status).toBe('pass')
+      expect(rule?.message).toMatch(/Schema reference present/)
+    })
+
+    it('warns when $schema is missing', () => {
+      const json = JSON.stringify({ version: '1.0', standard: 'https://agentstxt.dev' })
+      const rule = validateAgentsJson(json).find((r) => r.rule === 'json-schema-ref')
+      expect(rule?.status).toBe('warn')
+      expect(rule?.message).toMatch(/No "\$schema" field/)
+    })
+
+    it('warns when $schema is present but not a string', () => {
+      const json = JSON.stringify({ $schema: 42, version: '1.0', standard: 'https://agentstxt.dev' })
+      const rule = validateAgentsJson(json).find((r) => r.rule === 'json-schema-ref')
+      expect(rule?.status).toBe('warn')
+      expect(rule?.message).toMatch(/not a string/)
+    })
+  })
+
   it('warns on missing version', () => {
     const results = validateAgentsJson(JSON.stringify({ standard: 'https://agentstxt.dev' }))
     expect(results.find((r) => r.rule === 'json-version')?.status).toBe('warn')

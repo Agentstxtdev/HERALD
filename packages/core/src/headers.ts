@@ -313,6 +313,15 @@ function entriesForConfig(config: AgenticConfig | undefined): VercelHeaderEntry[
     out.push(jsonStaticEntry('/openapi.json'))
   }
 
+  // Caller-supplied extras append verbatim. Use for paths herald doesn't know
+  // about (custom static dirs, externally-hosted schemas, etc.). Unmatched
+  // paths are a no-op at the edge, so unused entries are harmless.
+  if (config.headersExtras) {
+    for (const extra of config.headersExtras) {
+      out.push({ source: extra.source, headers: extra.headers.map((h) => ({ ...h })) })
+    }
+  }
+
   // Link headers on `/` (RFC 8288 / RFC 9727 §3). Point machine clients at the
   // discovery surfaces this site exposes. The Link header set is built from the
   // same config blocks that drive the static entries above so a site never

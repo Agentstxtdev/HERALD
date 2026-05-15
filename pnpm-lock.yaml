@@ -105,6 +105,22 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  packages/schema:
+    dependencies:
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@agentstxtdev/herald-core':
+        specifier: workspace:*
+        version: link:../core
+      '@types/node':
+        specifier: ^25.6.2
+        version: 25.6.2
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
 packages:
 
   '@babel/helper-string-parser@7.27.1':

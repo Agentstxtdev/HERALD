@@ -317,6 +317,16 @@ export const AgenticConfigSchema = z.object({
   a2a: A2AConfigSchema.optional(),
   ucp: UcpConfigSchema.optional(),
   security: SecurityConfigSchema.optional(),
+  headersExtras: z
+    .array(
+      z.object({
+        source: z.string().min(1, 'headersExtras[].source must not be empty'),
+        headers: z
+          .array(z.object({ key: z.string().min(1), value: z.string() }))
+          .min(1, 'headersExtras[].headers must include at least one entry'),
+      }),
+    )
+    .optional(),
 })
 
 export type AgenticConfigInput = z.input<typeof AgenticConfigSchema>

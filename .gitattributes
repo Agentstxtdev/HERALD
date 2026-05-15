@@ -1,0 +1,19 @@
+# GitHub Linguist overrides.
+#
+# Keep the language-percentage badge focused on first-party TypeScript source.
+# Tooling configs and example-snippet files aren't representative of what the
+# project is written in, and they pull the badge away from "TypeScript 100%"
+# even though no real JavaScript ships in this repo.
+#
+# `linguist-detectable=false` removes a file from the percentage calculation
+# without renaming it or lying about its language. GitHub still displays the
+# file normally; it just stops counting toward the badge.
+#
+# Re-run takes effect on the next push (Linguist re-indexes on commit).
+
+.env.example            linguist-detectable=false
+.changeset/config.json  linguist-detectable=false
+biome.json              linguist-detectable=false
+turbo.json              linguist-detectable=false
+**/tsconfig*.json       linguist-detectable=false
+**/package.json         linguist-detectable=false

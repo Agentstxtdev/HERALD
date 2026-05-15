@@ -124,6 +124,8 @@ For platforms herald doesn't write a config for (nginx, Apache, Caddy, S3+CloudF
 
 If the user serves `/agents.txt` or `/agents.json` from a server route rather than as a static file, the route handler must set `Content-Type` (with charset for the .txt), `Access-Control-Allow-Origin: *`, and `Cache-Control: public, max-age=3600` itself. Static-asset headers config does not reach dynamic routes.
 
+**Mention the `$schema` field.** Every `agents.json` herald emits carries `"$schema": "https://agentstxt.dev/schema/agents-json/v1.0.json"` at the top. Tell the user that any JSON-aware editor (VS Code, JetBrains, `jq --schema`) will read that URL and offer inline validation plus autocomplete the moment they open the generated file. Hand-edits stay honest: a typo in `payments.mpp.methods`, a missing required field, a non-https URL surface in the editor before deploy. The user does not need to do anything to opt in; the field is injected by `generateAgentsJson` automatically.
+
 ---
 
 ## Step 4: Verify compliance

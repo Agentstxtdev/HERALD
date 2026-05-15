@@ -438,6 +438,29 @@ export function validateAgentsJson(content: string): ValidationResult[] {
       ? { rule: 'json-standard', status: 'pass', message: 'Standard field present' }
       : { rule: 'json-standard', status: 'warn', message: 'Missing standard field' },
   )
+  // `$schema` is optional but recommended: it lets editors (VS Code, JetBrains)
+  // give operators free autocomplete and inline validation when they hand-edit
+  // the file. We don't fetch the referenced URL; presence + canonical-origin
+  // check is enough at this layer.
+  if (typeof parsed.$schema === 'string') {
+    results.push({
+      rule: 'json-schema-ref',
+      status: 'pass',
+      message: `Schema reference present: ${parsed.$schema}`,
+    })
+  } else if ('$schema' in parsed) {
+    results.push({
+      rule: 'json-schema-ref',
+      status: 'warn',
+      message: '"$schema" present but not a string — should be the URL of the JSON Schema describing this document',
+    })
+  } else {
+    results.push({
+      rule: 'json-schema-ref',
+      status: 'warn',
+      message: 'No "$schema" field — consider adding one (e.g. "https://agentstxt.dev/schema/agents-json/v1.0.json") so editors offer autocomplete and inline validation',
+    })
+  }
 
   // ── Payments ───────────────────────────────────────────────────────────────
   // Presence of at least one per-protocol object inside the payments block IS
