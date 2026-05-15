@@ -16,7 +16,7 @@
 // the same wire-format judgement).
 //
 // The MCP worker runs the same corpus from a duplicated copy at
-// agentstxt/app/mcp/src/__tests__/fixtures/. A sync check (see scripts/
+// agents-txt/app/mcp/src/__tests__/fixtures/. A sync check (see scripts/
 // sync-check-fixtures.mjs) asserts byte-equality between the two copies.
 // ─────────────────────────────────────────────────────────────────────────────
 

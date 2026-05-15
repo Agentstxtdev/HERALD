@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <g data-symbol="herald-mark">
+      <!-- mouthpiece (left) -->
+      <rect x="14" y="100" width="14" height="20" rx="2" fill="#f2ede3" />
+      <!-- mouthpiece cup -->
+      <rect x="26" y="104" width="6" height="12" fill="#f2ede3" />
+
+      <!-- main tube of the trumpet -->
+      <rect x="32" y="106" width="120" height="8" fill="#f2ede3" />
+
+      <!-- middle valve ring -->
+      <rect x="92" y="100" width="6" height="20" fill="#f2ede3" />
+
+      <!-- bell taper (trapezoid) - flares to the right -->
+      <path d="M152 96 L210 70 L210 150 L152 124 Z" fill="#f2ede3" />
+
+      <!-- bell rim (right edge, slightly thicker line via shape) -->
+      <rect x="206" y="68" width="10" height="84" fill="#f2ede3" />
+
+      <!-- cord attaching banner to trumpet (left + right vertical lines) -->
+      <rect x="56" y="114" width="2" height="14" fill="#f2ede3" />
+      <rect x="138" y="114" width="2" height="14" fill="#f2ede3" />
+
+      <!-- BANNER (gonfalon) - hangs below the trumpet
+           Square with swallow-tail bottom cut. -->
+      <path d="
+        M50 126
+        L146 126
+        L146 206
+        L122 192
+        L98 206
+        L74 192
+        L50 206
+        Z
+      " fill="#f2ede3" />
+
+      <!-- ROBOT FACE — knocked out of the banner via cream-colored shapes.
+           We use a class so we can switch knockout color per variant. -->
+      <g class="face-knockout">
+        <!-- antenna stem (top of banner, extends slightly above) -->
+        <rect x="96" y="118" width="4" height="10" fill="#dd5230" />
+        <rect x="96" y="118" width="4" height="10" fill="#dd5230" />
+        <!-- antenna ball -->
+        <rect x="92" y="114" width="12" height="4" fill="#dd5230" />
+
+        <!-- left eye -->
+        <rect x="72" y="146" width="18" height="18" fill="#dd5230" />
+        <!-- right eye -->
+        <rect x="106" y="146" width="18" height="18" fill="#dd5230" />
+
+        <!-- mouth: 4 small teeth slit -->
+        <rect x="74" y="174" width="6" height="4" fill="#dd5230" />
+        <rect x="84" y="174" width="6" height="4" fill="#dd5230" />
+        <rect x="94" y="174" width="6" height="4" fill="#dd5230" />
+        <rect x="104" y="174" width="6" height="4" fill="#dd5230" />
+        <rect x="114" y="174" width="6" height="4" fill="#dd5230" />
+      </g>
+    </g>
+</svg>

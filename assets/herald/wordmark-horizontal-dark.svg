@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 240">
+  <g transform="translate(0 20) scale(0.78125 0.78125)" data-symbol="herald-mark">
+      <!-- mouthpiece (left) -->
+      <rect x="14" y="100" width="14" height="20" rx="2" fill="#f2ede3" />
+      <!-- mouthpiece cup -->
+      <rect x="26" y="104" width="6" height="12" fill="#f2ede3" />
+
+      <!-- main tube of the trumpet -->
+      <rect x="32" y="106" width="120" height="8" fill="#f2ede3" />
+
+      <!-- middle valve ring -->
+      <rect x="92" y="100" width="6" height="20" fill="#f2ede3" />
+
+      <!-- bell taper (trapezoid) - flares to the right -->
+      <path d="M152 96 L210 70 L210 150 L152 124 Z" fill="#f2ede3" />
+
+      <!-- bell rim (right edge, slightly thicker line via shape) -->
+      <rect x="206" y="68" width="10" height="84" fill="#f2ede3" />
+
+      <!-- cord attaching banner to trumpet (left + right vertical lines) -->
+      <rect x="56" y="114" width="2" height="14" fill="#f2ede3" />
+      <rect x="138" y="114" width="2" height="14" fill="#f2ede3" />
+
+      <!-- BANNER (gonfalon) - hangs below the trumpet
+           Square with swallow-tail bottom cut. -->
+      <path d="
+        M50 126
+        L146 126
+        L146 206
+        L122 192
+        L98 206
+        L74 192
+        L50 206
+        Z
+      " fill="#f2ede3" />
+
+      <!-- ROBOT FACE — knocked out of the banner via cream-colored shapes.
+           We use a class so we can switch knockout color per variant. -->
+      <g class="face-knockout">
+        <!-- antenna stem (top of banner, extends slightly above) -->
+        <rect x="96" y="118" width="4" height="10" fill="#15161a" />
+        <rect x="96" y="118" width="4" height="10" fill="#15161a" />
+        <!-- antenna ball -->
+        <rect x="92" y="114" width="12" height="4" fill="#15161a" />
+
+        <!-- left eye -->
+        <rect x="72" y="146" width="18" height="18" fill="#15161a" />
+        <!-- right eye -->
+        <rect x="106" y="146" width="18" height="18" fill="#15161a" />
+
+        <!-- mouth: 4 small teeth slit -->
+        <rect x="74" y="174" width="6" height="4" fill="#15161a" />
+        <rect x="84" y="174" width="6" height="4" fill="#15161a" />
+        <rect x="94" y="174" width="6" height="4" fill="#15161a" />
+        <rect x="104" y="174" width="6" height="4" fill="#15161a" />
+        <rect x="114" y="174" width="6" height="4" fill="#15161a" />
+      </g>
+    </g><path fill="#f2ede3" transform="translate(232 180)" d="M7.38 0L7.38 -130.96L38.94 -130.96L38.94 -78.4L90.62 -78.4L90.62 -130.96L122.17 -130.96L122.17 0L90.62 0L90.62 -52.65L38.94 -52.65L38.94 0ZM130.93 0L130.93 -130.96L222.25 -130.96L222.25 -105.21L162.49 -105.21L162.49 -78.75L217.51 -78.75L217.51 -53.61L162.49 -53.61L162.49 -25.75L222.16 -25.75L222.16 0ZM230.96 0L230.96 -130.96L284.93 -130.96Q299.7 -130.96 310.42 -125.64Q321.14 -120.32 326.99 -110.52Q332.83 -100.72 332.83 -87.36Q332.83 -73.74 326.9 -64.25Q320.96 -54.76 309.98 -49.79Q298.99 -44.82 284.05 -44.82L249.86 -44.82L249.86 -69.79L278.16 -69.79Q285.28 -69.79 290.16 -71.63Q295.04 -73.48 297.54 -77.39Q300.05 -81.3 300.05 -87.36Q300.05 -93.43 297.54 -97.43Q295.04 -101.43 290.16 -103.4Q285.28 -105.38 278.07 -105.38L262.52 -105.38L262.52 0ZM302.68 0L270.78 -59.85L304.62 -59.85L337.31 0ZM367.33 0L333.32 0L377.61 -130.96L419.63 -130.96L463.83 0L429.91 0L399.15 -98L398.09 -98ZM362.94 -51.59L434.04 -51.59L434.04 -27.51L362.94 -27.51ZM466.85 0L466.85 -130.96L498.4 -130.96L498.4 -25.75L552.98 -25.75L552.98 0ZM606.73 0L571.75 0L571.75 -26.98L605.41 -26.98Q616.49 -26.98 624.13 -30.72Q631.78 -34.45 635.74 -42.89Q639.69 -51.33 639.69 -65.48Q639.69 -79.63 635.74 -88.07Q631.78 -96.5 624 -100.24Q616.22 -103.97 604.89 -103.97L571.22 -103.97L571.22 -130.96L606.64 -130.96Q626.68 -130.96 641.14 -123.09Q655.6 -115.22 663.42 -100.55Q671.24 -85.87 671.24 -65.48Q671.24 -45.09 663.42 -30.37Q655.6 -15.64 641.14 -7.82Q626.68 0 606.73 0ZM589.86 -130.96L589.86 0L558.3 0L558.3 -130.96Z"/>
+</svg>

@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Agentic Web Standard — shared types
-// Spec: https://github.com/agentstxtdev/herald/blob/main/spec/AGENTS-TXT-STANDARD.md
+// Spec: https://github.com/agents-txt/herald/blob/main/spec/AGENTS-TXT-STANDARD.md
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { PaymentProtocolId, AuthProtocolId } from './protocols.js'
@@ -250,7 +250,7 @@ export interface OpenApiPaymentPath {
  * Minimal OpenAPI discovery surface herald emits at /openapi.json. The schema
  * here intentionally only covers payable paths — the full OpenAPI document
  * shape is the user's responsibility when they have a real API to describe.
- * For sites that exist only to demonstrate payment flows (agentstxt.dev), this
+ * For sites that exist only to demonstrate payment flows (agents-txt.com), this
  * is enough to make the MPP auditor pass without inventing fake endpoints.
  */
 export interface OpenApiDiscoveryConfig {

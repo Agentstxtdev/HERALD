@@ -10,7 +10,7 @@
 
 ### Patch Changes
 
-- Inject `$schema` field into emitted `agents.json` pointing at the canonical JSON Schema at https://agentstxt.dev/schema/agents-json/v1.0.json; add `headersExtras` field on `AgenticConfig` so adopters can declare additional `_headers` / `vercel.json` rules verbatim; recognise `$schema` in `validateAgentsJson` via a new `json-schema-ref` rule. Companion package `@agentstxtdev/herald-schema` published alongside as the Zod source of truth and JSON Schema derivation for the wire format.
+- Inject `$schema` field into emitted `agents.json` pointing at the canonical JSON Schema at https://agents-txt.com/schema/agents-json/v1.0.json; add `headersExtras` field on `AgenticConfig` so adopters can declare additional `_headers` / `vercel.json` rules verbatim; recognise `$schema` in `validateAgentsJson` via a new `json-schema-ref` rule. Companion package `@agentstxtdev/herald-schema` published alongside as the Zod source of truth and JSON Schema derivation for the wire format.
 
 ## 0.2.1
 

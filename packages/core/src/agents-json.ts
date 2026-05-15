@@ -24,7 +24,7 @@ const SOLANA_CHAIN_IDS: Record<string, string> = {
 //   Never include wallet addresses, API keys, JWKs, or any credentials.
 //   Per-path pricing and treasury details belong in 402 responses only.
 //
-// Standard: https://agentstxt.dev
+// Standard: https://agents-txt.com
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -34,7 +34,7 @@ const SOLANA_CHAIN_IDS: Record<string, string> = {
  * file. The schema itself is generated from `@agentstxtdev/herald-schema` and
  * hosted as a static asset at this URL on the reference deployment.
  */
-export const AGENTS_JSON_SCHEMA_URL = 'https://agentstxt.dev/schema/agents-json/v1.0.json'
+export const AGENTS_JSON_SCHEMA_URL = 'https://agents-txt.com/schema/agents-json/v1.0.json'
 
 export function generateAgentsJson(config: AgenticConfig): string {
   const { site, payments, authorization, mcp, skills, a2a, ucp } = config
@@ -42,7 +42,7 @@ export function generateAgentsJson(config: AgenticConfig): string {
   const obj: Record<string, unknown> = {
     $schema: AGENTS_JSON_SCHEMA_URL,
     version: '1.0',
-    standard: 'https://agentstxt.dev',
+    standard: 'https://agents-txt.com',
     site: {
       name: site.name,
       url: site.url,

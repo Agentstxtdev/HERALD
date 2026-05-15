@@ -4,7 +4,7 @@
 // Two surfaces under test:
 //   - AgentsJsonSchema.safeParse(): runtime validation a third-party validator
 //     would do against a served agents.json.
-//   - toJsonSchema(): the JSON Schema document hosted on agentstxt.dev. We
+//   - toJsonSchema(): the JSON Schema document hosted on agents-txt.com. We
 //     don't run a full JSON Schema validator round-trip here (that would add
 //     a runtime dep); we assert the shape and identity fields that downstream
 //     editors actually read.
@@ -21,7 +21,7 @@ import {
 
 const minimalValid = {
   version: '1.0',
-  standard: 'https://agentstxt.dev',
+  standard: 'https://agents-txt.com',
   site: { name: 'Example', url: 'https://example.com' },
 }
 
@@ -57,7 +57,7 @@ describe('AgentsJsonSchema — required field rejections', () => {
   })
 
   it('rejects a non-https standard URL', () => {
-    const result = AgentsJsonSchema.safeParse({ ...minimalValid, standard: 'agentstxt.dev' })
+    const result = AgentsJsonSchema.safeParse({ ...minimalValid, standard: 'agents-txt.com' })
     expect(result.success).toBe(false)
   })
 
@@ -260,7 +260,7 @@ describe('SCHEMA_ID / SCHEMA_VERSION', () => {
   })
 
   it('exports the canonical schema URL', () => {
-    expect(SCHEMA_ID).toBe('https://agentstxt.dev/schema/agents-json/v1.0.json')
+    expect(SCHEMA_ID).toBe('https://agents-txt.com/schema/agents-json/v1.0.json')
   })
 })
 

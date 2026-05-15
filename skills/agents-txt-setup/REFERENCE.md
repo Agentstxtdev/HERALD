@@ -523,7 +523,7 @@ type AuthProtocolId    = 'agent-auth'  | `x-${string}`
 type HostingPlatform   = 'cloudflare' | 'netlify' | 'vercel' | 'unknown'
 
 // Hosted JSON Schema reference
-AGENTS_JSON_SCHEMA_URL                  // 'https://agentstxt.dev/schema/agents-json/v1.0.json'
+AGENTS_JSON_SCHEMA_URL                  // 'https://agents-txt.com/schema/agents-json/v1.0.json'
                                         // Injected as `$schema` at the top of every generated agents.json
                                         // so editors (VS Code, JetBrains, jq --schema) read it for autocomplete
 ```
@@ -543,16 +543,16 @@ import { AgentsJsonSchema, type AgentsJson } from '@herald/schema'
 AgentsJsonSchema.safeParse(json)          // { success: true, data: AgentsJson } | { success: false, error }
 AgentsJsonSchema.parse(json)              // throws on invalid input
 
-// JSON Schema derivation (the document hosted at agentstxt.dev/schema/agents-json/v1.0.json)
+// JSON Schema derivation (the document hosted at agents-txt.com/schema/agents-json/v1.0.json)
 toJsonSchema()                            // Record<string, unknown>: JSON Schema 2020-12 document
 toJsonSchemaString()                      // string: same, JSON.stringify with 2-space indent + trailing newline
 
 // Identity
 SCHEMA_VERSION                            // '1.0' (current wire-format version)
-SCHEMA_ID                                 // 'https://agentstxt.dev/schema/agents-json/v1.0.json'
+SCHEMA_ID                                 // 'https://agents-txt.com/schema/agents-json/v1.0.json'
 ```
 
-CLI entry: `pnpm --filter @agentstxtdev/herald-schema emit:json-schema <out-dir>` writes `agents-json/v<VERSION>.json` to the given directory. Used by the agentstxt.dev reference deployment to keep the public schema file in sync with the Zod source.
+CLI entry: `pnpm --filter @agentstxtdev/herald-schema emit:json-schema <out-dir>` writes `agents-json/v<VERSION>.json` to the given directory. Used by the agents-txt.com reference deployment to keep the public schema file in sync with the Zod source.
 
 ---
 

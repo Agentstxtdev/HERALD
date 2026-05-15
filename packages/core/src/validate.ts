@@ -458,7 +458,7 @@ export function validateAgentsJson(content: string): ValidationResult[] {
     results.push({
       rule: 'json-schema-ref',
       status: 'warn',
-      message: 'No "$schema" field — consider adding one (e.g. "https://agentstxt.dev/schema/agents-json/v1.0.json") so editors offer autocomplete and inline validation',
+      message: 'No "$schema" field — consider adding one (e.g. "https://agents-txt.com/schema/agents-json/v1.0.json") so editors offer autocomplete and inline validation',
     })
   }
 

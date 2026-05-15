@@ -27,7 +27,7 @@ describe('generateAgentsJson — envelope', () => {
     const output = generateAgentsJson(baseConfig)
     const parsed = JSON.parse(output)
     expect(parsed.version).toBe('1.0')
-    expect(parsed.standard).toBe('https://agentstxt.dev')
+    expect(parsed.standard).toBe('https://agents-txt.com')
     expect(parsed.site.name).toBe('Test Site')
     expect(parsed.site.url).toBe('https://example.com')
   })
@@ -627,14 +627,14 @@ describe('validateAgentsJson', () => {
     })
 
     it('warns when $schema is missing', () => {
-      const json = JSON.stringify({ version: '1.0', standard: 'https://agentstxt.dev' })
+      const json = JSON.stringify({ version: '1.0', standard: 'https://agents-txt.com' })
       const rule = validateAgentsJson(json).find((r) => r.rule === 'json-schema-ref')
       expect(rule?.status).toBe('warn')
       expect(rule?.message).toMatch(/No "\$schema" field/)
     })
 
     it('warns when $schema is present but not a string', () => {
-      const json = JSON.stringify({ $schema: 42, version: '1.0', standard: 'https://agentstxt.dev' })
+      const json = JSON.stringify({ $schema: 42, version: '1.0', standard: 'https://agents-txt.com' })
       const rule = validateAgentsJson(json).find((r) => r.rule === 'json-schema-ref')
       expect(rule?.status).toBe('warn')
       expect(rule?.message).toMatch(/not a string/)
@@ -642,30 +642,30 @@ describe('validateAgentsJson', () => {
   })
 
   it('warns on missing version', () => {
-    const results = validateAgentsJson(JSON.stringify({ standard: 'https://agentstxt.dev' }))
+    const results = validateAgentsJson(JSON.stringify({ standard: 'https://agents-txt.com' }))
     expect(results.find((r) => r.rule === 'json-version')?.status).toBe('warn')
   })
 
   it('fails when payments block has no per-protocol object', () => {
-    const json = JSON.stringify({ version: '1.0', standard: 'https://agentstxt.dev', payments: { required: true } })
+    const json = JSON.stringify({ version: '1.0', standard: 'https://agents-txt.com', payments: { required: true } })
     const results = validateAgentsJson(json)
     expect(results.find((r) => r.rule === 'json-payments-valid')?.status).toBe('fail')
   })
 
   it('passes payments validity when at least one per-protocol object is present', () => {
-    const json = JSON.stringify({ version: '1.0', standard: 'https://agentstxt.dev', payments: { x402: { chains: ['eip155:8453'] } } })
+    const json = JSON.stringify({ version: '1.0', standard: 'https://agents-txt.com', payments: { x402: { chains: ['eip155:8453'] } } })
     const results = validateAgentsJson(json)
     expect(results.find((r) => r.rule === 'json-payments-valid')?.status).toBe('pass')
   })
 
   it('fails when mpp.methods is present but empty', () => {
-    const json = JSON.stringify({ version: '1.0', standard: 'https://agentstxt.dev', payments: { mpp: { methods: [] } } })
+    const json = JSON.stringify({ version: '1.0', standard: 'https://agents-txt.com', payments: { mpp: { methods: [] } } })
     const results = validateAgentsJson(json)
     expect(results.find((r) => r.rule === 'json-mpp-methods')?.status).toBe('fail')
   })
 
   it('warns on unrecognised mpp.methods entry', () => {
-    const json = JSON.stringify({ version: '1.0', standard: 'https://agentstxt.dev', payments: { mpp: { methods: ['tempo', 'lightning'] } } })
+    const json = JSON.stringify({ version: '1.0', standard: 'https://agents-txt.com', payments: { mpp: { methods: ['tempo', 'lightning'] } } })
     const results = validateAgentsJson(json)
     expect(results.find((r) => r.rule === 'json-mpp-methods-unknown')?.status).toBe('warn')
   })

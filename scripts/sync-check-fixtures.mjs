@@ -4,7 +4,7 @@
 //
 // The agents.json cross-validator corpus lives in two places:
 //   - agentify/packages/schema/src/__tests__/fixtures/       (canonical)
-//   - agentstxt/app/mcp/src/__tests__/fixtures/              (mirrored)
+//   - agents-txt/app/mcp/src/__tests__/fixtures/              (mirrored)
 //
 // Both copies must be byte-identical. This script computes a SHA-256 digest of
 // every JSON file in each directory and asserts the two sets match. CI runs
@@ -15,7 +15,7 @@
 //   node scripts/sync-check-fixtures.mjs                          # default paths
 //   node scripts/sync-check-fixtures.mjs <canonical-dir> <mirror-dir>
 //
-// The default mirror path assumes the agentstxt repo sits as a sibling of the
+// The default mirror path assumes the agents-txt repo sits as a sibling of the
 // herald repo on disk. Override via the second argument when running in CI
 // where the layout differs.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -29,7 +29,7 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(HERE, '..')
 
 const DEFAULT_CANONICAL = join(REPO_ROOT, 'packages/schema/src/__tests__/fixtures')
-const DEFAULT_MIRROR = resolve(REPO_ROOT, '../agentstxt/app/mcp/src/__tests__/fixtures')
+const DEFAULT_MIRROR = resolve(REPO_ROOT, '../agents-txt/app/mcp/src/__tests__/fixtures')
 
 const canonicalDir = process.argv[2] ? resolve(process.argv[2]) : DEFAULT_CANONICAL
 const mirrorDir = process.argv[3] ? resolve(process.argv[3]) : DEFAULT_MIRROR

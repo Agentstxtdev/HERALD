@@ -95,7 +95,7 @@ describe('validateLlmsTxt', () => {
 
 describe('validateAgentsTxt', () => {
   it('passes standard-header when # agents.txt is present', () => {
-    const results = validateAgentsTxt('# agents.txt\n# Standard: https://agentstxt.dev\n')
+    const results = validateAgentsTxt('# agents.txt\n# Standard: https://agents-txt.com\n')
     const rule = results.find((r) => r.rule === 'standard-header')
     expect(rule?.status).toBe('pass')
   })

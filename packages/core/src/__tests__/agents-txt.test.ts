@@ -21,7 +21,7 @@ describe('generateAgentsTxt', () => {
   it('always includes the standard header comments', () => {
     const output = generateAgentsTxt(baseConfig)
     expect(output).toContain('# agents.txt')
-    expect(output).toContain('# Standard: https://agentstxt.dev')
+    expect(output).toContain('# Standard: https://agents-txt.com')
   })
 
   it('returns header only when no payments config', () => {

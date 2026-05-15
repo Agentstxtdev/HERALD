@@ -11,10 +11,10 @@
 <br>
 
 [![npm: @herald/cli](https://img.shields.io/npm/v/%40herald%2Fcli?label=%40herald%2Fcli&style=flat-square&color=cb3837)](https://www.npmjs.com/package/@herald/cli)
-[![Spec: agents.txt](https://img.shields.io/badge/spec-agents.txt-111?style=flat-square)](https://agentstxt.dev)
+[![Spec: agents.txt](https://img.shields.io/badge/spec-agents.txt-111?style=flat-square)](https://agents-txt.com)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
-[![isitagentready: 100 / 100](https://img.shields.io/badge/isitagentready.com-100%20%2F%20100-16a34a?style=flat-square)](https://isitagentready.com/agentstxt.dev)
-[![GitHub stars](https://img.shields.io/github/stars/agentstxtdev/herald?style=flat-square&logo=github&logoColor=white&color=181717)](https://github.com/agentstxtdev/herald)
+[![isitagentready: 100 / 100](https://img.shields.io/badge/isitagentready.com-100%20%2F%20100-16a34a?style=flat-square)](https://isitagentready.com/agents-txt.com)
+[![GitHub stars](https://img.shields.io/github/stars/agents-txt/herald?style=flat-square&logo=github&logoColor=white&color=181717)](https://github.com/agents-txt/herald)
 
 </div>
 
@@ -146,7 +146,7 @@ Each file is its own open standard. HERALD is the build/serve tooling for them. 
 
 `agents.txt` (with companion `agents.json`) is a **lightweight, machine-readable capability declaration layer for websites in the agentic web**: a protocol-agnostic discovery file that publicly announces what agent-interaction capabilities a site supports, without embedding the implementation details of any specific protocol.
 
-HERALD implements the spec but does not own it. The spec lives at [agentstxt.dev](https://agentstxt.dev) under CC0. Anyone may implement it without restriction. The HERALD reference implementation is Apache 2.0.
+HERALD implements the spec but does not own it. The spec lives at [agents-txt.com](https://agents-txt.com) under CC0. Anyone may implement it without restriction. The HERALD reference implementation is Apache 2.0.
 
 **Core design principles:**
 
@@ -174,7 +174,7 @@ Layer 3: CONTENT BRIEFING   /llms.txt     (llmstxt.org)      "Here's what's insi
 Layer 4: AGENT CAPABILITIES /agents.txt   (agents.txt spec)  "Here's what you can do inside my house"
 ```
 
-`agents.txt` (with companion `agents.json`) is the newest piece, an open standard for declaring agent-interaction capabilities (payments, auth, MCP, skills) without prescribing any specific protocol. HERALD exists to make adopting it trivial; the spec itself lives at [agentstxt.dev](https://agentstxt.dev).
+`agents.txt` (with companion `agents.json`) is the newest piece, an open standard for declaring agent-interaction capabilities (payments, auth, MCP, skills) without prescribing any specific protocol. HERALD exists to make adopting it trivial; the spec itself lives at [agents-txt.com](https://agents-txt.com).
 
 > [!NOTE]
 > **HERALD declares payment capabilities. It does not wire the payment endpoints themselves.**
@@ -550,7 +550,7 @@ export default {
 }
 ```
 
-**Experimental protocols (`x-` prefix).** Both `payments.protocols` and `authorization.protocols` accept identifiers prefixed with `x-` (for example `x-mypay`, `x-myauth`) per [agents.txt spec §3.1](https://agentstxt.dev). The generator emits them verbatim into `agents.txt` and as empty per-protocol objects in `agents.json` (`payments['x-mypay']: {}`). This is the runway for advertising a new protocol before it lands in the spec, without forking herald.
+**Experimental protocols (`x-` prefix).** Both `payments.protocols` and `authorization.protocols` accept identifiers prefixed with `x-` (for example `x-mypay`, `x-myauth`) per [agents.txt spec §3.1](https://agents-txt.com). The generator emits them verbatim into `agents.txt` and as empty per-protocol objects in `agents.json` (`payments['x-mypay']: {}`). This is the runway for advertising a new protocol before it lands in the spec, without forking herald.
 
 The same file is consumed by **`herald emit`**, which reads it to write the static discovery files into `--out`. You write it once. There is no separate runtime config; nothing duplicates.
 
@@ -561,13 +561,13 @@ The same file is consumed by **`herald emit`**, which reads it to write the stat
 
 ### Editor autocomplete via `$schema`
 
-Every `agents.json` herald emits carries a `$schema` field pointing at the canonical JSON Schema hosted on agentstxt.dev:
+Every `agents.json` herald emits carries a `$schema` field pointing at the canonical JSON Schema hosted on agents-txt.com:
 
 ```json
 {
-  "$schema": "https://agentstxt.dev/schema/agents-json/v1.0.json",
+  "$schema": "https://agents-txt.com/schema/agents-json/v1.0.json",
   "version": "1.0",
-  "standard": "https://agentstxt.dev",
+  "standard": "https://agents-txt.com",
   "site": { ... }
 }
 ```
@@ -845,7 +845,7 @@ Two practical consequences:
 |---------|---------|
 | `@herald/core` | Pure generators: robots.txt, llms.txt, agents.txt, agents.json. No runtime deps. |
 | `@herald/cli` | `herald init/generate/check` |
-| `@herald/schema` | Zod schemas for the `agents.json` wire format, with JSON Schema derivation via `z.toJSONSchema()`. Single source of truth for runtime validation, TypeScript types, and the public JSON Schema hosted on agentstxt.dev. Zod is kept out of `@herald/core` so core stays edge-runtime safe. |
+| `@herald/schema` | Zod schemas for the `agents.json` wire format, with JSON Schema derivation via `z.toJSONSchema()`. Single source of truth for runtime validation, TypeScript types, and the public JSON Schema hosted on agents-txt.com. Zod is kept out of `@herald/core` so core stays edge-runtime safe. |
 
 ---
 
@@ -912,7 +912,7 @@ The CLI wizard prompts for this after the payments block; the field is `a2a: { c
 ### Setup
 
 ```bash
-git clone https://github.com/agentstxtdev/herald
+git clone https://github.com/agents-txt/herald
 cd agents.txt/herald
 pnpm install
 pnpm build       # builds core → web → cli in dependency order
@@ -998,7 +998,7 @@ No. HERALD generates the discovery files that *advertise* payment support (`paym
 
 This repository contains the herald reference implementation only. It is released under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0); see [`LICENSE`](LICENSE).
 
-The agents.txt specification that herald implements lives in a separate repository under [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/) at [agentstxt.dev](https://agentstxt.dev). Anyone may implement the spec without restriction.
+The agents.txt specification that herald implements lives in a separate repository under [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/) at [agents-txt.com](https://agents-txt.com). Anyone may implement the spec without restriction.
 
 ---
 

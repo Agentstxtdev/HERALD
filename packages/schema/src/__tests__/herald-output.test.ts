@@ -54,7 +54,7 @@ describe('herald-core ↔ herald-schema round-trip', () => {
 
   it('the generator emits $schema pointing at the canonical hosted URL', () => {
     const config: AgenticConfig = { site: { name: 'X', url: 'https://example.com' } }
-    expect(parsedOutput(config).$schema).toBe('https://agentstxt.dev/schema/agents-json/v1.0.json')
+    expect(parsedOutput(config).$schema).toBe('https://agents-txt.com/schema/agents-json/v1.0.json')
   })
 
   it('experimental protocols in config flow through and validate', () => {

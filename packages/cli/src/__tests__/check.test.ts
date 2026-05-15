@@ -80,7 +80,7 @@ describe('checkCompliance — output formatting', () => {
     const agentsTxtBody = 'Protocols: x402\nMCP: https://example.com/mcp\n'
     const agentsJsonBody = JSON.stringify({
       version: '0.5',
-      standard: 'https://agentstxt.dev',
+      standard: 'https://agents-txt.com',
       site: { name: 'Example', url: 'https://example.com' },
       payments: { x402: {} },
     })

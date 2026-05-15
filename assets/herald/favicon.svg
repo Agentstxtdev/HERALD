@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <g data-symbol="herald-mark-mini">
+      <!-- short trumpet -->
+      <rect x="28" y="100" width="120" height="14" fill="#15161a" />
+      <path d="M148 88 L218 60 L218 154 L148 126 Z" fill="#15161a" />
+      <!-- banner -->
+      <path d="
+        M44 116
+        L150 116
+        L150 214
+        L124 196
+        L98 214
+        L72 196
+        L44 214
+        Z
+      " fill="#15161a" />
+      <!-- bigger antenna -->
+      <rect x="92" y="100" width="10" height="16" fill="#ffffff" />
+      <rect x="84" y="92" width="26" height="8" fill="#ffffff" />
+      <!-- chunky eyes -->
+      <rect x="64" y="140" width="28" height="28" fill="#ffffff" />
+      <rect x="102" y="140" width="28" height="28" fill="#ffffff" />
+      <!-- mouth -->
+      <rect x="66" y="184" width="62" height="8" fill="#ffffff" />
+      <rect x="80" y="184" width="6" height="8" fill="#15161a" />
+      <rect x="100" y="184" width="6" height="8" fill="#15161a" />
+      <rect x="116" y="184" width="6" height="8" fill="#15161a" />
+    </g>
+</svg>

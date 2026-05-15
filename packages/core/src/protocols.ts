@@ -15,7 +15,7 @@
 // (e.g. `x-mypay`). Parsers MUST accept them; validators MUST NOT warn.
 // This mirrors the convention in the agents.txt spec §3.1.
 //
-// Standard: https://agentstxt.dev
+// Standard: https://agents-txt.com
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const PAYMENT_PROTOCOLS = ['x402', 'mpp', 'ap2'] as const

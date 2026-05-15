@@ -8,11 +8,11 @@
 // Single source of truth for:
 //   - Runtime validation of a served `agents.json` (third-party validators)
 //   - TypeScript types via `z.infer<typeof AgentsJsonSchema>`
-//   - The public JSON Schema hosted at agentstxt.dev/schema/agents-json/v1.0.json,
+//   - The public JSON Schema hosted at agents-txt.com/schema/agents-json/v1.0.json,
 //     derived with `z.toJSONSchema(AgentsJsonSchema)` and committed as a static
 //     asset on the reference deployment.
 //
-// Standard: https://agentstxt.dev (agents.txt spec v1.0)
+// Standard: https://agents-txt.com (agents.txt spec v1.0)
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { z } from 'zod'
@@ -160,11 +160,11 @@ export const AgentsJsonSchema = z
     ucp: z.array(UcpEntry).optional(),
   })
   .describe(
-    'agents.json — structured companion to agents.txt. Declares the capabilities a site exposes to AI agents (payments, authorization, MCP servers, skill packages, A2A AgentCards, UCP profiles). See https://agentstxt.dev for the full specification.',
+    'agents.json — structured companion to agents.txt. Declares the capabilities a site exposes to AI agents (payments, authorization, MCP servers, skill packages, A2A AgentCards, UCP profiles). See https://agents-txt.com for the full specification.',
   )
 
 export type AgentsJson = z.infer<typeof AgentsJsonSchema>
 
 /** Schema metadata. Bump SCHEMA_VERSION when the wire format changes. */
 export const SCHEMA_VERSION = '1.0' as const
-export const SCHEMA_ID = `https://agentstxt.dev/schema/agents-json/v${SCHEMA_VERSION}.json` as const
+export const SCHEMA_ID = `https://agents-txt.com/schema/agents-json/v${SCHEMA_VERSION}.json` as const

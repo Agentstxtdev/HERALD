@@ -43,13 +43,13 @@
     "ai-crawler"
   ],
   "license": "Apache-2.0",
-  "homepage": "https://agentstxt.dev",
+  "homepage": "https://agents-txt.com",
   "bugs": {
-    "url": "https://github.com/agentstxtdev/herald/issues"
+    "url": "https://github.com/agents-txt/herald/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/agentstxtdev/herald.git",
+    "url": "git+https://github.com/agents-txt/herald.git",
     "directory": "packages/core"
   },
   "engines": {

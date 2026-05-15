@@ -1,0 +1,24 @@
+{
+  "source": "Herald Logo (1).html",
+  "generatedAt": "2026-05-15",
+  "svg": [
+    "mark-ink-on-cream.svg",
+    "mark-cream-on-ink.svg",
+    "mark-cream-on-accent.svg",
+    "mark-ink-on-white.svg",
+    "wordmark-horizontal-light.svg",
+    "wordmark-horizontal-dark.svg",
+    "wordmark-stacked-with-tagline.svg",
+    "favicon.svg"
+  ],
+  "rasters": [
+    "favicon-16.png",
+    "favicon-32.png",
+    "favicon-48.png",
+    "apple-touch-icon.png",
+    "icon-192.png",
+    "icon-512.png",
+    "favicon.ico",
+    "og-image.png"
+  ]
+}

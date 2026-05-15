@@ -2,7 +2,7 @@
 // Standalone JSON Schema emitter. Writes `agents-json/v<VERSION>.json` to the
 // path passed as the first argument (default: ./schema). Used by the build
 // pipeline to refresh the static asset under
-// `agentstxt/app/site/public/schema/` so the public schema URL always matches
+// `agents-txt/app/site/public/schema/` so the public schema URL always matches
 // what the Zod source produces.
 
 import { mkdirSync, writeFileSync } from 'node:fs'

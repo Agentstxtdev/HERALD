@@ -5,7 +5,7 @@
 //   - AgentsJsonSchema    — Zod schema (use .parse / .safeParse for runtime validation)
 //   - AgentsJson          — TypeScript type derived from the Zod schema
 //   - SCHEMA_VERSION      — current wire version (e.g. "1.0")
-//   - SCHEMA_ID           — canonical $id / $schema URL on agentstxt.dev
+//   - SCHEMA_ID           — canonical $id / $schema URL on agents-txt.com
 //   - toJsonSchema()      — derive a vanilla JSON Schema 2020-12 doc for hosting
 //                            or for tooling that expects a static schema file
 // ─────────────────────────────────────────────────────────────────────────────
@@ -18,7 +18,7 @@ export type { AgentsJson } from './agents-json-schema.js'
 
 /**
  * Convert the wire-format Zod schema to a vanilla JSON Schema 2020-12 document
- * suitable for hosting at `agentstxt.dev/schema/agents-json/v1.0.json` or for
+ * suitable for hosting at `agents-txt.com/schema/agents-json/v1.0.json` or for
  * use with `$schema` references inside generated `agents.json` files.
  *
  * The returned object is a plain JS object; the caller serializes it.
@@ -33,7 +33,7 @@ export function toJsonSchema(): Record<string, unknown> {
   schema.$id = SCHEMA_ID
   schema.$schema = 'https://json-schema.org/draft/2020-12/schema'
   schema.title = `agents.json v${SCHEMA_VERSION}`
-  schema.$comment = `JSON Schema for agents.json (v${SCHEMA_VERSION}). See https://agentstxt.dev for the specification.`
+  schema.$comment = `JSON Schema for agents.json (v${SCHEMA_VERSION}). See https://agents-txt.com for the specification.`
   return schema
 }
 

@@ -10,7 +10,7 @@ import { resolveActiveProtocols } from './payments.js'
 // own response layer (402 body, /.well-known/agent-configuration, etc.) — never
 // in this file.
 //
-// Standard: https://agentstxt.dev
+// Standard: https://agents-txt.com
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function generateAgentsTxt(config: AgenticConfig): string {
@@ -18,7 +18,7 @@ export function generateAgentsTxt(config: AgenticConfig): string {
   const baseUrl = site.url.replace(/\/$/, '')
   const lines: string[] = [
     '# agents.txt',
-    '# Standard: https://agentstxt.dev',
+    '# Standard: https://agents-txt.com',
     `# JSON: ${baseUrl}/agents.json`,
   ]
 
