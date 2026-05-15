@@ -45,4 +45,4 @@ Thumbs.db
 coverage/
 .nyc_output/
 
-scripts/
+scripts/release-patch.sh

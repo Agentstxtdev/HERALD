@@ -1,7 +1,7 @@
 {
   "name": "@agentstxtdev/herald-core",
   "version": "0.2.2",
-  "description": "Pure generators for robots.txt, sitemap.xml, llms.txt, agents.txt, and agents.json — no runtime dependencies",
+  "description": "Core generators behind the herald CLI (@agentstxtdev/herald). Zero runtime dependencies.",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
