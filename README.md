@@ -1,19 +1,19 @@
 <div align="center">
 
-<img src="assets/logos/herald-mark-v2.svg" width="235" alt="HERALD">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/herald/wordmark-horizontal-dark.svg">
+  <img src="assets/herald/wordmark-horizontal-light.svg" width="680" alt="HERALD">
+</picture>
 
-<h1>HERALD</h1>
+<br><br>
 
-**The agent-capabilities discovery layer for the agentic web.**
+**The capabilities discovery layer for the agentic web.**
 
 *One config. One command. One binary.*
-
-<br>
 
 [![npm: @herald/cli](https://img.shields.io/npm/v/%40herald%2Fcli?label=%40herald%2Fcli&style=flat-square&color=cb3837)](https://www.npmjs.com/package/@herald/cli)
 [![Spec: agents.txt](https://img.shields.io/badge/spec-agents.txt-111?style=flat-square)](https://agents-txt.com)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
-[![isitagentready: 100 / 100](https://img.shields.io/badge/isitagentready.com-100%20%2F%20100-16a34a?style=flat-square)](https://isitagentready.com/agents-txt.com)
 [![GitHub stars](https://img.shields.io/github/stars/agents-txt/herald?style=flat-square&logo=github&logoColor=white&color=181717)](https://github.com/agents-txt/herald)
 
 </div>
@@ -55,15 +55,30 @@ HERALD is an open-source framework + CLI that emits the standard discovery files
   <td align="center"><img src="assets/logos/llms-full.svg"   width="32" alt="llms-full.txt"><br><sub>llms-full.txt</sub></td>
   <td align="center"><img src="assets/logos/agents-txt.svg"  width="32" alt="agents.txt"><br><sub>agents.txt</sub></td>
   <td align="center"><img src="assets/logos/agents-json.svg" width="32" alt="agents.json"><br><sub>agents.json</sub></td>
-  <td align="center"><img src="assets/logos/a2a-logo-black.svg"    width="32" alt="Agent2Agent"><br><sub>A2A</sub></td>
+  <td align="center"><img src="assets/logos/security.svg"    width="32" alt="security.txt"><br><sub>security.txt</sub></td>
+</tr>
+<tr>
+  <th align="left">Transport surfaces declared</th>
+  <td align="center"><img src="assets/logos/http.svg"        width="32" alt="HTTP"><br><sub>HTTP</sub></td>
+  <td align="center"><img src="assets/logos/bash.svg"        width="32" alt="Bash"><br><sub>Bash</sub></td>
+  <td align="center"><img src="assets/logos/mcp-dark.svg"    width="32" alt="MCP"><br><sub>MCP</sub></td>
+  <td align="center"><img src="assets/logos/github-dark.svg" width="32" alt="GitHub Actions"><br><sub>Actions</sub></td>
+  <td colspan="3"></td>
+</tr>
+<tr>
+  <th align="left">Auth &amp; authorization declared</th>
+  <td align="center"><img src="assets/logos/agents-auth.png" width="32" alt="agent-auth"><br><sub>agent-auth</sub></td>
+  <td align="center"><img src="assets/logos/oauth-2-sm.png" width="32" alt="OAuth 2"><br><sub>OAuth 2</sub></td>
+  <td colspan="5"></td>
 </tr>
 <tr>
   <th align="left">Payment protocols declared</th>
   <td align="center"><img src="assets/logos/x402.jpeg"            width="32" alt="x402 v2"><br><sub>x402 v2</sub></td>
   <td align="center"><img src="assets/logos/machine-payments.svg" width="32" alt="MPP"><br><sub>MPP</sub></td>
+  <td align="center"><img src="assets/logos/a2a-logo-black.svg"    width="32" alt="Agent2Agent"><br><sub>A2A</sub></td>
   <td align="center"><img src="assets/logos/ap2-logo-black.svg"   width="32" alt="Agent Payments Protocol"><br><sub>AP2</sub></td>
   <td align="center"><img src="assets/logos/ucp.svg"              width="32" alt="Universal Commerce Protocol"><br><sub>UCP</sub></td>
-  <td colspan="3"><sub><i>Capabilities advertised in <code>agents.txt</code> / <code>agents.json</code></i></sub></td>
+  <td colspan="3"></td>
 </tr>
 <tr>
   <th align="left">Chains declared</th>
@@ -71,27 +86,41 @@ HERALD is an open-source framework + CLI that emits the standard discovery files
   <td align="center"><img src="assets/logos/ethereum.svg" width="32" alt="Ethereum"><br><sub>Ethereum</sub></td>
   <td align="center"><img src="assets/logos/solana.svg"   width="32" alt="Solana"><br><sub>Solana</sub></td>
   <td align="center"><img src="assets/logos/tempo.png"    width="32" alt="Tempo"><br><sub>Tempo</sub></td>
-  <td colspan="3"><sub><i>Any CAIP-2 network listed in <code>x402.treasury</code> is emitted into <code>agents.json</code></i></sub></td>
+  <td colspan="3"></td>
 </tr>
 <tr>
   <th align="left">Tokens &amp; rails declared</th>
   <td align="center"><img src="assets/logos/usdc.svg"        width="32" alt="USDC"><br><sub>USDC</sub></td>
   <td align="center"><img src="assets/logos/stripe.svg"      width="32" alt="Stripe"><br><sub>Stripe</sub></td>
   <td align="center"><img src="assets/logos/link_stripe.png" width="32" alt="Link Stripe"><br><sub>Link</sub></td>
-  <td colspan="4"><sub><i>Stripe SPT covers card networks + Solana USDC; whatever you declare in <code>payments.*</code> flows into <code>agents.json</code></i></sub></td>
+  <td colspan="4"></td>
 </tr>
 </table>
+
+<sub>
+
+Every row above is a **declaration**, not a runtime. The discovery layer is published as `agents.txt` (plain text) and `agents.json` (structured capabilities), both generated from a single `agentsjson.config.js`. HERALD emits only what that config declares. The **Chains** row reflects any CAIP-2 network listed in `x402.treasury`; the **Tokens & rails** row reflects whatever you set under `payments.*` (Stripe SPT additionally covers card networks and Solana USDC).
+
+</sub>
 
 </div>
 
 ## What this does
 
-| Without this | With this |
-|---|---|
-| AI crawlers scrape your content for free | `robots.txt` blocks free scrapers and allows paying agents through |
-| Agents hallucinate about your site structure | `/llms.txt` gives agents a clean, curated index |
-| No way for agents to discover payment terms | `/agents.txt` + `/agents.json` advertise capabilities and pricing |
-| No standard channel to advertise agent capabilities | A single config object emits every layer of the agent-readiness stack |
+Your site was built for human eyes. An agent that lands on it is effectively blind: it can't see your navigation, doesn't know which pages matter, and has no way to know what it is allowed to do. HERALD turns one config object into the discovery files that answer all of that, so any agent can read your site and act on it correctly.
+
+<div align="center">
+
+| The agent asks… | Before HERALD | After HERALD |
+|---|---|---|
+| "Can I crawl this site?" | It scrapes blind, or stays away entirely | `robots.txt` spells out the access rules |
+| "What's here, and what matters?" | It guesses from links and misses half the pages | `sitemap.xml` + `llms.txt` hand it a clean, curated map |
+| "What can I actually *do* here?" | No file could answer this. The capability layer did not exist. | `agents.txt` + `agents.json` declare every agent-facing capability your site offers |
+| "Is any of this still accurate?" | Hand-maintained files rot the moment the site changes | One config regenerates the whole set, validated against each spec on every build |
+
+</div>
+
+One config object in. A complete, self-consistent discovery layer out. That is what turns an ordinary website into one that agents can actually use.
 
 ### The files it generates / serves
 
@@ -118,8 +147,11 @@ Each file is its own open standard. HERALD is the build/serve tooling for them. 
 | [robots.txt (RFC 9309)](https://www.rfc-editor.org/rfc/rfc9309) | Crawler access control |
 | [sitemap.xml (sitemaps.org)](https://www.sitemaps.org/) | Content discovery |
 | [llms.txt (llmstxt.org)](https://llmstxt.org/) | LLM-optimized site index |
+| [security.txt (RFC 9116)](https://www.rfc-editor.org/rfc/rfc9116) | Vulnerability disclosure contact |
 | [x402 (x402.org)](https://x402.org/) | HTTP-native micropayments |
 | [MPP (mpp.dev, IETF draft)](https://mpp.dev/) | Session-based fiat + stablecoin payments |
+| [AP2 (ap2-protocol.org)](https://ap2-protocol.org/) | Mandate trust layer above the payment rail |
+| [UCP (ucp.dev)](https://ucp.dev/) | Profile-based commerce capability discovery |
 | [agent-auth](https://agentauthprotocol.com/) | Agent identity + authorization |
 | [MCP (modelcontextprotocol.io)](https://modelcontextprotocol.io/) | Tool/resource server discovery |
 | [Agent Skills (agentskills.io)](https://agentskills.io/) | Skill package discovery |
@@ -128,8 +160,8 @@ Each file is its own open standard. HERALD is the build/serve tooling for them. 
 | [MCP Server Card (SEP-2127)](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2127) | MCP-native pre-screening card |
 | [API Catalog (RFC 9727)](https://www.rfc-editor.org/rfc/rfc9727) | `application/linkset+json` directory of a site's APIs |
 | [Link headers (RFC 8288)](https://www.rfc-editor.org/rfc/rfc8288) | HTTP-layer discovery on `/` |
+| [OpenAPI 3.1](https://spec.openapis.org/oas/v3.1.0.html) | Machine-readable API description for `/openapi.json` |
 | [Payment Discovery (`x-payment-info`)](https://paymentauth.org/draft-payment-discovery-00.txt) | Per-path payable-operation declarations in OpenAPI |
-| [Open Wallet Standard](https://openwallet.sh/) | Agent-side wallet (optional, for spending) |
 
 <details>
 <summary><b>More on the agents.txt standard</b></summary>
@@ -138,7 +170,10 @@ Each file is its own open standard. HERALD is the build/serve tooling for them. 
 
 <div align="center">
 
-<img src="assets/logos/alogo.svg" width="180" alt="AGENTS.TXT">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/agents-txt/wordmark-stacked-dark.svg">
+  <img src="assets/agents-txt/wordmark-stacked.svg" width="480" alt="AGENTS.TXT">
+</picture>
 
 </div>
 

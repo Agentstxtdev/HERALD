@@ -29,7 +29,7 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(HERE, '..')
 
 const DEFAULT_CANONICAL = join(REPO_ROOT, 'packages/schema/src/__tests__/fixtures')
-const DEFAULT_MIRROR = resolve(REPO_ROOT, '../agents-txt/app/mcp/src/__tests__/fixtures')
+const DEFAULT_MIRROR = resolve(REPO_ROOT, '../agentstxt/app/mcp/src/__tests__/fixtures')
 
 const canonicalDir = process.argv[2] ? resolve(process.argv[2]) : DEFAULT_CANONICAL
 const mirrorDir = process.argv[3] ? resolve(process.argv[3]) : DEFAULT_MIRROR
