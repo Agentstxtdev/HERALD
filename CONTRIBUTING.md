@@ -63,6 +63,7 @@ node packages/cli/dist/cli.js init
 | Config Zod schema | `packages/cli/src/config-schema.ts` (CLI-only, never import Zod into `core`) |
 | Wire-format Zod schema (agents.json shape) | `packages/schema/src/agents-json-schema.ts`. Single source for the runtime validator, the `AgentsJson` type, and the hosted JSON Schema. Bump `SCHEMA_VERSION` when changing the wire shape and re-emit the JSON Schema file. |
 | `$schema` URL injected by the generator | `AGENTS_JSON_SCHEMA_URL` constant in `packages/core/src/agents-json.ts`. Kept in lockstep with `SCHEMA_ID` in `@herald/schema` by the round-trip test. |
+| Cross-validator fixture corpus | `packages/schema/src/__tests__/fixtures/` is canonical; the agents-txt MCP worker keeps a byte-identical mirror at `app/mcp/src/__tests__/fixtures/`. Editing the wire schema so a fixture's verdict flips means updating **both** copies. `pnpm sync-check:fixtures` asserts byte-equality and CI fails the PR on drift. See the directory's own `README.md` for the `valid-` / `invalid-` naming rule and the excluded disagreement zones. |
 
 Detailed architecture and rules: [`AGENTS.md`](AGENTS.md).
 
@@ -89,6 +90,7 @@ These are non-negotiable. Violations get sent back without further review.
 - Tests are colocated with code under `__tests__/` directories.
 - New generators or validators **require new tests**. PRs adding behavior without tests will be asked to add them.
 - `ContentDriver` is a seam for tests — pass `staticDriver(pages)` to `generateLlmsTxt(config, driver)` to exercise the full generator without network calls.
+- The wire-format schema carries two agreement tests in `packages/schema/`: `herald-output.test.ts` (every shape `generateAgentsJson` can emit validates against `AgentsJsonSchema` — the producer side) and `cross-validator.test.ts` (the canonical Zod schema and herald-core's hand-written `validateAgentsJson` return the same pass/fail verdict on the shared fixture corpus — the consumer side). A change to `agents-json-schema.ts` or `validate.ts` will move these; keep the fixture corpus and its agents-txt mirror in sync (`pnpm sync-check:fixtures`).
 - Aim for tests that exercise observable behavior, not internal implementation. If a refactor breaks a test that should still pass, the test was over-specified.
 
 ---

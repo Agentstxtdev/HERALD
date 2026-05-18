@@ -142,6 +142,8 @@ CLI entry: `node dist/cli-emit.js <out-dir>` (or `pnpm --filter @agentstxtdev/he
 
 The round-trip contract: every shape `generateAgentsJson` in `@herald/core` can emit must validate cleanly against `AgentsJsonSchema`. Enforced by an integration test in `packages/schema/src/__tests__/herald-output.test.ts`. If a future generator change emits a field the schema does not model, the test fails before merge.
 
+The cross-validator contract: `cross-validator.test.ts` runs the canonical Zod schema and herald-core's hand-written `validateAgentsJson` against a shared fixture corpus in `packages/schema/src/__tests__/fixtures/`, asserting both match the fixture's expected verdict (`valid-` / `invalid-` filename prefix) and agree with each other. The agents-txt MCP worker runs the same corpus from a byte-identical mirror at `app/mcp/src/__tests__/fixtures/`; `pnpm sync-check:fixtures` (root script → `scripts/sync-check-fixtures.mjs`) hashes both directories and fails CI on drift. The corpus is intentionally restricted to cases where all three validators agree on the binary verdict — the excluded disagreement zones are listed in the fixture directory's `README.md`. The script is a contributor/CI maintenance tool; it is not part of any published package.
+
 ## Package: `@herald/cli`
 
 ```
