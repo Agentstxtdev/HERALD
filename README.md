@@ -13,7 +13,7 @@
 
 *One config. One command. One binary.*
 
-[![npm: @herald/cli](https://img.shields.io/npm/v/%40herald%2Fcli?label=%40herald%2Fcli&style=flat-square&color=cb3837)](https://www.npmjs.com/package/@herald/cli)
+[![npm: @agentstxtdev/herald](https://img.shields.io/npm/v/%40agentstxtdev%2Fherald?label=%40agentstxtdev%2Fherald&style=flat-square&color=cb3837)](https://www.npmjs.com/package/@agentstxtdev/herald)
 [![Spec: agents.txt](https://img.shields.io/badge/spec-agents.txt-111?style=flat-square)](https://agents-txt.com)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/agents-txt/herald?style=flat-square&logo=github&logoColor=white&color=181717)](https://github.com/agents-txt/herald)
@@ -228,12 +228,12 @@ Layer 4: AGENT CAPABILITIES /agents.txt   (agents.txt spec)  "Here's what you ca
 ## Install
 
 ```bash
-npm install -D @herald/cli               # install as dev dependency
+npm install -D @agentstxtdev/herald      # install as dev dependency
 herald init                              # interactive setup → writes agentsjson.config.js
 herald emit                          # writes discovery files to ./public
 ```
 
-`@herald/core` is a transitive dependency pulled in automatically. You never install it directly.
+`@agentstxtdev/herald-core` is a transitive dependency pulled in automatically. You never install it directly.
 
 ---
 
@@ -320,7 +320,7 @@ If your framework already generates a sitemap (Next.js `app/sitemap.ts`, `@astro
 
 `llms.txt` is the Layer 3 *content briefing* for your site: an LLM-optimized index that follows the [llmstxt.org](https://llmstxt.org/) spec. It tells an agent what your site is and points at the pages worth reading, in a structured plain-text format. Format is fixed: an H1 with the site name, an optional `>` blockquote summary, then `## Section` headings each containing a bullet list of `[Title](url): description` lines. A trailing `## Optional` section flags pages an agent can safely ignore on a first pass.
 
-The page list itself comes from `content.driver` in your `agentsjson.config.js`. The driver decides where the URLs originate (your existing `sitemap.xml`, a Firecrawl crawl, an explicit list of pages, or fully curated sections), and `@herald/core` renders them into the format above. Payment terms, authentication, MCP endpoints, and skill packages **do not** belong in `llms.txt`; those live one layer up in `agents.txt` / `agents.json`.
+The page list itself comes from `content.driver` in your `agentsjson.config.js`. The driver decides where the URLs originate (your existing `sitemap.xml`, a Firecrawl crawl, an explicit list of pages, or fully curated sections), and `@agentstxtdev/herald-core` renders them into the format above. Payment terms, authentication, MCP endpoints, and skill packages **do not** belong in `llms.txt`; those live one layer up in `agents.txt` / `agents.json`.
 
 ```markdown
 # My Site
@@ -406,7 +406,7 @@ Omit the `fullTxt` block to skip llms-full.txt generation entirely.
 
 ---
 
-### The `@herald/cli` and `agentsjson.config.js`
+### The `@agentstxtdev/herald` CLI and `agentsjson.config.js`
 
 
 HERALD is driven by a single file at your project root: **`agentsjson.config.js`**. It's the source of truth for every discovery file HERALD emits. The CLI creates, validates, and re-renders from it.
@@ -416,7 +416,7 @@ HERALD is driven by a single file at your project root: **`agentsjson.config.js`
 | Command | What it does | Output |
 |---|---|---|
 | `herald init` | Interactive wizard. Detects framework / sitemap / `.env` and writes `agentsjson.config.js` at your project root (with sensible defaults you can edit later). Use `-y` to skip all prompts and accept detected values. | `./agentsjson.config.js` |
-| `herald emit` | Imports `agentsjson.config.js`, validates it, runs the generators (`@herald/core`), writes `robots.txt`, `llms.txt`, `agents.txt`, `agents.json`, and (when applicable) `sitemap.xml` to `--out` (default `./public`). Each file passes its spec validator inline; failures print as warnings. | files under `--out` |
+| `herald emit` | Imports `agentsjson.config.js`, validates it, runs the generators (`@agentstxtdev/herald-core`), writes `robots.txt`, `llms.txt`, `agents.txt`, `agents.json`, and (when applicable) `sitemap.xml` to `--out` (default `./public`). Each file passes its spec validator inline; failures print as warnings. | files under `--out` |
 | `herald check <url>` | Fetches the live discovery files from a public URL and scores them against the same validators that `emit` uses. Useful for CI or post-deploy smoke tests. | report on stdout |
 
 Per-file flags for `emit`:
@@ -443,7 +443,7 @@ See `herald emit --help` for the full list.
 
 ### `agentsjson.config.js`: the file you create
 
-You don't manually write this from scratch. Run **`herald init`** or **`herald emit --agents`**in your project root and the wizard writes it for you. The file shape:
+You don't manually write this from scratch. Run **`herald init`** in your project root and the wizard writes it for you. (`herald emit` then *reads* this file to generate the discovery files; it never writes the config.) The file shape:
 
 ```js
 // agentsjson.config.js  (lives at your project root)
@@ -590,7 +590,7 @@ The same file is consumed by **`herald emit`**, which reads it to write the stat
 ### Where the file lives
 
 - **Static / Jamstack sites** (Astro, Hugo, 11ty, Next.js export): at your project root, generated at build time by `herald emit --out ./public`.
-- **Server frameworks** (Express, Hono, Next.js App Router): at your project root, generated at build time or on deploy. Serve the resulting files as static assets, or hand-roll a route that imports `@herald/core` to render them on demand.
+- **Server frameworks** (Express, Hono, Next.js App Router): at your project root, generated at build time or on deploy. Serve the resulting files as static assets, or hand-roll a route that imports `@agentstxtdev/herald-core` to render them on demand.
 
 ### Editor autocomplete via `$schema`
 
@@ -607,10 +607,10 @@ Every `agents.json` herald emits carries a `$schema` field pointing at the canon
 
 JSON-aware editors (VS Code, JetBrains, Helix with the JSON LSP, `jq --schema`, anything that respects the `$schema` field) read the referenced document and provide inline validation plus autocomplete the moment an operator opens the file. Hand-edits stay honest: a typo in `payments.mpp.methods`, a missing required field, a non-https URL in `mcp[].url` all surface in the editor before the file is ever served.
 
-The schema is derived from the Zod source in `@herald/schema` via `z.toJSONSchema()`. To consume it directly in a third-party validator:
+The schema is derived from the Zod source in `@agentstxtdev/herald-schema` via `z.toJSONSchema()`. To consume it directly in a third-party validator:
 
 ```ts
-import { AgentsJsonSchema } from '@herald/schema'
+import { AgentsJsonSchema } from '@agentstxtdev/herald-schema'
 
 const result = AgentsJsonSchema.safeParse(await (await fetch(url)).json())
 if (!result.success) console.error(result.error.issues)
@@ -618,7 +618,7 @@ if (!result.success) console.error(result.error.issues)
 
 ### Validation
 
-Both `init` and `emit` run a Zod schema (CLI-only, doesn't bloat `@herald/core`). Errors print field-level paths so misconfiguration surfaces early:
+Both `init` and `emit` run a Zod schema (CLI-only, doesn't bloat `@agentstxtdev/herald-core`). Errors print field-level paths so misconfiguration surfaces early:
 
 ```
 ❌ Failed to load config: Invalid agentsjson.config.js:
@@ -876,9 +876,9 @@ Two practical consequences:
 
 | Package | Purpose |
 |---------|---------|
-| `@herald/core` | Pure generators: robots.txt, llms.txt, agents.txt, agents.json. No runtime deps. |
-| `@herald/cli` | `herald init/generate/check` |
-| `@herald/schema` | Zod schemas for the `agents.json` wire format, with JSON Schema derivation via `z.toJSONSchema()`. Single source of truth for runtime validation, TypeScript types, and the public JSON Schema hosted on agents-txt.com. Zod is kept out of `@herald/core` so core stays edge-runtime safe. |
+| `@agentstxtdev/herald-core` | Pure generators: robots.txt, llms.txt, agents.txt, agents.json. No runtime deps. |
+| `@agentstxtdev/herald` | `herald init/generate/check` |
+| `@agentstxtdev/herald-schema` | Zod schemas for the `agents.json` wire format, with JSON Schema derivation via `z.toJSONSchema()`. Single source of truth for runtime validation, TypeScript types, and the public JSON Schema hosted on agents-txt.com. Zod is kept out of `@agentstxtdev/herald-core` so core stays edge-runtime safe. |
 
 ---
 
@@ -1000,7 +1000,7 @@ packages/cli/dist/
 
 ### Architecture constraints
 
-- `@herald/core` must have **zero runtime dependencies**. It must work on Node.js, Deno, Bun, and edge runtimes
+- `@agentstxtdev/herald-core` must have **zero runtime dependencies**. It must work on Node.js, Deno, Bun, and edge runtimes
 - Never import Zod into `core`. Zod lives in `cli` only
 
 ---
