@@ -1,11 +1,13 @@
 <div align="center">
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/herald/wordmark-horizontal-dark.svg">
-  <img src="assets/herald/wordmark-horizontal-light.svg" width="680" alt="HERALD">
-</picture>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/herald/wordmark-horizontal-dark.svg">
+    <img src="assets/herald/wordmark-horizontal-light.svg" width="680" alt="HERALD">
+  </picture>
+</p>
 
-<br><br>
+<br>
 
 **The capabilities discovery layer for the agentic web.**
 
@@ -97,13 +99,9 @@ HERALD is an open-source framework + CLI that emits the standard discovery files
 </tr>
 </table>
 
-<sub>
-
-Every row above is a **declaration**, not a runtime. The discovery layer is published as `agents.txt` (plain text) and `agents.json` (structured capabilities), both generated from a single `agentsjson.config.js`. HERALD emits only what that config declares. The **Chains** row reflects any CAIP-2 network listed in `x402.treasury`; the **Tokens & rails** row reflects whatever you set under `payments.*` (Stripe SPT additionally covers card networks and Solana USDC).
-
-</sub>
-
 </div>
+
+> Every row above is a **declaration**, not a runtime. The discovery layer is published as `agents.txt` (plain text) and `agents.json` (structured capabilities), both generated from a single `agentsjson.config.js`. HERALD emits only what that config declares. The **Chains** row reflects any CAIP-2 network listed in `x402.treasury`; the **Tokens & rails** row reflects whatever you set under `payments.*` (Stripe SPT additionally covers card networks and Solana USDC).
 
 ## What this does
 
