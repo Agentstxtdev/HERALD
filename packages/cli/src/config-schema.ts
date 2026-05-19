@@ -288,6 +288,21 @@ const UcpConfigSchema = z.object({
   ]),
 })
 
+const WebMcpEntrySchema = z.union([
+  z.url('WebMCP page URL must be a valid URL'),
+  z.object({
+    url: z.url('WebMCP page URL must be a valid URL'),
+    description: z.string().optional(),
+  }),
+])
+
+const WebMcpConfigSchema = z.object({
+  pages: z.union([
+    WebMcpEntrySchema,
+    z.array(WebMcpEntrySchema).min(1, 'pages must contain at least one entry'),
+  ]),
+})
+
 const SecurityConfigSchema = z.object({
   contact: z.union([z.string().min(1, 'security.contact must not be empty'), z.array(z.string().min(1)).min(1)]),
   expires: z.string().refine(
@@ -316,6 +331,7 @@ export const AgenticConfigSchema = z.object({
   skills: SkillsConfigSchema.optional(),
   a2a: A2AConfigSchema.optional(),
   ucp: UcpConfigSchema.optional(),
+  webmcp: WebMcpConfigSchema.optional(),
   security: SecurityConfigSchema.optional(),
   headersExtras: z
     .array(

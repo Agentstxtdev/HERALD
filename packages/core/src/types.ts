@@ -472,6 +472,32 @@ export interface UcpConfig {
   profiles: string | UcpEntry | (string | UcpEntry)[]
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// WebMCP types — in-browser tool registration discoverability
+// (webmachinelearning.github.io/webmcp)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface WebMcpEntry {
+  url: string
+  /** Short description of the in-browser tools this page registers. Appears in agents.json only. */
+  description?: string
+}
+
+export interface WebMcpConfig {
+  /**
+   * One or more page URLs whose documents register WebMCP tools through
+   * `navigator.modelContext`. WebMCP exposes a page's own functions as
+   * structured tools to an AI agent operating inside the browser tab.
+   *
+   * Where the `MCP:` directive advertises server-side endpoints for headless
+   * agents, `WebMCP:` advertises pages for agents running in a browser-context
+   * runtime (agents.txt spec §6.6). agents.txt carries only the page URL; the
+   * tool definitions are registered at runtime by the page's own JavaScript.
+   * Pass a string for URL-only, or an object to include a description in agents.json.
+   */
+  pages: string | WebMcpEntry | (string | WebMcpEntry)[]
+}
+
 export interface SecurityConfig {
   /**
    * Vulnerability disclosure contact. String or string[]; bare emails get a
@@ -518,6 +544,7 @@ export interface AgenticConfig {
   skills?: SkillsConfig
   a2a?: A2AConfig
   ucp?: UcpConfig
+  webmcp?: WebMcpConfig
   security?: SecurityConfig
   /**
    * Extra header rules to append to the generated `_headers` / `vercel.json`.

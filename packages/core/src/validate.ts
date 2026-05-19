@@ -223,6 +223,24 @@ export function validateAgentsTxt(content: string): ValidationResult[] {
     }
   }
 
+  // ── WebMCP block ───────────────────────────────────────────────────────────
+  const webmcpMatches = [...content.matchAll(/^WebMCP:\s*(.+)$/gm)]
+
+  for (const match of webmcpMatches) {
+    const url = (match[1] ?? '').trim()
+    let isValid = false
+    try { isValid = Boolean(new URL(url)) } catch { /* invalid */ }
+
+    if (!isValid) {
+      results.push({ rule: 'webmcp-url-valid', status: 'fail', message: `WebMCP: value is not a valid URL: '${url}'` })
+    } else {
+      results.push({ rule: 'webmcp-url-valid', status: 'pass', message: `Valid WebMCP page URL: ${url}` })
+      if (!url.startsWith('https://')) {
+        results.push({ rule: 'webmcp-https', status: 'warn', message: `WebMCP URL should use HTTPS: ${url}` })
+      }
+    }
+  }
+
   return results
 }
 
@@ -579,6 +597,27 @@ export function validateAgentsJson(content: string): ValidationResult[] {
         results.push({ rule: 'json-a2a-url-valid', status: 'pass', message: `Valid A2A url: ${url}` })
         if (!url.startsWith('https://')) {
           results.push({ rule: 'json-a2a-https', status: 'warn', message: `A2A url should use HTTPS: ${url}` })
+        }
+      }
+    }
+  }
+
+  // ── WebMCP ─────────────────────────────────────────────────────────────────
+  if (Array.isArray(parsed.webmcp)) {
+    for (const entry of parsed.webmcp as Record<string, unknown>[]) {
+      const url = entry.url as string | undefined
+      if (!url) {
+        results.push({ rule: 'json-webmcp-url-valid', status: 'fail', message: 'WebMCP entry missing url field' })
+        continue
+      }
+      let isValid = false
+      try { isValid = Boolean(new URL(url)) } catch { /* invalid */ }
+      if (!isValid) {
+        results.push({ rule: 'json-webmcp-url-valid', status: 'fail', message: `WebMCP url is not a valid URL: '${url}'` })
+      } else {
+        results.push({ rule: 'json-webmcp-url-valid', status: 'pass', message: `Valid WebMCP url: ${url}` })
+        if (!url.startsWith('https://')) {
+          results.push({ rule: 'json-webmcp-https', status: 'warn', message: `WebMCP url should use HTTPS: ${url}` })
         }
       }
     }

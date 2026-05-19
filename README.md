@@ -154,6 +154,7 @@ Each file is its own open standard. HERALD is the build/serve tooling for them. 
 | [MCP (modelcontextprotocol.io)](https://modelcontextprotocol.io/) | Tool/resource server discovery |
 | [Agent Skills (agentskills.io)](https://agentskills.io/) | Skill package discovery |
 | [A2A (a2a-protocol.org)](https://a2a-protocol.org/) | Agent-to-agent AgentCard discovery |
+| [WebMCP (webmachinelearning.github.io/webmcp)](https://webmachinelearning.github.io/webmcp/) | In-browser tool registration via `navigator.modelContext` |
 | [Agent Skills Discovery v0.2.0](https://github.com/cloudflare/agent-skills-discovery-rfc) | Verified skill discovery index with sha256 digests |
 | [MCP Server Card (SEP-2127)](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2127) | MCP-native pre-screening card |
 | [API Catalog (RFC 9727)](https://www.rfc-editor.org/rfc/rfc9727) | `application/linkset+json` directory of a site's APIs |
@@ -580,6 +581,14 @@ export default {
       description: 'UCP profile for commerce capabilities.',
     },
   },
+
+  // Optional: WebMCP page discovery (webmachinelearning.github.io/webmcp)
+  webmcp: {
+    pages: {
+      url: 'https://myblog.com/app',
+      description: 'Page that registers in-browser tools via navigator.modelContext.',
+    },
+  },
 }
 ```
 
@@ -833,6 +842,25 @@ Set `ucp.profiles` in `agentsjson.config.js` and HERALD emits the profile URL(s)
 </details>
 
 <details>
+<summary><b>WebMCP: in-browser tool registration</b></summary>
+
+<br>
+
+WebMCP ([webmachinelearning.github.io/webmcp](https://webmachinelearning.github.io/webmcp/)) is a browser API that lets a page expose its own functionality as structured tools to an AI agent running inside the browser tab. The page calls `navigator.modelContext.registerTool()` to register named functions with natural-language descriptions and JSON Schema input shapes. The agent invokes them directly, reusing the page's existing JavaScript instead of scraping the DOM.
+
+```
+Headless agent  → MCP: server endpoint, reached over JSON-RPC, no browser
+Browser agent   → WebMCP: page loaded in a browser-context runtime;
+                  the document has self-registered its tools
+```
+
+WebMCP and the server-side `MCP:` directive are complementary layers. `MCP:` advertises endpoints for headless agents; `WebMCP:` advertises pages that register browser-context tools.
+
+Set `webmcp.pages` in `agentsjson.config.js` and HERALD emits the page URL(s) into `agents.txt` (`WebMCP:` directive) and `agents.json` (`webmcp[]` array). The tool definitions are registered at runtime by each page's own JavaScript; HERALD emits only the discovery pointer, never the tool set.
+
+</details>
+
+<details>
 <summary><b>Trust model at a glance: x402 vs MPP</b></summary>
 
 <br>
@@ -921,7 +949,7 @@ Use this when the protocol has settled enough that you want HERALD's generators,
 
 6. **Tests**. Add cases in [`packages/core/src/__tests__/agents-txt.test.ts`](packages/core/src/__tests__/agents-txt.test.ts) and [`agents-json.test.ts`](packages/core/src/__tests__/agents-json.test.ts) that exercise emission with and without credentials.
 
-For a brand-new block kind (not payment, not auth, not MCP, not Skills, not A2A), the same recipe extends to a new directive name. Add a parser case in the spec, plumb a new `XyzConfig` into `AgenticConfig`, and have the generators emit a fresh block separated by a blank line. The A2A block is the most recent worked example: look at the diff that introduced `A2AConfig`, the `A2A:` line emitter in `agents-txt.ts`, and the `a2a[]` array emitter in `agents-json.ts`.
+For a brand-new block kind (not payment, not auth, not MCP, not Skills, not A2A, not UCP, not WebMCP), the same recipe extends to a new directive name. Add a parser case in the spec, plumb a new `XyzConfig` into `AgenticConfig`, and have the generators emit a fresh block separated by a blank line. The A2A block is the most recent worked example: look at the diff that introduced `A2AConfig`, the `A2A:` line emitter in `agents-txt.ts`, and the `a2a[]` array emitter in `agents-json.ts`.
 
 ### Adding A2A AgentCards to your site
 

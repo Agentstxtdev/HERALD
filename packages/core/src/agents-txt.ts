@@ -14,7 +14,7 @@ import { resolveActiveProtocols } from './payments.js'
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function generateAgentsTxt(config: AgenticConfig): string {
-  const { site, payments, authorization, mcp, skills, a2a, ucp } = config
+  const { site, payments, authorization, mcp, skills, a2a, ucp, webmcp } = config
   const baseUrl = site.url.replace(/\/$/, '')
   const lines: string[] = [
     '# agents.txt',
@@ -91,6 +91,20 @@ export function generateAgentsTxt(config: AgenticConfig): string {
     lines.push('')
     for (const e of profiles) {
       lines.push(`UCP: ${typeof e === 'string' ? e : e.url}`)
+    }
+  }
+
+  // ── WebMCP block ───────────────────────────────────────────────────────────
+  // One line per page URL whose document registers in-browser tools via
+  // `navigator.modelContext` (spec §6.6). Complements the server-side `MCP:`
+  // directive: MCP advertises endpoints for headless agents, WebMCP advertises
+  // pages for agents running in a browser-context runtime. The tool definitions
+  // are registered at runtime by the page itself, never carried here.
+  if (webmcp) {
+    const pages = Array.isArray(webmcp.pages) ? webmcp.pages : [webmcp.pages]
+    lines.push('')
+    for (const e of pages) {
+      lines.push(`WebMCP: ${typeof e === 'string' ? e : e.url}`)
     }
   }
 

@@ -1,6 +1,6 @@
 # Project: herald
 
-A file-generation framework that makes any website readable and agent-discoverable. One npm install (`@herald/cli`). One config object. Up to six files generated (`robots.txt`, `sitemap.xml`, `llms.txt`, `llms-full.txt`, `agents.txt`, `agents.json`) plus `_headers` / `vercel.json` for spec §4.5 compliance. The `agents.txt` and `agents.json` outputs *declare* payment, auth, MCP, Skills, A2A, and UCP capabilities; herald does not implement the runtime handlers for any of those protocols.
+A file-generation framework that makes any website readable and agent-discoverable. One npm install (`@agentstxtdev/herald`). One config object. Up to six files generated (`robots.txt`, `sitemap.xml`, `llms.txt`, `llms-full.txt`, `agents.txt`, `agents.json`) plus `_headers` / `vercel.json` for spec §4.5 compliance. The `agents.txt` and `agents.json` outputs *declare* payment, auth, MCP, Skills, A2A, UCP, and WebMCP capabilities; herald does not implement the runtime handlers for any of those protocols.
 
 ## Skills
 
@@ -14,9 +14,9 @@ Use `/agents-txt-setup` when helping a user integrate `herald` into their own si
 ```
 herald/
 ├── packages/
-│   ├── core/    — @herald/core    — pure generators, zero runtime deps
-│   ├── cli/     — @herald/cli     — herald CLI (Commander.js)
-│   └── schema/  — @herald/schema  — Zod source of truth for agents.json + JSON Schema export
+│   ├── core/    — @agentstxtdev/herald-core    — pure generators, zero runtime deps
+│   ├── cli/     — @agentstxtdev/herald     — herald CLI (Commander.js)
+│   └── schema/  — @agentstxtdev/herald-schema  — Zod source of truth for agents.json + JSON Schema export
 ├── docs/        — changelogs
 ├── skills/      — agent-installable skill packages
 └── tsconfig.base.json
@@ -60,7 +60,7 @@ pnpm build
 node packages/cli/dist/cli.js init
 ```
 
-> **Note:** pnpm workspace links resolve `@herald/core` via `workspace:*`. Build `core`
+> **Note:** pnpm workspace links resolve `@agentstxtdev/herald-core` via `workspace:*`. Build `core`
 > before `cli`, or run `pnpm build` from root which uses `-r` (recursive) ordering.
 
 ## The Single Config Object
@@ -78,22 +78,23 @@ interface AgenticConfig {
   skills?:        { urls }                         // SkillEntry now also accepts { name, type, digest }
   a2a?:           { cards }
   ucp?:           { profiles }
+  webmcp?:        { pages }
   security?:      { contact, policy?, preferredLanguages? }
   headersExtras?: ExtraHeaderRule[]                // append-verbatim `_headers` / `vercel.json` rules
 }
 ```
 
-`payments.protocols` accepts the registered identifiers (`'x402'`, `'mpp'`, `'ap2'`) and any experimental identifier prefixed with `x-` (e.g. `'x-mypay'`) per agents.txt spec §3.1. Same convention for `authorization.protocols`. The set of identifiers comes from `@herald/core`'s `protocols.ts` registry, which is the single source of truth.
+`payments.protocols` accepts the registered identifiers (`'x402'`, `'mpp'`, `'ap2'`) and any experimental identifier prefixed with `x-` (e.g. `'x-mypay'`) per agents.txt spec §3.1. Same convention for `authorization.protocols`. The set of identifiers comes from `@agentstxtdev/herald-core`'s `protocols.ts` registry, which is the single source of truth.
 
 `mcp.serverCard`, `SkillEntry.{name, type, digest}`, and `payments.openapi` are the three opt-in fields that drive the ecosystem discovery surfaces (`/.well-known/mcp/server-card.json` per SEP-2127, `/.well-known/agent-skills/index.json` per agentskills.io v0.2.0, `/openapi.json` per the Payment Discovery draft). Each follows the same honest-declarations rule as the rest of herald: the matching generator returns `null` when its source block is absent, and the matching `_headers` / `Link:` entries only appear when the file does. The fourth ecosystem surface, `/.well-known/api-catalog` (RFC 9727), needs no new field; it derives its anchors entirely from the `mcp` / `a2a` / `ucp` blocks the config already declares. See [`packages/core/src/api-catalog.ts`](packages/core/src/api-catalog.ts), [`packages/core/src/mcp-server-card.ts`](packages/core/src/mcp-server-card.ts), [`packages/core/src/agent-skills-index.ts`](packages/core/src/agent-skills-index.ts), and [`packages/core/src/openapi.ts`](packages/core/src/openapi.ts) for the exact emission rules.
 
 `headersExtras` is the escape hatch for adopters who need `_headers` / `vercel.json` entries herald has no built-in knowledge of: a vendored JSON Schema directory, an additional well-known surface, any path requiring custom CORS or `Content-Type`. Entries append verbatim to the generated headers file. Unmatched paths are a no-op at the edge, so dead entries are harmless. The reference deployment uses this field to register the `/schema/*` rule that serves the public `agents.json` JSON Schema; see the agents-txt repo's `app/site/agentsjson.config.js` for the worked example.
 
-The `$schema` field herald injects into every generated `agents.json` is also driven from `@herald/core` (see `AGENTS_JSON_SCHEMA_URL` constant in `agents-json.ts`). The URL is duplicated between `@herald/core` and `@herald/schema` deliberately: core cannot import the schema package without violating its zero-dep rule. A round-trip test in `packages/schema/src/__tests__/herald-output.test.ts` catches drift if the two ever diverge.
+The `$schema` field herald injects into every generated `agents.json` is also driven from `@agentstxtdev/herald-core` (see `AGENTS_JSON_SCHEMA_URL` constant in `agents-json.ts`). The URL is duplicated between `@agentstxtdev/herald-core` and `@agentstxtdev/herald-schema` deliberately: core cannot import the schema package without violating its zero-dep rule. A round-trip test in `packages/schema/src/__tests__/herald-output.test.ts` catches drift if the two ever diverge.
 
 Users write `agentsjson.config.js` once. Every generator reads from it.
 
-## Package: `@herald/core`
+## Package: `@agentstxtdev/herald-core`
 
 **Zero runtime dependencies.** Safe to use in Node.js, edge runtimes, Deno, Bun.
 
@@ -112,16 +113,16 @@ Key exports:
 | `generateMcpServerCard(config)` | SEP-2127 `/.well-known/mcp/server-card.json`. Gated on `mcp.serverCard = { name, version, capabilities: { tools, resources, prompts } }`; returns `null` when the field is absent. |
 | `generateAgentSkillsIndex(config)` | agentskills.io Discovery v0.2.0 index at `/.well-known/agent-skills/index.json`. Per-entry `name?` / `type?` / `digest: "sha256:<hex>"` on `SkillEntry`; entries without a digest are skipped at emit time with a warning. |
 | `generateOpenApiJson(config)` | OpenAPI 3.1 at `/openapi.json` with `x-payment-info` per the [Payment Discovery draft](https://paymentauth.org/draft-payment-discovery-00.txt). Driven by `payments.openapi.paths`; single-offer paths use the direct shorthand, multi-offer use the `offers[]` array form. |
-| `AGENTS_JSON_SCHEMA_URL` (constant) | Canonical JSON Schema URL injected into every generated `agents.json` as `$schema`. Lets editors (VS Code, JetBrains, `jq --schema`) give operators free autocomplete and inline validation. The schema document itself lives on agents-txt.com; `@herald/core` is unaware of the schema's shape, and `@herald/schema` owns that. |
+| `AGENTS_JSON_SCHEMA_URL` (constant) | Canonical JSON Schema URL injected into every generated `agents.json` as `$schema`. Lets editors (VS Code, JetBrains, `jq --schema`) give operators free autocomplete and inline validation. The schema document itself lives on agents-txt.com; `@agentstxtdev/herald-core` is unaware of the schema's shape, and `@agentstxtdev/herald-schema` owns that. |
 | `generateHeadersFile(platform)` / `mergeVercelHeaders()` | §4.5 platform headers config (`_headers` or `vercel.json`). When the config carries an `mcp`, `a2a`, `ucp`, `skills`, or `payments.openapi` block, the generator emits matching CORS rules for the corresponding ecosystem discovery surfaces and an RFC 8288 `Link:` header block on `/` advertising every surface the site publishes. |
 | `validateRobotsTxt / validateLlmsTxt / validateAgentsTxt / validateAgentsJson / validateSitemapXml / validateSecurityTxt` | Spec compliance checks on generated output |
 | `sitemapDriver / firecrawlDriver / staticDriver / manualDriver` | ContentDriver factories (inject in tests) |
 
 `validateAgentsJson` emits a `json-schema-ref` rule that recognises the `$schema` field as a positive signal when present and warns (with the canonical URL as the recommended value) when absent. The validator does not fetch the referenced schema; presence + string-shape is enough at this layer.
 
-## Package: `@herald/schema`
+## Package: `@agentstxtdev/herald-schema`
 
-**Zod source of truth for the agents.json wire format.** Lives in its own package because Zod is a runtime dependency `@herald/core` cannot accept (the zero-runtime-dep rule keeps core edge-runtime safe). Bridges three artefacts from one Zod declaration:
+**Zod source of truth for the agents.json wire format.** Lives in its own package because Zod is a runtime dependency `@agentstxtdev/herald-core` cannot accept (the zero-runtime-dep rule keeps core edge-runtime safe). Bridges three artefacts from one Zod declaration:
 
 - `AgentsJsonSchema`: runtime validator (`AgentsJsonSchema.safeParse(json)`) for third-party consumers that have a served agents.json in hand
 - `z.infer<typeof AgentsJsonSchema>`: re-exported as the `AgentsJson` TypeScript type
@@ -140,11 +141,11 @@ Key exports:
 
 CLI entry: `node dist/cli-emit.js <out-dir>` (or `pnpm --filter @agentstxtdev/herald-schema emit:json-schema <out-dir>`) writes `agents-json/v<SCHEMA_VERSION>.json` to the given directory. Used by the agents-txt.com reference deployment to keep the public schema file in sync with the Zod source.
 
-The round-trip contract: every shape `generateAgentsJson` in `@herald/core` can emit must validate cleanly against `AgentsJsonSchema`. Enforced by an integration test in `packages/schema/src/__tests__/herald-output.test.ts`. If a future generator change emits a field the schema does not model, the test fails before merge.
+The round-trip contract: every shape `generateAgentsJson` in `@agentstxtdev/herald-core` can emit must validate cleanly against `AgentsJsonSchema`. Enforced by an integration test in `packages/schema/src/__tests__/herald-output.test.ts`. If a future generator change emits a field the schema does not model, the test fails before merge.
 
 The cross-validator contract: `cross-validator.test.ts` runs the canonical Zod schema and herald-core's hand-written `validateAgentsJson` against a shared fixture corpus in `packages/schema/src/__tests__/fixtures/`, asserting both match the fixture's expected verdict (`valid-` / `invalid-` filename prefix) and agree with each other. The agents-txt MCP worker runs the same corpus from a byte-identical mirror at `app/mcp/src/__tests__/fixtures/`; `pnpm sync-check:fixtures` (root script → `scripts/sync-check-fixtures.mjs`) hashes both directories and fails CI on drift. The corpus is intentionally restricted to cases where all three validators agree on the binary verdict — the excluded disagreement zones are listed in the fixture directory's `README.md`. The script is a contributor/CI maintenance tool; it is not part of any published package.
 
-## Package: `@herald/cli`
+## Package: `@agentstxtdev/herald`
 
 ```
 packages/cli/src/
@@ -174,7 +175,7 @@ Per-file flags come in two symmetric sets. Default mode emits everything applica
 - Positive selectors: `--robots`, `--llms`, `--llms-full`, `--agents`, `--sitemap` (also forces emission for the `firecrawl` driver; warns + skips for the `sitemap` driver), `--security`, `--headers` (emits the §4.5 deployment config for the detected hosting platform; `--platform <cloudflare|netlify|vercel|unknown>` overrides the probe)
 - Negative selectors: `--skip-robots`, `--skip-llms`, `--skip-llms-full`, `--skip-agents`, `--skip-sitemap`, `--skip-security`, `--skip-headers`
 
-The `--headers` flag delegates to `@herald/core/src/headers.ts` (`generateHeadersFile(platform)`, `mergeVercelHeaders()`); the platform comes from `detectProject().hostingPlatform`. Auto-generation is implemented for Cloudflare and Netlify (a `_headers` file in `--out`) and Vercel (a `vercel.json` at the project root with merge semantics). Other platforms (nginx, Apache, Caddy, S3+CloudFront, etc.) get the `unknown` fallback `_headers` plus a console note pointing at the README's per-platform table; herald deliberately does not write into `/etc/` or external IaC trees. Localhost dev-server parity is not herald's responsibility; production hosts apply the generated file at their edge.
+The `--headers` flag delegates to `@agentstxtdev/herald-core/src/headers.ts` (`generateHeadersFile(platform)`, `mergeVercelHeaders()`); the platform comes from `detectProject().hostingPlatform`. Auto-generation is implemented for Cloudflare and Netlify (a `_headers` file in `--out`) and Vercel (a `vercel.json` at the project root with merge semantics). Other platforms (nginx, Apache, Caddy, S3+CloudFront, etc.) get the `unknown` fallback `_headers` plus a console note pointing at the README's per-platform table; herald deliberately does not write into `/etc/` or external IaC trees. Localhost dev-server parity is not herald's responsibility; production hosts apply the generated file at their edge.
 
 **`check` command:**
 ```bash
@@ -217,19 +218,19 @@ The "honest declarations" rule (`packages/core/src/payments.ts → resolveActive
 
 **Trust model**: x402-on-EVM/Solana keeps keys on the agent; MPP/Tempo same; MPP/Stripe is custodial (Stripe holds keys on both sides). Stripe SPT can settle Solana USDC without any wallet involvement, so a site advertising both rails reaches both wallet-native and customer-credential agent populations. The two populations barely overlap, which is why the gate emits one combined 402 carrying both protocols' challenges.
 
-**Built-in USDC defaults** (in `@herald/core`): Base mainnet `0x833…2913`, Base Sepolia `0x036…CF7e`, Ethereum mainnet `0xA0b…eB48`, Solana mainnet `EPjF…Dt1v`, Solana devnet `4zMM…ncDU`. Override per-network via `x402.assets[network]`.
+**Built-in USDC defaults** (in `@agentstxtdev/herald-core`): Base mainnet `0x833…2913`, Base Sepolia `0x036…CF7e`, Ethereum mainnet `0xA0b…eB48`, Solana mainnet `EPjF…Dt1v`, Solana devnet `4zMM…ncDU`. Override per-network via `x402.assets[network]`.
 
 ## Code Conventions
 
 - Named exports throughout; no default exports except generated configs
 - All packages: `"type": "module"`, `.js` extensions on all relative imports (NodeNext requirement)
 - No comments unless the WHY is non-obvious
-- Zod validation only in CLI; never import Zod into `@herald/core`
+- Zod validation only in CLI; never import Zod into `@agentstxtdev/herald-core`
 - `s(value)` helper in `config-writer.ts`: always use it for string injection into config templates (JSON.stringify-based injection prevention)
 
 ## Boundaries
 
-- Never add runtime dependencies to `@herald/core`; it must stay edge-runtime compatible
+- Never add runtime dependencies to `@agentstxtdev/herald-core`; it must stay edge-runtime compatible
 - Never add Zod to `packages/core`
 - Never ship runtime middleware (402 handlers, framework adapters) from herald
 - Never commit `.env` files or wallet private keys
@@ -275,7 +276,7 @@ The identifier flows through to `agents.txt` (`Protocols: x402, x-mypay`) and `a
 5. **CLI wizard** ([`packages/cli/src/commands/init.ts`](packages/cli/src/commands/init.ts), optional): add a prompt step inside the payments block when the new protocol needs credentials.
 6. **Tests**: add cases under `packages/core/src/__tests__/{agents-txt,agents-json}.test.ts` for emission with and without credentials.
 
-For a brand-new block kind (not payment, not auth, not MCP, not Skills, not A2A, not UCP): the A2A diff is the most recent worked example. Add a new `XyzConfig` type, parser case if the tool reads agents.txt, `Xyz:` line emitter in `agents-txt.ts`, `xyz[]` array emitter in `agents-json.ts`, validator rules in `validate.ts`, Zod schema entry in `config-schema.ts`, and a wizard prompt.
+For a brand-new block kind (not payment, not auth, not MCP, not Skills, not A2A, not UCP, not WebMCP): the WebMCP diff is the most recent worked example. Add a new `XyzConfig` type, parser case if the tool reads agents.txt, `Xyz:` line emitter in `agents-txt.ts`, `xyz[]` array emitter in `agents-json.ts`, validator rules in `validate.ts`, Zod schema entry in `config-schema.ts`, the `AgentsJsonSchema` entry in `@agentstxtdev/herald-schema`, and a wizard prompt.
 
 When the user mentions a new protocol that does not yet exist in `protocols.ts`, default to Path 1 (the `x-` prefix). Only suggest Path 2 if the protocol is clearly settled and the user wants herald-level support. Never silently extend `PAYMENT_PROTOCOLS` / `AUTH_PROTOCOLS` without confirming the spec status.
 
@@ -293,7 +294,7 @@ Herald already emits four ecosystem discovery files alongside `agents.txt` / `ag
 8. **CLAUDE.md** addition to the "Key exports" table above plus the matching `agentsjson.config.js` example block in a downstream README so adopters can see the shape.
 9. **Spec §12 row** in `agents-txt/app/site/src/content/spec/AGENTS-TXT-STANDARD.md` describing how the new surface relates to `agents.txt`. Editorial change, no version bump needed.
 
-The four existing surfaces are the worked examples; pick whichever shape is closest to the new one and copy. None of them needed runtime IO; if a new surface requires hashing or fetching (the way agent-skills/v0.2.0 needs sha256 digests), keep the IO at the CLI layer and have core accept a precomputed value, so `@herald/core` stays edge-runtime safe.
+The four existing surfaces are the worked examples; pick whichever shape is closest to the new one and copy. None of them needed runtime IO; if a new surface requires hashing or fetching (the way agent-skills/v0.2.0 needs sha256 digests), keep the IO at the CLI layer and have core accept a precomputed value, so `@agentstxtdev/herald-core` stays edge-runtime safe.
 
 ## Key Design Decisions (Why, Not What)
 

@@ -542,6 +542,56 @@ describe('generateAgentsJson — ucp block', () => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
+// WebMCP block
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('generateAgentsJson — webmcp block', () => {
+  it('omits webmcp when not configured', () => {
+    const parsed = JSON.parse(generateAgentsJson(baseConfig))
+    expect(parsed).not.toHaveProperty('webmcp')
+  })
+
+  it('normalizes a single string URL to { url }', () => {
+    const config: AgenticConfig = {
+      site: baseConfig.site,
+      webmcp: { pages: 'https://example.com/app' },
+    }
+    const parsed = JSON.parse(generateAgentsJson(config))
+    expect(parsed.webmcp).toEqual([{ url: 'https://example.com/app' }])
+  })
+
+  it('preserves description when entry object is provided', () => {
+    const config: AgenticConfig = {
+      site: baseConfig.site,
+      webmcp: {
+        pages: { url: 'https://example.com/app', description: 'Task list tools' },
+      },
+    }
+    const parsed = JSON.parse(generateAgentsJson(config))
+    expect(parsed.webmcp).toEqual([
+      { url: 'https://example.com/app', description: 'Task list tools' },
+    ])
+  })
+
+  it('emits multiple WebMCP page entries in order', () => {
+    const config: AgenticConfig = {
+      site: baseConfig.site,
+      webmcp: {
+        pages: [
+          'https://example.com/app',
+          { url: 'https://example.com/checkout', description: 'Checkout tools' },
+        ],
+      },
+    }
+    const parsed = JSON.parse(generateAgentsJson(config))
+    expect(parsed.webmcp).toEqual([
+      { url: 'https://example.com/app' },
+      { url: 'https://example.com/checkout', description: 'Checkout tools' },
+    ])
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Experimental x- protocols
 // ─────────────────────────────────────────────────────────────────────────────
 

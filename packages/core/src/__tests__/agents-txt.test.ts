@@ -453,3 +453,35 @@ describe('generateAgentsTxt — experimental x- protocols', () => {
     expect(output).toContain('Protocols: x-mypay')
   })
 })
+
+describe('generateAgentsTxt — WebMCP block', () => {
+  it('omits WebMCP block when webmcp not configured', () => {
+    const output = generateAgentsTxt(baseConfig)
+    expect(output).not.toContain('WebMCP:')
+  })
+
+  it('emits a single WebMCP: line for a string URL', () => {
+    const config: AgenticConfig = {
+      site: baseConfig.site,
+      webmcp: { pages: 'https://example.com/app' },
+    }
+    const output = generateAgentsTxt(config)
+    expect(output).toContain('WebMCP: https://example.com/app')
+  })
+
+  it('emits multiple WebMCP: lines in order for multiple pages', () => {
+    const config: AgenticConfig = {
+      site: baseConfig.site,
+      webmcp: {
+        pages: [
+          'https://example.com/app',
+          { url: 'https://example.com/checkout', description: 'Checkout tools' },
+        ],
+      },
+    }
+    const output = generateAgentsTxt(config)
+    expect(output).toContain('WebMCP: https://example.com/app')
+    expect(output).toContain('WebMCP: https://example.com/checkout')
+    expect(output).not.toContain('Checkout tools')
+  })
+})

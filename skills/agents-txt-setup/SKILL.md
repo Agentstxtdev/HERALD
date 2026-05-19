@@ -1,6 +1,6 @@
 ---
 name: agents-txt-setup
-description: Guides Claude through setting up the `@herald/cli` CLI on a user's website. Covers the init wizard, agentsjson.config.js fields, and file generation (robots.txt / sitemap.xml / llms.txt / agents.txt / agents.json / security.txt / `_headers`). Herald only generates discovery files; the runtime 402 handler that implements payment protocols declared in those files is out of scope. Use when the user wants to add herald to their project, generate the discovery files, or advertise payment / auth / MCP / Skills / A2A / UCP capabilities to agents.
+description: Guides Claude through setting up the `@agentstxtdev/herald` CLI on a user's website. Covers the init wizard, agentsjson.config.js fields, and file generation (robots.txt / sitemap.xml / llms.txt / agents.txt / agents.json / security.txt / `_headers`). Herald only generates discovery files; the runtime 402 handler that implements payment protocols declared in those files is out of scope. Use when the user wants to add herald to their project, generate the discovery files, or advertise payment / auth / MCP / Skills / A2A / UCP / WebMCP capabilities to agents.
 ---
 
 # herald: setup
@@ -20,7 +20,7 @@ Then follow the workflow below.
 ## Step 1: Run `init`
 
 ```bash
-npm install -D @herald/cli   # install once as a dev dependency
+npm install -D @agentstxtdev/herald   # install once as a dev dependency
 herald init                  # interactive wizard
 herald init -y               # skip all prompts, use auto-detected defaults
 ```
@@ -62,6 +62,7 @@ The single `AgenticConfig` object drives everything. Every generator reads from 
 | `payments.x402.treasury.evmAddress` | Their EVM wallet (40-char hex, 0x prefix). Embedded in `agents.json` so agents discover where to pay. No private keys ever. |
 | `payments.mpp` | Same shape as `x402`: pricing + Tempo recipient + Stripe credentials are declared in the discovery files, never used by herald at runtime. |
 | `a2a.cards` | One or more A2A AgentCard URLs (a2a-protocol.org). Optional. Useful when the site runs multiple A2A agents or serves AgentCards at non-canonical paths. The well-known path `/.well-known/agent-card.json` is enough for a single agent at the canonical location. |
+| `webmcp.pages` | One or more page URLs whose documents register in-browser tools via `navigator.modelContext` (spec §6.6). Optional. Declare it when the site serves pages that call `navigator.modelContext.registerTool()`; herald emits only the page URL, never the tool set. |
 | `security.contact` | RFC 9116 contact (`mailto:` / URL). Required for `/.well-known/security.txt` to be emitted. |
 
 **Gotcha:** If Firecrawl is chosen, tell them to set `FIRECRAWL_API_KEY` in `.env`. Free tier at firecrawl.dev, no credit card.
@@ -79,7 +80,7 @@ herald emit --out ./public
 **What `emit` does internally:**
 1. Dynamic `import()` of `agentsjson.config.js`
 2. Zod v4 validation: field-level errors printed before any file is written
-3. Calls `generateRobotsTxt`, `generateLlmsTxt`, `generateAgentsTxt`, `generateAgentsJson`, `generateSitemapXml`, `generateSecurityTxt`, `generateHeadersFile` from `@herald/core` per the file's emission policy
+3. Calls `generateRobotsTxt`, `generateLlmsTxt`, `generateAgentsTxt`, `generateAgentsJson`, `generateSitemapXml`, `generateSecurityTxt`, `generateHeadersFile` from `@agentstxtdev/herald-core` per the file's emission policy
 4. Writes to `--out` dir (default `./public`); `vercel.json` writes to the project root with merge semantics
 5. Runs spec validators inline, prints warnings, does not fail the build
 
@@ -161,6 +162,7 @@ Each identifier the user adds to `payments.protocols` is *advertised* in `agents
 | **MPP** ([mpp.dev](https://mpp.dev/), IETF draft) | Session-based, fiat + stablecoins via `WWW-Authenticate: Payment`. Tempo (USDC) and Stripe SPT (cards + Solana USDC). | They want to accept fiat or session-bound payments. Tempo activates with `mpp.tempoRecipient`; Stripe activates with `mpp.stripeSecretKey` + `mpp.stripeNetworkId`. Either independently. |
 | **AP2** ([ap2-protocol.org](https://ap2-protocol.org/)) | Mandate trust layer that composes *above* the rail. Agent presents signed `CheckoutMandate` + `PaymentMandate` as W3C VCs; settlement still runs over x402 / MPP. | The business needs explicit, replayable user-authorization records for dispute resolution. Set alongside x402 or MPP, not as a replacement. |
 | **UCP** ([ucp.dev](https://ucp.dev/)) | Profile-based commerce discovery. Site publishes a UCP profile (typically at `/.well-known/ucp`) describing services, capabilities, payment handlers. | The site serves richer commerce flows (multi-step, multi-handler) and already has a UCP profile authored. Herald emits the discovery pointer; the profile document is served separately. |
+| **WebMCP** ([webmachinelearning.github.io/webmcp](https://webmachinelearning.github.io/webmcp/)) | In-browser tool registration. A page calls `navigator.modelContext.registerTool()` to expose its functions as tools to an agent running in the browser tab. Complements the server-side `MCP:` directive. | The site serves pages that register in-browser tools. Herald emits the page URL; the tools are registered at runtime by the page's own JavaScript. |
 | **`x-` experimental** | Any identifier the user invents (`'x-mypay'`). Herald passes it through verbatim. | A protocol that has not been registered in the spec yet but they want to advertise it on a live site. The runtime contract is entirely the user's responsibility. |
 
 **Trust model.** x402-on-chain and MPP/Tempo are self-custodial (agent holds keys, signs the transfer). MPP/Stripe is custodial (Stripe holds keys on both sides). Stripe SPT can settle Solana USDC without involving any wallet on either side. Declaring both x402 and MPP reaches strictly more agents than either alone because wallet-native and customer-credential agent populations barely overlap.
@@ -173,9 +175,10 @@ Each identifier the user adds to `payments.protocols` is *advertised* in `agents
 
 ## Common pitfalls to flag proactively
 
-- `@herald/core` has zero runtime deps (edge-safe). The CLI is the only public surface; there is no runtime middleware shipped from herald.
+- `@agentstxtdev/herald-core` has zero runtime deps (edge-safe). The CLI is the only public surface; there is no runtime middleware shipped from herald.
 - Herald does not verify payments or run a 402 handler. If the user expects requests to actually be gated by x402 or MPP, they need their own middleware. The `payments` block in `agentsjson.config.js` is purely the discovery declaration.
 - `--skip-llms` is useful when Firecrawl is a separate CI step that takes too long; `--skip-llms-full` keeps the cheap `llms.txt` index but skips the Firecrawl-billed scrape.
 - `pnpm` workspace required if contributing to the monorepo itself.
 - `a2a` is optional. Most single-agent sites do not need it because A2A clients can probe `/.well-known/agent-card.json` directly. Suggest it only when the user has multiple A2A agents on one origin or serves an AgentCard at a non-canonical path.
+- `webmcp` is optional. Declare it only when the site actually serves pages that call `navigator.modelContext.registerTool()`. It points at HTML pages, not a server endpoint, so it does not replace the server-side `MCP:` directive; a site can declare both.
 - For protocols not yet listed in `payments.protocols` / `authorization.protocols`, point users at the `x-` prefix (e.g. `'x-mypay'`). Herald accepts them verbatim, validators pass them through without warnings, and there is no need to patch herald. Only suggest a registry edit (`packages/core/src/protocols.ts`) when the protocol is stable and the user wants herald-level support (wizard prompt, structured fields in `agents.json`).

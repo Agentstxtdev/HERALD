@@ -37,7 +37,7 @@ const SOLANA_CHAIN_IDS: Record<string, string> = {
 export const AGENTS_JSON_SCHEMA_URL = 'https://agents-txt.com/schema/agents-json/v1.0.json'
 
 export function generateAgentsJson(config: AgenticConfig): string {
-  const { site, payments, authorization, mcp, skills, a2a, ucp } = config
+  const { site, payments, authorization, mcp, skills, a2a, ucp, webmcp } = config
 
   const obj: Record<string, unknown> = {
     $schema: AGENTS_JSON_SCHEMA_URL,
@@ -205,6 +205,21 @@ export function generateAgentsJson(config: AgenticConfig): string {
   if (ucp) {
     const profiles = Array.isArray(ucp.profiles) ? ucp.profiles : [ucp.profiles]
     obj.ucp = profiles.map((e) => {
+      const url = typeof e === 'string' ? e : e.url
+      const description = typeof e === 'string' ? undefined : e.description
+      return { url, ...(description && { description }) }
+    })
+  }
+
+  // ── WebMCP ─────────────────────────────────────────────────────────────────
+  // One entry per page URL that registers in-browser tools via
+  // `navigator.modelContext` (spec §6.6, §5.2). Symmetric with mcp[], skills[],
+  // a2a[], and ucp[]: agents.txt carries only the URL; the description field is
+  // agents.json-only. The tool definitions are registered at runtime by the
+  // page's own JavaScript and are never duplicated here.
+  if (webmcp) {
+    const pages = Array.isArray(webmcp.pages) ? webmcp.pages : [webmcp.pages]
+    obj.webmcp = pages.map((e) => {
       const url = typeof e === 'string' ? e : e.url
       const description = typeof e === 'string' ? undefined : e.description
       return { url, ...(description && { description }) }

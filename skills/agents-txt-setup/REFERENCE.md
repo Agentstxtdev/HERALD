@@ -3,7 +3,7 @@
 ## Full `agentsjson.config.js` Schema
 
 ```js
-/** @type {import('@herald/core').AgenticConfig} */
+/** @type {import('@agentstxtdev/herald-core').AgenticConfig} */
 export default {
   site: {
     name: 'My Site',
@@ -150,6 +150,14 @@ export default {
     },
   },
 
+  // WebMCP page discovery (webmachinelearning.github.io/webmcp, spec §6.6).
+  webmcp: {
+    pages: {
+      url: 'https://mysite.com/app',
+      description: 'Page that registers in-browser tools via navigator.modelContext.',
+    },
+  },
+
   // Extra header rules appended verbatim to the generated `_headers` or
   // `vercel.json`. Use for custom static directories herald has no built-in
   // knowledge of: a vendored JSON Schema, an additional well-known surface,
@@ -189,7 +197,7 @@ Herald only writes the files; deployment is the adopter's responsibility.
 | Setup | How to serve the files |
 |---|---|
 | Static / Jamstack (Astro, Hugo, 11ty, Next.js export) | Build emits the files into `public/`; the hosting platform serves them as static assets with the §4.5 headers from `_headers` / `vercel.json`. |
-| Server framework (Express, Hono, Next.js App Router) | Run `herald emit` at build time and serve `public/` statically, or hand-roll routes that import `@herald/core` and call the generators on demand. If the route is dynamic, the handler must set `Content-Type` (with charset for the `.txt` files), `Access-Control-Allow-Origin: *`, and `Cache-Control: public, max-age=3600` itself; static-asset header config does not apply. |
+| Server framework (Express, Hono, Next.js App Router) | Run `herald emit` at build time and serve `public/` statically, or hand-roll routes that import `@agentstxtdev/herald-core` and call the generators on demand. If the route is dynamic, the handler must set `Content-Type` (with charset for the `.txt` files), `Access-Control-Allow-Origin: *`, and `Cache-Control: public, max-age=3600` itself; static-asset header config does not apply. |
 
 Herald does not ship a runtime middleware. The `payments` block in `agentsjson.config.js` flows into `agents.txt` and `agents.json` as a declaration of what the site supports; the 402 handler, signature verification, and on-chain or fiat settlement live entirely outside herald.
 
@@ -396,6 +404,18 @@ Agent picks a capability + handler, then runs the corresponding rail.
 
 Set `ucp.profiles` in `agentsjson.config.js` and herald emits the profile URL(s) into `agents.txt` (`UCP:` directive) and `agents.json` (`ucp[]` array). The profile document itself is served separately (typically a static JSON file the operator authors or generates themselves); herald does not produce the profile body, only the discovery pointer to it.
 
+### WebMCP: in-browser tool registration
+
+WebMCP ([webmachinelearning.github.io/webmcp](https://webmachinelearning.github.io/webmcp/)) is a browser API that lets a page expose its own functionality as structured tools to an AI agent operating inside the browser tab. The page calls `navigator.modelContext.registerTool()` with a name, a natural-language description, and a JSON Schema input shape; the agent invokes the tool directly, reusing the page's existing JavaScript.
+
+```
+Headless agent  → MCP: server endpoint, JSON-RPC, no browser involved.
+Browser agent   → WebMCP: page loaded in a browser-context runtime;
+                  the document has self-registered its tools.
+```
+
+WebMCP and the server-side `MCP:` directive are complementary layers, and a site can declare both. Set `webmcp.pages` in `agentsjson.config.js` and herald emits the page URL(s) into `agents.txt` (`WebMCP:` directive) and `agents.json` (`webmcp[]` array). The tool definitions are registered at runtime by each page's own JavaScript; herald emits only the discovery pointer to the page.
+
 ### Trust model at a glance: x402 vs MPP
 
 Both protocols can move USDC (and Stripe SPT can route Solana USDC under the hood), but they differ in who holds keys, who signs the transfer, and where settlement happens. Picking which protocols to advertise is a trust-model decision, not just a payment-rail decision:
@@ -465,7 +485,7 @@ Secret keys, Stripe credentials, and HMAC keys never appear in either file; only
 
 ---
 
-## `@herald/core` Key Exports
+## `@agentstxtdev/herald-core` Key Exports
 
 ```ts
 // Generators
@@ -532,13 +552,13 @@ Zero runtime dependencies, safe on Node.js, edge runtimes, Deno, Bun.
 
 ---
 
-## `@herald/schema` Key Exports
+## `@agentstxtdev/herald-schema` Key Exports
 
-The Zod source of truth for the agents.json wire format. Lives in its own package because Zod is a runtime dependency `@herald/core` cannot accept.
+The Zod source of truth for the agents.json wire format. Lives in its own package because Zod is a runtime dependency `@agentstxtdev/herald-core` cannot accept.
 
 ```ts
 // Runtime validation + types
-import { AgentsJsonSchema, type AgentsJson } from '@herald/schema'
+import { AgentsJsonSchema, type AgentsJson } from '@agentstxtdev/herald-schema'
 
 AgentsJsonSchema.safeParse(json)          // { success: true, data: AgentsJson } | { success: false, error }
 AgentsJsonSchema.parse(json)              // throws on invalid input
@@ -591,7 +611,7 @@ When the protocol is stable and you want generators, validators, and the wizard 
 5. **`packages/cli/src/commands/init.ts`** (optional): add a prompt step inside the payments block if the protocol needs credentials at init.
 6. **Tests**: cases under `packages/core/src/__tests__/{agents-txt,agents-json}.test.ts`.
 
-For a brand-new block kind (not payment, not auth, not MCP, not Skills, not A2A), the A2A diff is the most recent worked example: a new `XyzConfig` interface in `types.ts`, an `Xyz:` line emitter in `agents-txt.ts`, an `xyz[]` array emitter in `agents-json.ts`, validator rules in `validate.ts`, a Zod schema entry in `config-schema.ts`, and a wizard prompt.
+For a brand-new block kind (not payment, not auth, not MCP, not Skills, not A2A, not UCP, not WebMCP), the WebMCP diff is the most recent worked example: a new `XyzConfig` interface in `types.ts`, an `Xyz:` line emitter in `agents-txt.ts`, an `xyz[]` array emitter in `agents-json.ts`, validator rules in `validate.ts`, a Zod schema entry in `config-schema.ts`, the `AgentsJsonSchema` entry in `@agentstxtdev/herald-schema`, and a wizard prompt.
 
 ### Decision
 

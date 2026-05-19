@@ -29,8 +29,8 @@ Herald is a generator only. Runtime concerns like the 402 handler that implement
 herald/
 ├── packages/
 │   ├── core/          — shared types + pure generators (no framework deps)
-│   ├── cli/           — @herald/cli
-│   └── schema/        — @herald/schema: Zod source of truth for agents.json + JSON Schema derivation
+│   ├── cli/           — @agentstxtdev/herald
+│   └── schema/        — @agentstxtdev/herald-schema: Zod source of truth for agents.json + JSON Schema derivation
 ├── docs/              — engineering decisions and changelog entries
 ├── skills/            — agent-installable skill packages (e.g. agents-txt-setup)
 └── tsconfig.base.json — shared TypeScript config (ES2022, NodeNext, strict)
@@ -40,7 +40,7 @@ All packages are ESM (`"type": "module"`). TypeScript uses `NodeNext` module res
 
 ---
 
-## Package: `@herald/core`
+## Package: `@agentstxtdev/herald-core`
 
 **No framework dependencies. Pure functions only.**
 
@@ -66,7 +66,7 @@ Each generator is a pure function: takes `AgenticConfig`, returns a string. No I
 | `generateRobotsTxt()` | `robots.txt` | AI crawler rules, `Sitemap:` + `Content-Signal:` directives, `Allow: /agents.txt` exposes the spec file at its canonical path |
 | `generateLlmsTxt()` | `llms.txt` | Curated page index for LLM inference (requires content driver) |
 | `generateLlmsFullTxt()` | `llms-full.txt` | Long-form companion: inlines page content under each heading (Firecrawl source recommended) |
-| `generateAgentsTxt()` | `agents.txt` | Plain-text capabilities declaration (payments, auth, MCP, skills, A2A) |
+| `generateAgentsTxt()` | `agents.txt` | Plain-text capabilities declaration (payments, auth, MCP, skills, A2A, UCP, WebMCP) |
 | `generateAgentsJson()` | `agents.json` | Structured JSON catalog: same config, richer per-block detail |
 | `generateSitemapXml()` | `sitemap.xml` | sitemaps.org 0.9 `<urlset>` from a `PageEntry[]` (XML-escaped, deduped) |
 | `generateSecurityTxt()` | `/.well-known/security.txt` | RFC 9116 disclosure channel; `Contact`, `Expires`, `Canonical`, `Policy` |
@@ -107,6 +107,7 @@ interface AgenticConfig {
   skills?:        SkillsConfig         // skill URLs (SkillEntry: name? type? digest? for v0.2.0 index)
   a2a?:           A2AConfig            // A2A AgentCard URLs (a2a-protocol.org)
   ucp?:           UcpConfig            // UCP profile URLs (ucp.dev)
+  webmcp?:        WebMcpConfig         // WebMCP page URLs (webmachinelearning.github.io/webmcp)
   security?:      SecurityConfig       // RFC 9116 security.txt
 }
 ```
@@ -163,13 +164,15 @@ The `llms-full.txt` filename is community convention; the formal spec names the 
 
 Four registered protocols can appear in `payments.protocols` plus any `x-` prefixed experimental identifier per agents.txt spec §3.1. Herald only emits the declaration; the runtime handler is the adopter's responsibility.
 
-**x402 v2** ([x402.org](https://x402.org/)): per-request crypto, on-chain settlement. Agent hits a route → 402 with `accepts[]` → signs an EIP-3009 (EVM) or SVM payload → retries with `PAYMENT-SIGNATURE` → response carries `PAYMENT-RESPONSE` with the settled receipt. The 402 challenge advertises `network` (CAIP-2), `amount` (atomic units), `asset` (token contract), `payTo`, and `maxTimeoutSeconds`. Verification + on-chain settlement are typically delegated to a public facilitator (e.g. `https://x402.org/facilitator`, free, no API key); the facilitator does not custody funds. `@herald/core` ships default USDC contract addresses for Base, Base Sepolia, Ethereum, Solana mainnet, Solana devnet; override per-network via `x402.assets[network]`. The chains advertised in `agents.json` are exactly `x402.treasury.evmChains` plus the implied Solana network.
+**x402 v2** ([x402.org](https://x402.org/)): per-request crypto, on-chain settlement. Agent hits a route → 402 with `accepts[]` → signs an EIP-3009 (EVM) or SVM payload → retries with `PAYMENT-SIGNATURE` → response carries `PAYMENT-RESPONSE` with the settled receipt. The 402 challenge advertises `network` (CAIP-2), `amount` (atomic units), `asset` (token contract), `payTo`, and `maxTimeoutSeconds`. Verification + on-chain settlement are typically delegated to a public facilitator (e.g. `https://x402.org/facilitator`, free, no API key); the facilitator does not custody funds. `@agentstxtdev/herald-core` ships default USDC contract addresses for Base, Base Sepolia, Ethereum, Solana mainnet, Solana devnet; override per-network via `x402.assets[network]`. The chains advertised in `agents.json` are exactly `x402.treasury.evmChains` plus the implied Solana network.
 
 **MPP** ([mpp.dev](https://mpp.dev/), IETF `draft-ryan-httpauth-payment`): session-based, fiat + stablecoins. 402 carries `WWW-Authenticate: Payment realm="…" challenge=<id>`; agent retries with `Authorization: Payment <credential>` and the response includes a signed `Payment-Receipt`. Two registered methods: Tempo (USDC) activates when `mpp.tempoRecipient` is set, Stripe SPT (card networks + Solana USDC) activates when both `mpp.stripeSecretKey` and `mpp.stripeNetworkId` are set. Either method may activate independently; both may coexist. `payments.mpp.methods` in `agents.json` lists whichever methods have credentials so an agent without a Tempo wallet learns Stripe is available without first hitting the challenge.
 
 **AP2** ([ap2-protocol.org](https://ap2-protocol.org/)): mandate trust layer that composes *above* the payment rail. The agent presents a signed `CheckoutMandate` (what's being bought, by whom, under what limits) and a `PaymentMandate` (which payment method, for how much) as W3C Verifiable Credentials. Settlement still runs over the underlying rail (x402 / MPP / other). Setting `payments.ap2` declares the site accepts mandate-bound transactions; the mandate exchange itself is the runtime contract. Use case: business needs the auditability of explicit user authorization replayable for dispute resolution.
 
 **UCP** ([ucp.dev](https://ucp.dev/)): profile-based commerce discovery. A site publishes a UCP profile (typically at `/.well-known/ucp`) describing its services, capabilities (e.g. `dev.ucp.shopping.ap2_mandate`), payment handlers (which rails it speaks), and signing keys. `ucp.profiles` flows into `agents.txt` (`UCP:` directive) and `agents.json` (`ucp[]` array) as the discovery *pointer*; the profile document itself is served separately (static JSON file the operator authors or generates themselves). Herald does not produce the profile body.
+
+**WebMCP** ([webmachinelearning.github.io/webmcp](https://webmachinelearning.github.io/webmcp/)): in-browser tool registration. A page calls `navigator.modelContext.registerTool()` to expose its own functions as structured tools to an AI agent operating inside the browser tab. Where the `MCP:` directive advertises server-side endpoints for headless agents, `WebMCP:` advertises pages an agent reads inside a browser-context runtime. `webmcp.pages` flows into `agents.txt` (`WebMCP:` directive) and `agents.json` (`webmcp[]` array) as the discovery *pointer*; the tool definitions are registered at runtime by each page's own JavaScript. Herald emits only the page URL.
 
 #### Trust model: x402 vs MPP
 
@@ -251,6 +254,7 @@ interface AuthorizationConfig {
 interface McpEndpoint  { url: string; description?: string }
 interface SkillEntry   { url: string; description?: string }
 interface A2AEntry     { url: string; description?: string }
+interface WebMcpEntry  { url: string; description?: string }
 
 interface McpConfig {
   // string for URL-only; object adds a description that surfaces in agents.json
@@ -267,9 +271,16 @@ interface A2AConfig {
   // location; this block covers multi-agent sites and non-canonical paths.
   cards: string | A2AEntry | (string | A2AEntry)[]
 }
+
+interface WebMcpConfig {
+  // One or more page URLs whose documents register in-browser tools via
+  // navigator.modelContext (spec §6.6). Complements the server-side MCP:
+  // directive; agents.txt carries only the page URL.
+  pages: string | WebMcpEntry | (string | WebMcpEntry)[]
+}
 ```
 
-`AuthorizationConfig`, `McpConfig`, `SkillsConfig`, and `A2AConfig` are independent of each other and of `PaymentConfig`. Each block in the generated files is omitted entirely when its config field is absent.
+`AuthorizationConfig`, `McpConfig`, `SkillsConfig`, `A2AConfig`, and `WebMcpConfig` are independent of each other and of `PaymentConfig`. Each block in the generated files is omitted entirely when its config field is absent.
 
 ### The protocol registry (`packages/core/src/protocols.ts`)
 
@@ -290,9 +301,9 @@ export function isAcceptedAuthIdentifier(v: string): boolean        // registere
 
 The `x-` prefix matches the agents.txt spec §3.1 convention for experimental identifiers. Parsers must accept them, validators must not warn on them, and the generator passes them through to `agents.txt` and `agents.json` verbatim. The empty per-protocol object in `agents.json` (`payments['x-mypay']: {}`) is the support signal; the structured shape of the experimental block is the protocol author's responsibility.
 
-Adding a registered protocol is now a one-file edit: append to `PAYMENT_PROTOCOLS` or `AUTH_PROTOCOLS`. The full recipe is in [the README](README.md#adding-a-new-protocol). For payment protocols you also wire an activity check in `payments.ts` and (if the protocol carries structured fields) a per-protocol emitter in `agents-json.ts` alongside the existing x402 and MPP blocks. For a brand-new block kind, the A2A diff is the most recent worked example: a new `A2AConfig` type, an `A2A:` line emitter in `agents-txt.ts`, an `a2a[]` array emitter in `agents-json.ts`, parser awareness in any tool that reads agents.txt, and a wizard prompt in the CLI.
+Adding a registered protocol is now a one-file edit: append to `PAYMENT_PROTOCOLS` or `AUTH_PROTOCOLS`. The full recipe is in [the README](README.md#adding-a-new-protocol). For payment protocols you also wire an activity check in `payments.ts` and (if the protocol carries structured fields) a per-protocol emitter in `agents-json.ts` alongside the existing x402 and MPP blocks. For a brand-new block kind, the WebMCP diff is the most recent worked example: a new `WebMcpConfig` type, a `WebMCP:` line emitter in `agents-txt.ts`, a `webmcp[]` array emitter in `agents-json.ts`, validator rules in `validate.ts`, a Zod schema entry in `config-schema.ts`, parser awareness in any tool that reads agents.txt, and a wizard prompt in the CLI.
 
-## Package: `@herald/cli`
+## Package: `@agentstxtdev/herald`
 
 ```
 packages/cli/src/
@@ -331,7 +342,7 @@ Loads `agentsjson.config.js` via dynamic `import()`, then immediately validates 
 herald: ignoring malformed evmAddress (...); set EVM_ADDRESS to a valid 0x[40 hex] value or unset to skip EVM.
 ```
 
-On success, calls the generators from `@herald/core`, writes files to `--out` (default `./public`), then runs the spec compliance validators (`validateRobotsTxt`, `validateLlmsTxt`, `validateAgentsTxt`, `validateAgentsJson` from core) and prints any warnings inline.
+On success, calls the generators from `@agentstxtdev/herald-core`, writes files to `--out` (default `./public`), then runs the spec compliance validators (`validateRobotsTxt`, `validateLlmsTxt`, `validateAgentsTxt`, `validateAgentsJson` from core) and prints any warnings inline.
 
 Per-file flags come in two symmetric sets. The default mode emits everything applicable to the config; pass any positive selector and the output set narrows to those flags only; any `--skip-*` flag subtracts from whichever set is selected. Resolution rules live in `packages/cli/src/commands/emit.ts → resolveOutputs()`.
 
@@ -364,9 +375,9 @@ Pages are deduplicated by URL and XML-escaped before serialization in `generateS
 
 ### `check` command
 
-Fetches `robots.txt`, `llms.txt`, `agents.txt`, `agents.json`, and `sitemap.xml` from a live URL and scores the site using the same `validateRobotsTxt`, `validateLlmsTxt`, `validateAgentsTxt`, and `validateAgentsJson` functions from `@herald/core` that `emit` uses, not ad-hoc string matching.
+Fetches `robots.txt`, `llms.txt`, `agents.txt`, `agents.json`, and `sitemap.xml` from a live URL and scores the site using the same `validateRobotsTxt`, `validateLlmsTxt`, `validateAgentsTxt`, and `validateAgentsJson` functions from `@agentstxtdev/herald-core` that `emit` uses, not ad-hoc string matching.
 
-## Package: `@herald/schema`
+## Package: `@agentstxtdev/herald-schema`
 
 ```
 packages/schema/src/
@@ -375,7 +386,7 @@ packages/schema/src/
 └── cli-emit.ts            — `node dist/cli-emit.js <out-dir>` writes the JSON Schema file
 ```
 
-Single source of truth for three artefacts that downstream consumers expect to agree on: the runtime validator (`AgentsJsonSchema.safeParse(...)`), the TypeScript type (`AgentsJson` via `z.infer`), and the JSON Schema 2020-12 document hosted at `agents-txt.com/schema/agents-json/v1.0.json`. Zod cannot live in `@herald/core` because of the zero-runtime-dep rule, so it ships from its own package; the JSON Schema URL is duplicated between `@herald/core` (`AGENTS_JSON_SCHEMA_URL`) and `@herald/schema` (`SCHEMA_ID`) deliberately, with a round-trip integration test in `packages/schema/src/__tests__/herald-output.test.ts` catching drift between the producer and the schema.
+Single source of truth for three artefacts that downstream consumers expect to agree on: the runtime validator (`AgentsJsonSchema.safeParse(...)`), the TypeScript type (`AgentsJson` via `z.infer`), and the JSON Schema 2020-12 document hosted at `agents-txt.com/schema/agents-json/v1.0.json`. Zod cannot live in `@agentstxtdev/herald-core` because of the zero-runtime-dep rule, so it ships from its own package; the JSON Schema URL is duplicated between `@agentstxtdev/herald-core` (`AGENTS_JSON_SCHEMA_URL`) and `@agentstxtdev/herald-schema` (`SCHEMA_ID`) deliberately, with a round-trip integration test in `packages/schema/src/__tests__/herald-output.test.ts` catching drift between the producer and the schema.
 
 To bump the wire-format version: edit `SCHEMA_VERSION` in `agents-json-schema.ts`, update the Zod object shape, rebuild, re-emit the JSON Schema file. The CLI helper writes `agents-json/v<VERSION>.json` so multiple versions coexist on the host. Adopters keep their old `$schema` reference valid; the new version ships at a new URL.
 
@@ -430,12 +441,12 @@ if (hasFile('.myservice.json') || env.MY_SERVICE_API_KEY) {
 
 **One config object drives everything.** `AgenticConfig` is the single source of truth. Every generator reads from it. Users write the config once; the CLI emits every output from there.
 
-**`@herald/core` has zero runtime dependencies.** It can run anywhere: Node.js, edge runtimes, Deno, Bun. Edge-runtime compatibility is a hard boundary; any new code in `core` that touches `node:fs`, `node:path`, or platform-specific globals breaks the contract.
+**`@agentstxtdev/herald-core` has zero runtime dependencies.** It can run anywhere: Node.js, edge runtimes, Deno, Bun. Edge-runtime compatibility is a hard boundary; any new code in `core` that touches `node:fs`, `node:path`, or platform-specific globals breaks the contract.
 
-**Declaration only.** Herald is a generator. It writes the discovery files that *announce* a site's agent-interaction capabilities (payments, auth, MCP, Skills, A2A, UCP); it does not implement the runtime handlers behind those declarations. The 402 handler, signature verification, and settlement live in whatever middleware the adopter wires up separately.
+**Declaration only.** Herald is a generator. It writes the discovery files that *announce* a site's agent-interaction capabilities (payments, auth, MCP, Skills, A2A, UCP, WebMCP); it does not implement the runtime handlers behind those declarations. The 402 handler, signature verification, and settlement live in whatever middleware the adopter wires up separately.
 
 **Honest declarations.** A per-protocol block in `agents.txt` / `agents.json` is emitted only when the necessary fields in `AgenticConfig` are present. An adopter who lists `'mpp'` in `payments.protocols` but never sets `mpp.tempoRecipient` or Stripe credentials sees the protocol dropped at generate time, with a console warning. This rule is enforced by `resolveActiveProtocols` in `packages/core/src/payments.ts`.
 
-**Validation is split across two layers with different purposes.** `@herald/core` exports `validateRobotsTxt`, `validateLlmsTxt`, `validateAgentsTxt`, and `validateAgentsJson`; these are *semantic spec compliance* checks on generated outputs (does robots.txt block the right scrapers? does llms.txt start with `#`?). They run post-generation and live in core because they're useful to any caller. The CLI's `config-schema.ts` is a *Zod structural schema* for `AgenticConfig`; it validates user-supplied input before generation and lives in the CLI only to keep core's zero-runtime-dep guarantee intact. Adding Zod to core would break compatibility with edge runtimes and Deno/Bun deployments.
+**Validation is split across two layers with different purposes.** `@agentstxtdev/herald-core` exports `validateRobotsTxt`, `validateLlmsTxt`, `validateAgentsTxt`, and `validateAgentsJson`; these are *semantic spec compliance* checks on generated outputs (does robots.txt block the right scrapers? does llms.txt start with `#`?). They run post-generation and live in core because they're useful to any caller. The CLI's `config-schema.ts` is a *Zod structural schema* for `AgenticConfig`; it validates user-supplied input before generation and lives in the CLI only to keep core's zero-runtime-dep guarantee intact. Adding Zod to core would break compatibility with edge runtimes and Deno/Bun deployments.
 
 **`agents.txt` and `agents.json` are complementary, not redundant.** `agents.txt` is the announcement layer: minimal, plain text, easy to serve anywhere, readable by humans and simple parsers. `agents.json` is the machine-first catalog: structured, schema-validatable, with richer per-block detail (pricing upfront, chain IDs, authorization discovery pointer, MCP transport type). The relationship mirrors `llms.txt` and `llms-full.txt`. Both are generated from the same config; site operators write nothing extra. Sites should serve both; agents that support structured JSON should prefer `agents.json`.

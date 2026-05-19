@@ -218,6 +218,9 @@ function printConfigSummary(config: AgenticConfig, configPath: string): void {
   const ucp = listEntries(config.ucp?.profiles)
   if (ucp.length > 0) console.log(`  ${pad('UCP')}${ucp.length} profile${ucp.length === 1 ? '' : 's'}`)
 
+  const webmcp = listEntries(config.webmcp?.pages)
+  if (webmcp.length > 0) console.log(`  ${pad('WebMCP')}${webmcp.length} page${webmcp.length === 1 ? '' : 's'}`)
+
   if (config.security?.contact) {
     console.log(`  ${pad('Security')}${config.security.contact}`)
   }

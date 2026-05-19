@@ -135,6 +135,11 @@ const UcpEntry = z.object({
   description: z.string().optional(),
 })
 
+const WebMcpEntry = z.object({
+  url: HttpsUrl.describe('URL of a page that registers in-browser tools via navigator.modelContext, per the WebMCP directive (spec §6.6).'),
+  description: z.string().optional(),
+})
+
 // ── Top-level document ──────────────────────────────────────────────────────
 
 export const AgentsJsonSchema = z
@@ -158,9 +163,10 @@ export const AgentsJsonSchema = z
     skills: z.array(SkillEntry).optional(),
     a2a: z.array(A2AEntry).optional(),
     ucp: z.array(UcpEntry).optional(),
+    webmcp: z.array(WebMcpEntry).optional(),
   })
   .describe(
-    'agents.json — structured companion to agents.txt. Declares the capabilities a site exposes to AI agents (payments, authorization, MCP servers, skill packages, A2A AgentCards, UCP profiles). See https://agents-txt.com for the full specification.',
+    'agents.json — structured companion to agents.txt. Declares the capabilities a site exposes to AI agents (payments, authorization, MCP servers, skill packages, A2A AgentCards, UCP profiles, WebMCP pages). See https://agents-txt.com for the full specification.',
   )
 
 export type AgentsJson = z.infer<typeof AgentsJsonSchema>
