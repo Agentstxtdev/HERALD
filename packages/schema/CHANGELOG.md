@@ -1,5 +1,11 @@
 # @agentstxtdev/herald-schema
 
+## 0.2.4
+
+### Patch Changes
+
+- Add WebMCP capability block support (WebMCP: directive, webmcp[] array)
+
 ## 0.2.3
 
 ### Patch Changes

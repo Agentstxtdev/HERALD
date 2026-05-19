@@ -1,6 +1,6 @@
 {
   "name": "@agentstxtdev/herald-core",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Core generators behind the herald CLI (@agentstxtdev/herald). Zero runtime dependencies.",
   "type": "module",
   "main": "./dist/index.cjs",
