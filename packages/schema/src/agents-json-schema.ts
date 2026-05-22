@@ -30,7 +30,7 @@ const PaymentProtocolKey = z
 
 const AuthProtocolKey = z
   .string()
-  .regex(/^(agent-auth|oauth2|x-.+)$/, 'must be agent-auth, oauth2, or an x- experimental identifier')
+  .regex(/^(agent-auth|oauth2|auth-md|x-.+)$/, 'must be agent-auth, oauth2, auth-md, or an x- experimental identifier')
 
 // ── Per-protocol blocks ─────────────────────────────────────────────────────
 
