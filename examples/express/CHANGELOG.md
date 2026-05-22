@@ -1,5 +1,12 @@
 # @herald/example-express
 
+## 0.1.6
+
+### Patch Changes
+
+- Updated dependencies
+  - @agentstxtdev/herald-core@0.2.5
+
 ## 0.1.5
 
 ### Patch Changes

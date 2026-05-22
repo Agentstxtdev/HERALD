@@ -1,5 +1,11 @@
 # @agentstxtdev/herald-schema
 
+## 0.2.5
+
+### Patch Changes
+
+- Recognize auth-md authorization protocol identifier (WorkOS agentic registration draft). AUTH_PROTOCOLS gains 'auth-md' alongside 'agent-auth' and 'oauth2'; the agents.json Zod schema regex accepts it. Generators, validators, and the CLI Zod schema pick it up automatically.
+
 ## 0.2.4
 
 ### Patch Changes
