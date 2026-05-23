@@ -59,7 +59,11 @@ describe('generateOpenApiJson', () => {
       ...base,
       payments: { openapi: { paths: { '/p': { offers: [{ intent: 'charge', method: 'x402', amount: '1' }] } } } },
     })!
-    expect(JSON.parse(out).info.description).toBe('An example.')
+    // info.description carries site.description followed by the API
+    // versioning policy block herald appends to every generated document.
+    const desc = JSON.parse(out).info.description as string
+    expect(desc).toContain('An example.')
+    expect(desc).toContain('API versioning')
   })
 
   it('uses the single-offer shorthand when exactly one offer is declared', () => {
@@ -92,6 +96,55 @@ describe('generateOpenApiJson', () => {
     const responses = JSON.parse(out).paths['/buy'].get.responses
     expect(responses).toHaveProperty('200')
     expect(responses).toHaveProperty('402')
+  })
+
+  it('attaches the full RFC 9598 RateLimit header set to 200 responses', () => {
+    const out = generateOpenApiJson({
+      ...base,
+      payments: { openapi: { paths: { '/buy': { offers: [{ intent: 'charge', method: 'x402', amount: '1' }] } } } },
+    })!
+    const headers = JSON.parse(out).paths['/buy'].get.responses['200'].headers
+    expect(Object.keys(headers).sort()).toEqual([
+      'RateLimit-Limit',
+      'RateLimit-Policy',
+      'RateLimit-Remaining',
+      'RateLimit-Reset',
+    ])
+  })
+
+  it('references the shared error / rate-limit responses on every payable path', () => {
+    const out = generateOpenApiJson({
+      ...base,
+      payments: { openapi: { paths: { '/buy': { offers: [{ intent: 'charge', method: 'x402', amount: '1' }] } } } },
+    })!
+    const responses = JSON.parse(out).paths['/buy'].get.responses
+    expect(responses['400']).toEqual({ $ref: '#/components/responses/Problem400' })
+    expect(responses['429']).toEqual({ $ref: '#/components/responses/RateLimited' })
+    expect(responses['5XX']).toEqual({ $ref: '#/components/responses/Problem5xx' })
+  })
+
+  it('emits the Idempotency-Key parameter ref on every payable operation', () => {
+    const out = generateOpenApiJson({
+      ...base,
+      payments: { openapi: { paths: { '/buy': { offers: [{ intent: 'charge', method: 'x402', amount: '1' }] } } } },
+    })!
+    const params = JSON.parse(out).paths['/buy'].get.parameters
+    expect(params).toContainEqual({ $ref: '#/components/parameters/IdempotencyKey' })
+  })
+
+  it('publishes a typed error model + pagination shape + headers + parameters under components', () => {
+    const out = generateOpenApiJson({
+      ...base,
+      payments: { openapi: { paths: { '/buy': { offers: [{ intent: 'charge', method: 'x402', amount: '1' }] } } } },
+    })!
+    const components = JSON.parse(out).components
+    expect(components.schemas).toHaveProperty('Problem')
+    expect(components.schemas).toHaveProperty('PaginatedList')
+    expect(components.parameters).toHaveProperty('IdempotencyKey')
+    expect(components.parameters).toHaveProperty('Cursor')
+    expect(components.parameters).toHaveProperty('Limit')
+    expect(components.headers).toHaveProperty('RateLimit-Limit')
+    expect(components.responses).toHaveProperty('RateLimited')
   })
 
   it('forwards summary and description from the path entry to the operation', () => {

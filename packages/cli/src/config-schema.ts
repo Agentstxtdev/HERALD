@@ -223,10 +223,16 @@ const McpEndpointSchema = z.union([
   }),
 ])
 
+const McpServerCardToolSchema = z.object({
+  name:        z.string().min(1, 'mcp.serverCard.tools[].name must be non-empty'),
+  description: z.string().min(1, 'mcp.serverCard.tools[].description must be non-empty').optional(),
+})
+
 const McpServerCardSchema = z.object({
   name:        z.string().min(1, 'mcp.serverCard.name must be non-empty'),
   version:     z.string().min(1, 'mcp.serverCard.version must be non-empty'),
   description: z.string().min(1, 'mcp.serverCard.description must be non-empty').optional(),
+  tools:       z.array(McpServerCardToolSchema).optional(),
   capabilities: z.object({
     tools:     z.boolean(),
     resources: z.boolean(),

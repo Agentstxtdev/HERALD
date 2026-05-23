@@ -361,15 +361,33 @@ export interface McpEndpoint {
  * The card describes the *server* (one per site); per-endpoint metadata stays
  * on the endpoint entry.
  */
+/**
+ * One published tool on the MCP server card. Listed at the top level of
+ * `/.well-known/mcp/server-card.json` so an agent can preview the tool set
+ * without opening a transport connection. Mirrors what the MCP `tools/list`
+ * call would return at runtime, condensed to the display-string fields.
+ */
+export interface McpServerCardTool {
+  name: string
+  description?: string
+}
+
 export interface McpServerCard {
   name: string
   version: string
   /**
    * Short human-readable description of what the MCP server exposes. Surfaced
-   * in `/.well-known/mcp/server-card.json` under `serverInfo.description`.
-   * Required by SEP-2127 auditors that read the card for display strings.
+   * in `/.well-known/mcp/server-card.json` under `serverInfo.description` and
+   * as a top-level `description` alias so flat-shape scanners pick it up.
    */
   description?: string
+  /**
+   * Optional list of tools the server exposes. Emitted at the top level of
+   * the server card as `tools[]` so an agent can preview the tool set before
+   * opening a transport connection. Each entry is the tool's stable name plus
+   * an optional one-line description. Order matters for display.
+   */
+  tools?: McpServerCardTool[]
   /** Capability flags — all three required by the SEP-2127 auditor as booleans. */
   capabilities: {
     tools: boolean

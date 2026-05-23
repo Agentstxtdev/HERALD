@@ -31,20 +31,38 @@ export function generateMcpServerCard(config: AgenticConfig): string | null {
   const endpoint = firstEndpointUrl(config)
   if (!endpoint) return null
 
+  // SEP-2127 publishes the canonical fields nested under `serverInfo`,
+  // `transport`, and `capabilities`. Some agent-readiness scanners
+  // (ora.ai / orank, others that pre-date the SEP) probe a flat shape and
+  // miss the nested values, reporting "missing fields: name, description,
+  // version" even when they are present underneath. The card below carries
+  // both shapes so a flat-reading scanner finds the strings at the top
+  // level while a SEP-conforming reader still gets the structured tree.
+  // `tools[]` is published when the adopter declares the tool set, letting
+  // an agent preview the server before opening a transport connection.
+  const sc = config.mcp.serverCard
   const card = {
+    name:        sc.name,
+    description: sc.description,
+    version:     sc.version,
+    serverUrl:   endpoint,
+    ...(sc.tools && sc.tools.length > 0 ? { tools: sc.tools.map((t) => ({
+      name: t.name,
+      ...(t.description ? { description: t.description } : {}),
+    })) } : {}),
     serverInfo: {
-      name:    config.mcp.serverCard.name,
-      version: config.mcp.serverCard.version,
-      ...(config.mcp.serverCard.description ? { description: config.mcp.serverCard.description } : {}),
+      name:    sc.name,
+      version: sc.version,
+      ...(sc.description ? { description: sc.description } : {}),
     },
     transport: {
       endpoint,
       type: 'streamable-http',
     },
     capabilities: {
-      tools:     config.mcp.serverCard.capabilities.tools,
-      resources: config.mcp.serverCard.capabilities.resources,
-      prompts:   config.mcp.serverCard.capabilities.prompts,
+      tools:     sc.capabilities.tools,
+      resources: sc.capabilities.resources,
+      prompts:   sc.capabilities.prompts,
     },
   }
 
