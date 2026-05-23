@@ -1,5 +1,11 @@
 # @agentstxtdev/herald-schema
 
+## 0.2.6
+
+### Patch Changes
+
+- Three new ecosystem discovery generators (x402 well-known, NLWeb schemamap, Web Bot Auth JWKSet) with matching \_headers + Link gates. New crawlers.additionalDirectives for custom robots.txt directives. mcp.serverCard.description support. RFC 9264 api-catalog shape + OpenAPI operationIds + typed 200/402 responses.
+
 ## 0.2.5
 
 ### Patch Changes
