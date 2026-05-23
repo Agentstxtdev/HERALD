@@ -1,6 +1,6 @@
 {
   "name": "@agentstxtdev/herald",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "The agent-capabilities discovery layer for the agentic web. Emit robots.txt, llms.txt, agents.txt, agents.json, sitemap.xml, security.txt from one config.",
   "type": "module",
   "bin": {

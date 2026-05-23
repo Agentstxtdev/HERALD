@@ -1,5 +1,12 @@
 # @herald/example-nextjs
 
+## 0.1.9
+
+### Patch Changes
+
+- Updated dependencies
+  - @agentstxtdev/herald-core@0.2.8
+
 ## 0.1.8
 
 ### Patch Changes

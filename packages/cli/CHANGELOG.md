@@ -1,5 +1,13 @@
 # @agentstxtdev/herald
 
+## 0.2.8
+
+### Patch Changes
+
+- Add --minimal flag emitting only the agents.txt §4.6 conformance set (agents.txt + agents.json + \_headers); other selectors still take precedence.
+- Updated dependencies
+  - @agentstxtdev/herald-core@0.2.8
+
 ## 0.2.7
 
 ### Patch Changes
