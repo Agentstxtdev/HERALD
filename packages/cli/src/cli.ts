@@ -46,6 +46,7 @@ program
   .option('--headers', 'Emit only the §4.5 headers config for the detected hosting platform (`_headers` for Cloudflare/Netlify, `vercel.json` for Vercel, fallback `_headers` otherwise)')
   .option('--security', 'Emit only .well-known/security.txt (RFC 9116; requires a `security.contact` in config)')
   .option('--discovery', 'Emit only the discovery surfaces: .well-known/api-catalog (RFC 9727), .well-known/mcp/server-card.json (SEP-2127), .well-known/agent-skills/index.json (agentskills.io v0.2.0). Each file is gated by its own config block.')
+  .option('--minimal', 'Emit only the agents.txt spec §4.6 conformance set: agents.txt, agents.json, and the §4.5 headers config. Skips llms, sitemap, security, and all ecosystem discovery surfaces. Adopters who want strict-conformant output without the ecosystem polish use this. Conflicts with other positive selectors; if combined, the positive selectors take precedence and this flag is ignored with a warning.')
   // Negative selectors: subtract from the selected set. Useful with the default
   // "emit everything" mode, or to drop one file from a positive selection.
   .option('--skip-robots', 'Skip robots.txt')

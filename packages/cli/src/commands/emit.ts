@@ -54,6 +54,12 @@ interface EmitOptions {
   skipSecurity?: boolean
   discovery?: boolean
   skipDiscovery?: boolean
+  /**
+   * Emit only the agents.txt spec §4.6 conformance set: agents.txt, agents.json,
+   * and the §4.5 headers config. Ignored when any other positive selector is
+   * also set; the explicit selector wins and a warning is logged.
+   */
+  minimal?: boolean
   /** Override the detected hosting platform (cloudflare|netlify|vercel|unknown). */
   platform?: string
 }
@@ -106,6 +112,20 @@ function resolveOutputs(options: EmitOptions, config: AgenticConfig): Set<Output
     options.robots || options.llms || options.llmsFull || options.agents || options.sitemap || options.headers || options.security || options.discovery
 
   const enabled = new Set<Output>()
+
+  // --minimal short-circuits the rest: emit only the spec §4.6 conformance
+  // set (agents.txt, agents.json, the §4.5 headers config). When an explicit
+  // positive selector is also passed, the explicit one wins and we log a
+  // warning; --minimal is a convenience, not an override.
+  if (options.minimal) {
+    if (hasPositive) {
+      console.warn(`${WARN} --minimal ignored: explicit positive selectors take precedence.`)
+    } else {
+      enabled.add('agents')
+      enabled.add('headers')
+      return enabled
+    }
+  }
 
   if (hasPositive) {
     if (options.robots)    enabled.add('robots')

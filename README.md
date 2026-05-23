@@ -241,6 +241,9 @@ herald emit                          # writes discovery files to ./public
 ### CLI flags
 
 ```bash
+# Strict-conformant minimal set (agents.txt spec §4.6):
+herald emit --minimal                 # only agents.txt + agents.json + _headers
+
 # Positive selectors (emit only these files):
 herald emit --agents                  # only agents.txt + agents.json
 herald emit --robots --llms           # only robots.txt + llms.txt
@@ -252,6 +255,8 @@ herald emit --llms-full               # only llms-full.txt
 herald emit --skip-agents             # skip agents.txt + agents.json
 herald emit --skip-llms-full          # skip the expensive Firecrawl scrape
 ```
+
+`--minimal` emits exactly the three files agents.txt spec §4.6 requires for strict conformance: the canonical `/agents.txt`, the structured `/agents.json` companion, and the platform `_headers` (or `vercel.json`) that satisfy §4.5 serving requirements. Use it on sites that want to be agents.txt-conformant without the ecosystem polish (llms.txt, sitemap.xml, security.txt, the RFC 9727 / SEP-2127 / agentskills.io / Payment Discovery surfaces). Other positive selectors take precedence if combined; `--minimal` is then ignored with a warning.
 
 ---
 
