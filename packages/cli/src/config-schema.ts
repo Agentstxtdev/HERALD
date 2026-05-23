@@ -79,8 +79,9 @@ const CrawlerConfigSchema = z.object({
   allowSearchEngines: z.boolean().optional(),
   allowPaidAgents: z.boolean().optional(),
   customRules: z.array(CrawlerRuleSchema).optional(),
-  additionalBlockList: z.array(z.string()).optional(),
-  additionalAllowList: z.array(z.string()).optional(),
+  additionalBlockList:  z.array(z.string()).optional(),
+  additionalAllowList:  z.array(z.string()).optional(),
+  additionalDirectives: z.array(z.string()).optional(),
 })
 
 const PricingConfigSchema = z.object({
@@ -223,8 +224,9 @@ const McpEndpointSchema = z.union([
 ])
 
 const McpServerCardSchema = z.object({
-  name:    z.string().min(1, 'mcp.serverCard.name must be non-empty'),
-  version: z.string().min(1, 'mcp.serverCard.version must be non-empty'),
+  name:        z.string().min(1, 'mcp.serverCard.name must be non-empty'),
+  version:     z.string().min(1, 'mcp.serverCard.version must be non-empty'),
+  description: z.string().min(1, 'mcp.serverCard.description must be non-empty').optional(),
   capabilities: z.object({
     tools:     z.boolean(),
     resources: z.boolean(),
@@ -303,6 +305,23 @@ const WebMcpConfigSchema = z.object({
   ]),
 })
 
+const WebBotAuthKeySchema = z.object({
+  kty: z.literal('OKP', { error: 'webBotAuth.keys[].kty must be "OKP" (Ed25519 only)' }),
+  crv: z.literal('Ed25519', { error: 'webBotAuth.keys[].crv must be "Ed25519"' }),
+  x:   z.string().min(1, 'webBotAuth.keys[].x must be a base64url Ed25519 public key'),
+  kid: z.string().min(1, 'webBotAuth.keys[].kid must not be empty'),
+  alg: z.literal('EdDSA').optional(),
+  use: z.literal('sig').optional(),
+  nbf: z.number().int().nonnegative('webBotAuth.keys[].nbf must be a unix timestamp'),
+  exp: z.number().int().positive('webBotAuth.keys[].exp must be a unix timestamp'),
+}).refine((k) => k.exp > k.nbf, {
+  message: 'webBotAuth.keys[].exp must be strictly greater than nbf',
+})
+
+const WebBotAuthConfigSchema = z.object({
+  keys: z.array(WebBotAuthKeySchema).min(1, 'webBotAuth.keys must include at least one key'),
+})
+
 const SecurityConfigSchema = z.object({
   contact: z.union([z.string().min(1, 'security.contact must not be empty'), z.array(z.string().min(1)).min(1)]),
   expires: z.string().refine(
@@ -333,6 +352,7 @@ export const AgenticConfigSchema = z.object({
   ucp: UcpConfigSchema.optional(),
   webmcp: WebMcpConfigSchema.optional(),
   security: SecurityConfigSchema.optional(),
+  webBotAuth: WebBotAuthConfigSchema.optional(),
   headersExtras: z
     .array(
       z.object({

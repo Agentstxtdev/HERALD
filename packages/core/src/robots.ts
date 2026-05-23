@@ -77,6 +77,7 @@ export function generateRobotsTxt(
     customRules = [],
     additionalBlockList = [],
     additionalAllowList = [],
+    additionalDirectives = [],
   } = crawlers
 
   const lines: string[] = []
@@ -174,6 +175,16 @@ export function generateRobotsTxt(
   const search = allowSearchEngines !== false ? 'yes' : 'no'
   const aiSignal = blockFreeAiScrapers !== false ? 'no' : 'yes'
   lines.push(`Content-Signal: search=${search}, ai-train=${aiSignal}, ai-input=${aiSignal}`)
+
+  // ── Adopter-supplied directives (e.g. NLWeb Schemamap:, Yandex Host:) ──────
+  // Emitted verbatim, one per line, after the Content-Signal directive so
+  // crawlers that pre-scan the top of the file find the standard directives
+  // first. RFC 9309 ignores unknown directives; safe to publish with any
+  // conforming crawler. Lines with leading/trailing whitespace are trimmed.
+  for (const directive of additionalDirectives) {
+    const trimmed = directive.trim()
+    if (trimmed.length > 0) lines.push(trimmed)
+  }
 
   // ── Merge with existing content ────────────────────────────────────────────
   if (existingContent?.trim()) {

@@ -16,7 +16,7 @@ describe('registry shape', () => {
   })
 
   it('AUTH_PROTOCOLS matches the spec-registered set', () => {
-    expect(AUTH_PROTOCOLS).toEqual(['agent-auth', 'oauth2'])
+    expect(AUTH_PROTOCOLS).toEqual(['agent-auth', 'oauth2', 'auth-md'])
   })
 
   it('MPP_METHODS matches the recognised method set', () => {

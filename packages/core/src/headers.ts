@@ -313,6 +313,42 @@ function entriesForConfig(config: AgenticConfig | undefined): VercelHeaderEntry[
     out.push(jsonStaticEntry('/openapi.json'))
   }
 
+  // /.well-known/x402. Convenience discovery surface for the x402 payment
+  // protocol; emitted whenever payments.x402 is configured with at least one
+  // chain. The x402 spec does not mandate the path; the headers entry pairs
+  // 1:1 with the generator's emission rule.
+  if (config.payments?.x402) {
+    out.push(jsonStaticEntry('/.well-known/x402'))
+  }
+
+  // /schemamap.xml (Microsoft NLWeb experimental). Emitted unconditionally
+  // when the site has any content config — the generator's emission rule.
+  // Headers say `application/xml` to match the wire shape.
+  if (config.content) {
+    out.push({
+      source: '/schemamap.xml',
+      headers: [
+        { key: 'Content-Type', value: 'application/xml; charset=utf-8' },
+        { key: 'Access-Control-Allow-Origin', value: '*' },
+        { key: 'Cache-Control', value: 'public, max-age=3600' },
+      ],
+    })
+  }
+
+  // /.well-known/http-message-signatures-directory (Web Bot Auth). JWKSet of
+  // the public Ed25519 keys an agentic crawler operating this site signs
+  // with. application/jwk-set+json per the JOSE convention.
+  if (config.webBotAuth?.keys && config.webBotAuth.keys.length > 0) {
+    out.push({
+      source: '/.well-known/http-message-signatures-directory',
+      headers: [
+        { key: 'Content-Type', value: 'application/jwk-set+json' },
+        { key: 'Access-Control-Allow-Origin', value: '*' },
+        { key: 'Cache-Control', value: 'public, max-age=3600' },
+      ],
+    })
+  }
+
   // Caller-supplied extras append verbatim. Use for paths herald doesn't know
   // about (custom static dirs, externally-hosted schemas, etc.). Unmatched
   // paths are a no-op at the edge, so unused entries are harmless.
@@ -338,6 +374,12 @@ function entriesForConfig(config: AgenticConfig | undefined): VercelHeaderEntry[
   }
   if (config.payments?.openapi?.paths && Object.keys(config.payments.openapi.paths).length > 0) {
     linkValues.push('</openapi.json>; rel="service-desc"; type="application/json"')
+  }
+  if (config.payments?.x402) {
+    linkValues.push('</.well-known/x402>; rel="payment-discovery"; type="application/json"')
+  }
+  if (config.webBotAuth?.keys && config.webBotAuth.keys.length > 0) {
+    linkValues.push('</.well-known/http-message-signatures-directory>; rel="http-message-signatures-directory"; type="application/jwk-set+json"')
   }
   // agents.txt / agents.json are always emitted, so they always belong here.
   linkValues.push('</agents.txt>; rel="describedby"; type="text/plain"')

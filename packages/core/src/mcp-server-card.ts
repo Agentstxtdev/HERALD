@@ -35,6 +35,7 @@ export function generateMcpServerCard(config: AgenticConfig): string | null {
     serverInfo: {
       name:    config.mcp.serverCard.name,
       version: config.mcp.serverCard.version,
+      ...(config.mcp.serverCard.description ? { description: config.mcp.serverCard.description } : {}),
     },
     transport: {
       endpoint,

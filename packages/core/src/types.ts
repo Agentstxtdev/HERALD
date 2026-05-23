@@ -79,6 +79,16 @@ export interface CrawlerConfig {
   customRules?: CrawlerRule[]
   additionalBlockList?: string[]
   additionalAllowList?: string[]
+  /**
+   * Free-form directive lines appended to robots.txt verbatim, after the
+   * `Sitemap:` line and before the merged existing-rules block. Each entry
+   * is one line; multi-line directives are not supported. Useful for custom
+   * directives a particular adopter publishes alongside the standard set
+   * (e.g. `Schemamap: https://example.com/schemamap.xml` for Microsoft
+   * NLWeb, `Host: example.com` for Yandex). RFC 9309 ignores unknown
+   * directives, so this is safe to use with any conforming crawler.
+   */
+  additionalDirectives?: string[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -354,6 +364,12 @@ export interface McpEndpoint {
 export interface McpServerCard {
   name: string
   version: string
+  /**
+   * Short human-readable description of what the MCP server exposes. Surfaced
+   * in `/.well-known/mcp/server-card.json` under `serverInfo.description`.
+   * Required by SEP-2127 auditors that read the card for display strings.
+   */
+  description?: string
   /** Capability flags — all three required by the SEP-2127 auditor as booleans. */
   capabilities: {
     tools: boolean
@@ -534,6 +550,45 @@ export interface ExtraHeaderRule {
   headers: Array<{ key: string; value: string }>
 }
 
+/**
+ * Public-key entry for the Web Bot Auth directory served at
+ * `/.well-known/http-message-signatures-directory`. Mirrors the JSON Web Key
+ * (JWK) shape per RFC 7517 with the addition of `nbf` / `exp` validity timestamps
+ * that the IETF HTTP Message Signatures draft requires for a published key.
+ *
+ * Only the public half of an Ed25519 keypair is published. The private half
+ * (the `d` field) is the adopter's runtime secret and must never appear here.
+ */
+export interface WebBotAuthKey {
+  /** Always `OKP` for Ed25519. */
+  kty: 'OKP'
+  /** Always `Ed25519`. */
+  crv: 'Ed25519'
+  /** Base64url-encoded Ed25519 public key (32 bytes). */
+  x: string
+  /** Stable key identifier; convention is the RFC 7638 thumbprint as base64url. */
+  kid: string
+  /** Algorithm identifier; `EdDSA` for Ed25519 per RFC 8037. */
+  alg?: 'EdDSA'
+  /** JWK `use` parameter; `sig` for signing keys. */
+  use?: 'sig'
+  /** Unix timestamp (seconds) the key becomes valid. */
+  nbf: number
+  /** Unix timestamp (seconds) the key expires. Adopters rotate before this. */
+  exp: number
+}
+
+/**
+ * Web Bot Auth directory configuration. When present, herald emits the JWKSet
+ * at `/.well-known/http-message-signatures-directory` and the matching headers
+ * entry. Adopters generate the keypair themselves (Node's `crypto` module or
+ * any JOSE library); herald only publishes the public half.
+ */
+export interface WebBotAuthConfig {
+  /** Public Ed25519 keys an agentic crawler operating this site signs with. */
+  keys: WebBotAuthKey[]
+}
+
 export interface AgenticConfig {
   site: SiteConfig
   content?: ContentConfig
@@ -546,6 +601,7 @@ export interface AgenticConfig {
   ucp?: UcpConfig
   webmcp?: WebMcpConfig
   security?: SecurityConfig
+  webBotAuth?: WebBotAuthConfig
   /**
    * Extra header rules to append to the generated `_headers` / `vercel.json`.
    * Useful for paths herald has no built-in knowledge of (custom static

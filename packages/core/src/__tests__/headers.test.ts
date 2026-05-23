@@ -349,6 +349,7 @@ describe('headers generators with UCP profile config', () => {
       '/agents.json',
       '/agents.txt',
       '/llms.txt',
+      '/schemamap.xml',
       '/skills/*',
     ])
   })

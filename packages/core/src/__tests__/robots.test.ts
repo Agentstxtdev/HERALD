@@ -141,6 +141,38 @@ describe('generateRobotsTxt', () => {
     expect(output).not.toContain('# Paid agentic agents')
   })
 
+  it('appends additionalDirectives verbatim, one per line, after Content-Signal', () => {
+    const config: AgenticConfig = {
+      site: baseConfig.site,
+      crawlers: {
+        additionalDirectives: [
+          'Schemamap: https://example.com/schemamap.xml',
+          'Host: example.com',
+        ],
+      },
+    }
+    const output = generateRobotsTxt(config)
+    expect(output).toContain('Schemamap: https://example.com/schemamap.xml')
+    expect(output).toContain('Host: example.com')
+    // Order: Content-Signal first, then the appended directives in declaration order.
+    const csIdx = output.indexOf('Content-Signal:')
+    const smIdx = output.indexOf('Schemamap:')
+    const hsIdx = output.indexOf('Host:')
+    expect(csIdx).toBeGreaterThan(-1)
+    expect(smIdx).toBeGreaterThan(csIdx)
+    expect(hsIdx).toBeGreaterThan(smIdx)
+  })
+
+  it('trims and skips empty lines inside additionalDirectives', () => {
+    const config: AgenticConfig = {
+      site: baseConfig.site,
+      crawlers: { additionalDirectives: ['  Schemamap: https://example.com/sm.xml  ', '', '   '] },
+    }
+    const output = generateRobotsTxt(config)
+    expect(output).toContain('Schemamap: https://example.com/sm.xml')
+    expect(output).not.toContain('Schemamap: https://example.com/sm.xml  ')
+  })
+
   it('emits any additionalAllowList entries under the paid-agents section', () => {
     const config: AgenticConfig = {
       site: baseConfig.site,

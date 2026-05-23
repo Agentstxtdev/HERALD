@@ -13,6 +13,9 @@ import {
   generateMcpServerCard,
   generateAgentSkillsIndex,
   generateOpenApiJson,
+  generateX402WellKnown,
+  generateSchemamapXml,
+  generateWebBotAuthDirectory,
   mergeVercelHeaders,
   headersDeploymentNote,
   crawlWithFirecrawl,
@@ -463,6 +466,37 @@ export async function emitCommand(options: EmitOptions): Promise<void> {
       writeFileSync(join(outDir, 'openapi.json'), openapi, 'utf-8')
       console.log(`  ${OK} ${pad('openapi.json', FILE_COL)}`)
       written++
+    }
+
+    // /.well-known/x402 — convenience x402 discovery surface. Mirrors the
+    // payments.x402 block from agents.json; the x402 spec does not mandate
+    // the path, but AEO scanners probe it.
+    const x402 = generateX402WellKnown(config)
+    if (x402) {
+      writeFileSync(join(wellKnownDir, 'x402'), x402, 'utf-8')
+      console.log(`  ${OK} ${pad('.well-known/x402', FILE_COL)}`)
+      written++
+    }
+
+    // /schemamap.xml — NLWeb Schema Map. Lists every schema-bearing surface
+    // the site publishes. Derived entirely from which blocks the config
+    // declares; no new config field.
+    const schemamap = generateSchemamapXml(config)
+    if (schemamap) {
+      writeFileSync(join(outDir, 'schemamap.xml'), schemamap, 'utf-8')
+      console.log(`  ${OK} ${pad('schemamap.xml', FILE_COL)}`)
+      written++
+    }
+
+    // /.well-known/http-message-signatures-directory — Web Bot Auth JWKSet.
+    // Gated on `webBotAuth.keys`; honest-declarations rule applies.
+    const webBotAuth = generateWebBotAuthDirectory(config)
+    if (webBotAuth) {
+      writeFileSync(join(wellKnownDir, 'http-message-signatures-directory'), webBotAuth, 'utf-8')
+      console.log(`  ${OK} ${pad('.well-known/http-message-signatures-directory', FILE_COL)}`)
+      written++
+    } else if (config.webBotAuth) {
+      console.log(`  ${WARN} ${pad('.well-known/http-message-signatures-directory', FILE_COL)}skipped: webBotAuth.keys is empty`)
     }
   }
 

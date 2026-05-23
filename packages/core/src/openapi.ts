@@ -25,6 +25,15 @@ function singleOrOffers(offers: OpenApiPaymentOffer[]): unknown {
   return { offers }
 }
 
+// Derive a stable operationId from a pathname. Function-calling agents
+// (ChatGPT, Claude, Gemini) require operationIds to address operations; the
+// rule mirrors the slug pattern used elsewhere in herald: strip leading
+// slash, replace any non-alphanumeric run with a single dash, lowercase.
+function operationIdFor(pathname: string, method: string): string {
+  const slug = pathname.replace(/^\/+/, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  return `${method}${slug ? '-' + slug : '-root'}`
+}
+
 export function generateOpenApiJson(config: AgenticConfig): string | null {
   const oa = config.payments?.openapi
   if (!oa || !oa.paths || Object.keys(oa.paths).length === 0) return null
@@ -40,12 +49,33 @@ export function generateOpenApiJson(config: AgenticConfig): string | null {
     // discovery slice deliberately stays minimal.
     paths[pathname] = {
       get: {
+        operationId: operationIdFor(pathname, 'get'),
         ...(entry.summary ? { summary: entry.summary } : {}),
         ...(entry.description ? { description: entry.description } : {}),
         'x-payment-info': singleOrOffers(entry.offers),
         responses: {
-          '200': { description: 'Payment verified; response returned.' },
-          '402': { description: 'Payment required. Resolve the x-payment-info offer(s) and retry.' },
+          '200': {
+            description: 'Payment verified; response returned.',
+            content: {
+              'application/json': {
+                schema: { type: 'object', additionalProperties: true },
+              },
+            },
+          },
+          '402': {
+            description: 'Payment required. Resolve the x-payment-info offer(s) and retry.',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    error: { type: 'string' },
+                    accepts: { type: 'array', items: { type: 'object', additionalProperties: true } },
+                  },
+                },
+              },
+            },
+          },
         },
       },
     }

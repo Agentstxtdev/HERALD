@@ -6,8 +6,21 @@ const base: AgenticConfig = {
   site: { name: 'Example', url: 'https://example.com' },
 }
 
-function parse(out: string) {
-  return JSON.parse(out) as { linkset: Array<{ anchor: string; links: Array<{ rel: string; href: string; type?: string }> }> }
+// RFC 9264 linkset shape: each anchor entry has `anchor` plus one property
+// per link relation type (`service-desc`, `service-doc`, `describedby`,
+// `item`), whose values are arrays of link target objects `{ href, type?, title? }`.
+interface LinkTarget { href: string; type?: string; title?: string }
+type AnchorEntry = { anchor: string } & Record<string, LinkTarget[] | string>
+
+function parse(out: string): { linkset: AnchorEntry[] } {
+  return JSON.parse(out) as { linkset: AnchorEntry[] }
+}
+
+// When any block is configured, the catalog leads with a self-entry whose
+// `item` array enumerates the child anchors that follow. Helper to fish out
+// the entry for a specific anchor URL.
+function entryFor(linkset: AnchorEntry[], anchor: string): AnchorEntry | undefined {
+  return linkset.find((e) => e.anchor === anchor)
 }
 
 describe('generateApiCatalog', () => {
@@ -28,9 +41,10 @@ describe('generateApiCatalog', () => {
       mcp: { endpoints: ['https://example.com/mcp'] },
     })
     const { linkset } = parse(out)
-    expect(linkset).toHaveLength(1)
-    expect(linkset[0]!.anchor).toBe('https://example.com/mcp')
-    expect(linkset[0]!.links.some((l) => l.rel === 'service-doc' && l.href === 'https://example.com')).toBe(true)
+    const entry = entryFor(linkset, 'https://example.com/mcp')
+    expect(entry).toBeDefined()
+    const docs = entry!['service-doc'] as LinkTarget[]
+    expect(docs.some((l) => l.href === 'https://example.com')).toBe(true)
   })
 
   it('attaches a describedby link to the SEP-2127 server card on same-origin MCP endpoints when serverCard is configured', () => {
@@ -42,8 +56,10 @@ describe('generateApiCatalog', () => {
       },
     })
     const { linkset } = parse(out)
-    const links = linkset[0]!.links
-    expect(links.some((l) => l.rel === 'describedby' && l.href === 'https://example.com/.well-known/mcp/server-card.json')).toBe(true)
+    const entry = entryFor(linkset, 'https://example.com/mcp')!
+    const described = entry['describedby'] as LinkTarget[] | undefined
+    expect(described).toBeDefined()
+    expect(described!.some((l) => l.href === 'https://example.com/.well-known/mcp/server-card.json')).toBe(true)
   })
 
   it('does NOT attach describedby for a cross-origin MCP endpoint (we cannot author its card)', () => {
@@ -55,7 +71,8 @@ describe('generateApiCatalog', () => {
       },
     })
     const { linkset } = parse(out)
-    expect(linkset[0]!.links.every((l) => l.rel !== 'describedby')).toBe(true)
+    const entry = entryFor(linkset, 'https://other.example/mcp')!
+    expect(entry['describedby']).toBeUndefined()
   })
 
   it('does NOT attach describedby when serverCard is absent even on same-origin endpoints', () => {
@@ -63,7 +80,9 @@ describe('generateApiCatalog', () => {
       ...base,
       mcp: { endpoints: ['https://example.com/mcp'] },
     })
-    expect(parse(out).linkset[0]!.links.every((l) => l.rel !== 'describedby')).toBe(true)
+    const { linkset } = parse(out)
+    const entry = entryFor(linkset, 'https://example.com/mcp')!
+    expect(entry['describedby']).toBeUndefined()
   })
 
   it('emits one entry per A2A card with service-desc + service-doc', () => {
@@ -72,8 +91,9 @@ describe('generateApiCatalog', () => {
       a2a: { cards: ['https://example.com/.well-known/agent-card.json'] },
     })
     const { linkset } = parse(out)
-    expect(linkset).toHaveLength(1)
-    expect(linkset[0]!.links.find((l) => l.rel === 'service-desc')?.type).toBe('application/json')
+    const entry = entryFor(linkset, 'https://example.com/.well-known/agent-card.json')!
+    const desc = entry['service-desc'] as LinkTarget[]
+    expect(desc[0]?.type).toBe('application/json')
   })
 
   it('emits one entry per UCP profile with service-desc + service-doc', () => {
@@ -82,8 +102,9 @@ describe('generateApiCatalog', () => {
       ucp: { profiles: ['https://example.com/.well-known/ucp.json'] },
     })
     const { linkset } = parse(out)
-    expect(linkset).toHaveLength(1)
-    expect(linkset[0]!.links.find((l) => l.rel === 'service-desc')?.href).toBe('https://example.com/.well-known/ucp.json')
+    const entry = entryFor(linkset, 'https://example.com/.well-known/ucp.json')!
+    const desc = entry['service-desc'] as LinkTarget[]
+    expect(desc[0]?.href).toBe('https://example.com/.well-known/ucp.json')
   })
 
   it('combines entries across mcp + a2a + ucp blocks in the same output', () => {
@@ -93,7 +114,30 @@ describe('generateApiCatalog', () => {
       a2a: { cards: ['https://example.com/agent-card.json'] },
       ucp: { profiles: ['https://example.com/ucp.json'] },
     })
-    expect(parse(out).linkset).toHaveLength(3)
+    const { linkset } = parse(out)
+    // 1 catalog summary entry + 3 anchor entries
+    expect(linkset).toHaveLength(4)
+    expect(entryFor(linkset, 'https://example.com/mcp')).toBeDefined()
+    expect(entryFor(linkset, 'https://example.com/agent-card.json')).toBeDefined()
+    expect(entryFor(linkset, 'https://example.com/ucp.json')).toBeDefined()
+  })
+
+  it('the catalog self-entry enumerates child anchors via the item relation', () => {
+    const out = generateApiCatalog({
+      ...base,
+      mcp: { endpoints: ['https://example.com/mcp'] },
+      a2a: { cards: ['https://example.com/agent-card.json'] },
+    })
+    const { linkset } = parse(out)
+    const self = entryFor(linkset, 'https://example.com/.well-known/api-catalog')!
+    const items = self['item'] as LinkTarget[]
+    expect(items).toBeDefined()
+    expect(items.map((i) => i.href)).toEqual(
+      expect.arrayContaining([
+        'https://example.com/mcp',
+        'https://example.com/agent-card.json',
+      ]),
+    )
   })
 
   it('accepts entries given as objects with { url } as well as bare strings', () => {
@@ -101,7 +145,9 @@ describe('generateApiCatalog', () => {
       ...base,
       a2a: { cards: [{ url: 'https://example.com/card.json', description: 'demo' }] },
     })
-    expect(parse(out).linkset[0]!.anchor).toBe('https://example.com/card.json')
+    const { linkset } = parse(out)
+    const entry = entryFor(linkset, 'https://example.com/card.json')
+    expect(entry).toBeDefined()
   })
 
   it('skips describedby for a malformed MCP endpoint URL without throwing', () => {
