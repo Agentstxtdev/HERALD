@@ -1,5 +1,11 @@
 # @agentstxtdev/herald-schema
 
+## 0.2.7
+
+### Patch Changes
+
+- Server-card flat-shape compatibility + tools[]; OpenAPI components (Problem, PaginatedList, IdempotencyKey, Cursor, Limit, RateLimit headers, typed responses); API versioning policy.
+
 ## 0.2.6
 
 ### Patch Changes
